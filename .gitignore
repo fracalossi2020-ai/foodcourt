@@ -1,0 +1,5 @@
+node_modules/
+.env
+foodcourt-db.json
+foodcourt-db.json.tmp
+public/*-*-*-*-*.png

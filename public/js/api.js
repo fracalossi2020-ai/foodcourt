@@ -1,0 +1,55 @@
+const cache = new Map()
+
+class ApiError extends Error {
+  constructor(message, status, payload) {
+    super(message)
+    this.status = status
+    this.code = payload?.code
+    this.fields = payload?.fields
+    this.payload = payload
+  }
+}
+
+function unauthorized() {
+  window.dispatchEvent(new Event('fc:unauthorized'))
+}
+
+async function get(path, { ttl = 0 } = {}) {
+  if (ttl && cache.has(path)) {
+    const { at, data } = cache.get(path)
+    if (Date.now() - at < ttl) return data
+  }
+  const res = await fetch(path)
+  if (res.status === 401) { unauthorized(); throw new ApiError('Não autenticado.', 401) }
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new ApiError(body.error || `Falha ao carregar (${res.status})`, res.status, body)
+  if (ttl) cache.set(path, { at: Date.now(), data: body })
+  return body
+}
+
+async function post(path, payload) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload ?? {})
+  })
+  const body = await res.json().catch(() => ({}))
+  if (res.status === 401) { unauthorized(); throw new ApiError(body.error || 'Não autenticado.', 401, body) }
+  if (!res.ok) throw new ApiError(body.error || 'Não conseguimos concluir sua solicitação agora. Tente novamente.', res.status, body)
+  return body
+}
+
+export const api = {
+  bootstrap: () => get('/api/bootstrap', { ttl: 60000 }),
+  home: () => get('/api/home', { ttl: 30000 }),
+  restaurant: (id) => get(`/api/restaurants/${id}`),
+  search: (q) => get(`/api/search?q=${encodeURIComponent(q)}`),
+  flashDeals: () => get('/api/flash-deals'),
+
+  me: () => get('/api/auth/me'),
+  login: (credentials) => post('/api/auth/login', credentials),
+  register: (data) => post('/api/auth/register', data),
+  logout: () => post('/api/auth/logout'),
+  forgotPassword: (email) => post('/api/auth/forgot-password', { email }),
+  resetPassword: (payload) => post('/api/auth/reset-password', payload)
+}

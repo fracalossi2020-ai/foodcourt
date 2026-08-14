@@ -1,0 +1,15 @@
+{
+  "name": "food-court",
+  "version": "1.0.0",
+  "description": "Food Court — Mais que delivery. Um novo ecossistema de alimentação.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
