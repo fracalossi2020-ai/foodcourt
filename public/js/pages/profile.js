@@ -1,6 +1,6 @@
-import { store } from '../store.js'
-import { api } from '../api.js'
-import { esc } from '../ui.js'
+import { store } from '../core/store.js'
+import { api } from '../core/api.js'
+import { esc } from '../core/ui.js'
 
 export async function render(view, boot) {
   const u = store.user

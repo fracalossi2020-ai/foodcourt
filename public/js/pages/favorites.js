@@ -1,6 +1,6 @@
-import { api } from '../api.js'
-import { store } from '../store.js'
-import { restaurantCard, productCard, emptyState, bindGotos } from '../ui.js'
+import { api } from '../core/api.js'
+import { store } from '../core/store.js'
+import { restaurantCard, productCard, emptyState, bindGotos } from '../core/ui.js'
 
 export async function render(view, boot) {
   view.innerHTML = `<div class="page"><div class="skel" style="height:300px;border-radius:24px"></div></div>`

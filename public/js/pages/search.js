@@ -1,6 +1,6 @@
-import { api } from '../api.js'
-import { store } from '../store.js'
-import { restaurantCard, productCard, emptyState, bindGotos, skeletonCards } from '../ui.js'
+import { api } from '../core/api.js'
+import { store } from '../core/store.js'
+import { restaurantCard, productCard, emptyState, bindGotos, skeletonCards } from '../core/ui.js'
 
 let debounceTimer
 

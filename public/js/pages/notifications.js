@@ -1,5 +1,5 @@
-import { store } from '../store.js'
-import { esc, emptyState } from '../ui.js'
+import { store } from '../core/store.js'
+import { esc, emptyState } from '../core/ui.js'
 
 export async function render(view, boot) {
   store.markNotifsRead()

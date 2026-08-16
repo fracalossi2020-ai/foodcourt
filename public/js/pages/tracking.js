@@ -1,5 +1,5 @@
-import { store } from '../store.js'
-import { esc, money, emptyState } from '../ui.js'
+import { store } from '../core/store.js'
+import { esc, money, emptyState } from '../core/ui.js'
 
 const STAGES = [
   { emoji: '✓', title: 'Pedido recebido', sub: 'O Food Court recebeu seu pedido', at: 0 },

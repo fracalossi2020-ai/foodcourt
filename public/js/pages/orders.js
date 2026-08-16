@@ -1,6 +1,6 @@
-import { store } from '../store.js'
-import { esc, money, emptyState, bindGotos, toast } from '../ui.js'
-import { renderCartUI } from '../cart.js'
+import { store } from '../core/store.js'
+import { esc, money, emptyState, bindGotos, toast } from '../core/ui.js'
+import { renderCartUI } from '../core/cart.js'
 
 export async function render(view, boot) {
   const TABS = { active: '📦 Em andamento', past: '🕘 Anteriores' }

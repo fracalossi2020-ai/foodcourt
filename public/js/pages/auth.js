@@ -1,5 +1,5 @@
-import { api } from '../api.js'
-import { esc, toast } from '../ui.js'
+import { api } from '../core/api.js'
+import { esc, toast } from '../core/ui.js'
 
 /* ============================================================
    FOOD COURT — PORTA DE ENTRADA DO CLIENTE
@@ -9,12 +9,12 @@ import { esc, toast } from '../ui.js'
    ============================================================ */
 
 let mode = 'login'
-let redirectAfter = '/'
+let redirectAfter = '/inicio'
 let registerSuccessUser = null
 
 export async function render(view, boot, params, query) {
   mode = params.mode || 'login'
-  redirectAfter = query.get('redirect') || '/'
+  redirectAfter = query.get('redirect') || '/inicio'
   registerSuccessUser = null
   draw(view, query)
 }
@@ -355,7 +355,7 @@ function completeAuth(user) {
 }
 
 function goAfterLogin() {
-  const target = redirectAfter && redirectAfter !== '/' ? redirectAfter : '/'
+  const target = redirectAfter && redirectAfter !== '/' ? redirectAfter : '/inicio'
   location.hash = '#' + target
 }
 

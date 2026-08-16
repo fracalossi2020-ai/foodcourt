@@ -1,6 +1,6 @@
-import { store } from '../store.js'
-import { api } from '../api.js'
-import { esc, money, bindGotos, toast } from '../ui.js'
+import { store } from '../core/store.js'
+import { api } from '../core/api.js'
+import { esc, money, bindGotos, toast } from '../core/ui.js'
 
 export async function render(view, boot) {
   let deals = []
@@ -50,7 +50,7 @@ export async function render(view, boot) {
     const row = document.getElementById('promoRests')
     const promos = []
     d.sections.find(s => s.id === 'offers')?.restaurants.forEach(r => promos.push(r))
-    import('../ui.js').then(m => {
+    import('../core/ui.js').then(m => {
       row.innerHTML = promos.map(r => m.restaurantCard(r)).join('')
       m.bindGotos(row)
     })
@@ -74,7 +74,7 @@ export async function render(view, boot) {
 function flashCard(d) {
   return `
   <div class="card clickable pcard" style="border-color:var(--brand-border)" data-goto="#/restaurante/${d.restaurantId}">
-    <div class="pcard-img" style="background:linear-gradient(160deg,#241000,#170a02)">${d.emoji}</div>
+    <div class="pcard-img" style="background:linear-gradient(160deg,#fff8f2,#fff3e8)">${d.emoji}</div>
     <div class="pcard-body">
       <div class="pcard-name">${esc(d.title)}</div>
       <div class="muted text-xs">${esc(d.subtitle)}</div>

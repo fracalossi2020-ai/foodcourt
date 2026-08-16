@@ -3,13 +3,13 @@ require('./lib/env').loadEnv()
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
-const data = require('./data')
+const data = require('./data/catalog')
 const db = require('./lib/db')
 const auth = require('./lib/auth')
 const mailer = require('./lib/mailer')
 
 const PORT = process.env.PORT || 3000
-const PUBLIC_DIR = path.join(__dirname, 'public')
+const PUBLIC_DIR = path.join(__dirname, '..', 'public')
 
 /* ============ BANCO + SEED DA CONTA DEMO ============ */
 

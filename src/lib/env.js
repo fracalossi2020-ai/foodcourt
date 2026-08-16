@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
 
-const ENV_PATH = path.join(__dirname, '..', '.env')
+const ENV_PATH = path.join(__dirname, '..', '..', '.env')
 
 function loadEnv() {
   if (fs.existsSync(ENV_PATH)) {

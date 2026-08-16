@@ -1,5 +1,8 @@
 node_modules/
 .env
-foodcourt-db.json
-foodcourt-db.json.tmp
+src/data/foodcourt-db.json
+src/data/foodcourt-db.json.tmp
+server-output.log
+server-error.log
+logs/*.log
 public/*-*-*-*-*.png

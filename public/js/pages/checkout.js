@@ -1,7 +1,7 @@
-import { store } from '../store.js'
-import { api } from '../api.js'
-import { esc, money, toast, emptyState } from '../ui.js'
-import { setFeeContext, renderCartUI } from '../cart.js'
+import { store } from '../core/store.js'
+import { api } from '../core/api.js'
+import { esc, money, toast, emptyState } from '../core/ui.js'
+import { setFeeContext, renderCartUI } from '../core/cart.js'
 
 export async function render(view, boot) {
   const { cart } = store

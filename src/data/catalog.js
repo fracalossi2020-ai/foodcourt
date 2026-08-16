@@ -97,7 +97,7 @@ const restaurants = [
     deliveryTime: [25, 35], deliveryFee: 0, freeShippingMin: 0,
     distance: 1.2, priceRange: '$$', open: true,
     promo: 'Combo com 20% OFF', badge: 'MAIS PEDIDO',
-    logo: '🍔', cover: 'linear-gradient(135deg,#1a0a00,#3d1500 55%,#0a0a0b)',
+    logo: '🍔', cover: 'linear-gradient(135deg,#fff3e8,#ffe0b8 55%,#fff8f2)',
     benefits: ['Frete grátis', 'Selo FC Premium'],
     menu: [
       {
@@ -143,7 +143,7 @@ const restaurants = [
     deliveryTime: [30, 45], deliveryFee: 4.99, freeShippingMin: 60,
     distance: 2.1, priceRange: '$$', open: true,
     promo: 'Leve 2 pague 1 nas terças', badge: 'FRETE GRÁTIS ACIMA DE R$ 60',
-    logo: '🍕', cover: 'linear-gradient(135deg,#1f0800,#4a1600 55%,#0a0a0b)',
+    logo: '🍕', cover: 'linear-gradient(135deg,#fff1ec,#ffd6c2 55%,#fff7f4)',
     benefits: ['Promoção de terça'],
     menu: [
       {
@@ -186,7 +186,7 @@ const restaurants = [
     rating: 4.9, reviews: 1204,
     deliveryTime: [40, 55], deliveryFee: 8.99, freeShippingMin: 0,
     distance: 3.4, priceRange: '$$$', open: false, opensAt: '18:00',
-    logo: '🍣', cover: 'linear-gradient(135deg,#001219,#003844 55%,#0a0a0b)',
+    logo: '🍣', cover: 'linear-gradient(135deg,#ecf8f8,#cfeeee 55%,#f4fbfb)',
     benefits: ['Selo FC Premium'],
     menu: [
       {
@@ -222,7 +222,7 @@ const restaurants = [
     deliveryTime: [20, 30], deliveryFee: 3.99, freeShippingMin: 45,
     distance: 0.8, priceRange: '$$', open: true,
     promo: 'Bowl + suco por R$ 29,90',
-    logo: '🥗', cover: 'linear-gradient(135deg,#01150a,#0a3d1f 55%,#0a0a0b)',
+    logo: '🥗', cover: 'linear-gradient(135deg,#effaf1,#d3f0dc 55%,#f5fcf7)',
     benefits: ['Opções veganas'],
     menu: [
       {
@@ -258,7 +258,7 @@ const restaurants = [
     deliveryTime: [25, 40], deliveryFee: 5.99, freeShippingMin: 0,
     distance: 1.9, priceRange: '$', open: true,
     promo: 'Balde família com 15% OFF',
-    logo: '🍗', cover: 'linear-gradient(135deg,#1c1200,#422800 55%,#0a0a0b)',
+    logo: '🍗', cover: 'linear-gradient(135deg,#fff8e8,#ffedbe 55%,#fffaf0)',
     menu: [
       {
         name: 'Baldes',
@@ -292,7 +292,7 @@ const restaurants = [
     rating: 4.4, reviews: 621,
     deliveryTime: [30, 40], deliveryFee: 6.99, freeShippingMin: 0,
     distance: 2.8, priceRange: '$$', open: true,
-    logo: '🌮', cover: 'linear-gradient(135deg,#1f0500,#4d0f00 55%,#0a0a0b)',
+    logo: '🌮', cover: 'linear-gradient(135deg,#fff0ea,#ffd9c4 55%,#fff6f1)',
     menu: [
       {
         name: 'Tacos',
@@ -326,7 +326,7 @@ const restaurants = [
     rating: 4.7, reviews: 989,
     deliveryTime: [35, 50], deliveryFee: 4.49, freeShippingMin: 50,
     distance: 2.3, priceRange: '$$', open: true,
-    logo: '🍝', cover: 'linear-gradient(135deg,#170a00,#3f2200 55%,#0a0a0b)',
+    logo: '🍝', cover: 'linear-gradient(135deg,#fbf6ec,#f2e5c8 55%,#fdfaf3)',
     menu: [
       {
         name: 'Massas',
@@ -354,7 +354,7 @@ const restaurants = [
     deliveryTime: [15, 25], deliveryFee: 2.99, freeShippingMin: 30,
     distance: 0.9, priceRange: '$', open: true,
     promo: 'Leve 3 brigadeiros pague 2',
-    logo: '🍰', cover: 'linear-gradient(135deg,#1d0a1a,#450f33 55%,#0a0a0b)',
+    logo: '🍰', cover: 'linear-gradient(135deg,#fdf0f6,#fad7e6 55%,#fef6fa)',
     menu: [
       {
         name: 'Doces',
@@ -382,7 +382,7 @@ const restaurants = [
     deliveryTime: [10, 20], deliveryFee: 0, freeShippingMin: 0,
     distance: 0.5, priceRange: '$', open: true,
     badge: 'FRETE GRÁTIS',
-    logo: '☕', cover: 'linear-gradient(135deg,#170e00,#3a2600 55%,#0a0a0b)',
+    logo: '☕', cover: 'linear-gradient(135deg,#f9f3ea,#ece0c9 55%,#fbf7f0)',
     benefits: ['Frete grátis'],
     menu: [
       {
@@ -411,7 +411,7 @@ const restaurants = [
     rating: 4.3, reviews: 3890,
     deliveryTime: [40, 60], deliveryFee: 9.99, freeShippingMin: 120,
     distance: 4.2, priceRange: '$', open: true,
-    logo: '🛒', cover: 'linear-gradient(135deg,#001318,#00303d 55%,#0a0a0b)',
+    logo: '🛒', cover: 'linear-gradient(135deg,#eef4f8,#d7e7f2 55%,#f4f9fc)',
     menu: [
       {
         name: 'Ofertas da semana',

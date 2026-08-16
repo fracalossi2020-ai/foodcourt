@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
 
-const DB_PATH = process.env.FC_DB_PATH || path.join(__dirname, '..', 'foodcourt-db.json')
+const DB_PATH = process.env.FC_DB_PATH || path.join(__dirname, '..', 'data', 'foodcourt-db.json')
 
 const EMPTY = () => ({ users: [], sessions: {}, resetTokens: {} })
 let state = EMPTY()

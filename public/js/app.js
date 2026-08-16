@@ -1,16 +1,17 @@
-import { api } from './api.js'
-import { store, hydrateBootstrap, setAuthUser } from './store.js'
-import { el, esc, toast } from './ui.js'
-import { openCart, closeAllDrawers, hide, renderCartUI } from './cart.js'
+import { api } from './core/api.js'
+import { store, hydrateBootstrap, setAuthUser } from './core/store.js'
+import { el, esc, toast } from './core/ui.js'
+import { openCart, closeAllDrawers, hide, renderCartUI } from './core/cart.js'
 
 window.FC = { store }
 
 const routes = [
+  { pattern: /^\/$/, page: 'landing', public: true, landing: true },
   { pattern: /^\/login$/, page: 'auth', public: true, mode: 'login' },
   { pattern: /^\/cadastro$/, page: 'auth', public: true, mode: 'register' },
   { pattern: /^\/esqueci-senha$/, page: 'auth', public: true, mode: 'forgot' },
   { pattern: /^\/redefinir-senha$/, page: 'auth', public: true, mode: 'reset' },
-  { pattern: /^\/$/, page: 'home' },
+  { pattern: /^\/inicio$/, page: 'home' },
   { pattern: /^\/buscar$/, page: 'search' },
   { pattern: /^\/restaurante\/([\w-]+)$/, page: 'restaurant' },
   { pattern: /^\/checkout$/, page: 'checkout' },
@@ -59,15 +60,22 @@ async function navigate() {
     if (!route) { location.hash = '#/'; return }
     const params = path.match(route.pattern)
 
-    if (route.public) {
+    if (route.landing) {
+      document.body.classList.add('landing-mode')
+      document.body.classList.remove('auth-mode', 'app-mode')
+      document.getElementById('cartbar')?.remove()
+    } else if (route.public) {
       document.body.classList.add('auth-mode')
+      document.body.classList.remove('landing-mode', 'app-mode')
       document.getElementById('cartbar')?.remove()
       if (route.mode !== 'reset' && await ensureAuth()) {
-        location.hash = '#/'
+        location.hash = '#/inicio'
         return
       }
     } else {
       document.body.classList.remove('auth-mode')
+      document.body.classList.remove('landing-mode')
+      document.body.classList.add('app-mode')
       const target = path + (qs ? `?${qs}` : '')
       if (!(await ensureAuth())) {
         location.hash = `#/login?redirect=${encodeURIComponent(target)}`
@@ -102,8 +110,10 @@ function getBoot() {
 function updateNav(path) {
   document.querySelectorAll('.bottomnav a').forEach(a => {
     const target = a.dataset.nav
-    a.classList.toggle('active', target === '/' ? path === '/' : path.startsWith(target))
+    a.classList.toggle('active', target === '/inicio' ? path === '/inicio' : path.startsWith(target))
   })
+  const logo = document.querySelector('.header .logo')
+  if (logo) logo.href = document.body.classList.contains('app-mode') ? '#/inicio' : '#/'
 }
 
 function syncHeader() {
@@ -173,11 +183,10 @@ function wireTheme() {
     try { localStorage.setItem('fc:theme', theme) } catch { }
     sun.hidden = theme === 'light'
     moon.hidden = theme !== 'light'
-    meta?.setAttribute('content', theme === 'light' ? '#f7f7f8' : '#0a0a0b')
+    meta?.setAttribute('content', theme === 'dark' ? '#0a0a0b' : '#ffffff')
   }
 
-  const saved = document.documentElement.dataset.theme ||
-    (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+  const saved = document.documentElement.dataset.theme || 'light'
   apply(saved, false)
 
   btn.addEventListener('click', () => {
@@ -186,6 +195,17 @@ function wireTheme() {
 }
 
 function wireHeader() {
+  const menuBtn = document.getElementById('mobileMenuBtn')
+  menuBtn?.addEventListener('click', () => {
+    const header = document.querySelector('.header')
+    const open = header.classList.toggle('mobile-open')
+    menuBtn.setAttribute('aria-expanded', String(open))
+    menuBtn.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu')
+  })
+  document.querySelector('.desktop-links')?.addEventListener('click', () => {
+    document.querySelector('.header')?.classList.remove('mobile-open')
+    menuBtn?.setAttribute('aria-expanded', 'false')
+  })
   document.getElementById('cartBtn').addEventListener('click', openCart)
   document.getElementById('locBtn').addEventListener('click', () => { renderLocDrawer(); show('locDrawer') })
   document.getElementById('searchTrigger').addEventListener('click', () => { location.hash = '#/buscar' })

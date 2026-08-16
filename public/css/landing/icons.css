@@ -1,0 +1,26 @@
+.why-grid article>small{display:none!important}
+.why-grid i{width:62px;height:62px;display:grid;place-items:center;border-radius:18px;background:#ecf8f1;color:#07883f;font-style:normal;transition:transform .25s ease,background-color .25s ease}
+.why-grid i svg{width:29px;height:29px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.why-grid article:hover i{transform:scale(1.07) rotate(-2deg);background:#e2f4e9}
+@media(prefers-reduced-motion:reduce){.why-grid i{transition:none}.why-grid article:hover i{transform:none}}
+.steps article>b{display:none!important}
+.steps i{transition:transform .25s ease,background-color .25s ease,box-shadow .25s ease}
+.steps i svg{width:43px;height:43px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.steps article:hover i{transform:translateY(-4px);background:#e2f4e9;box-shadow:0 12px 24px rgba(7,136,63,.1)}
+@media(prefers-reduced-motion:reduce){.steps i{transition:none}.steps article:hover i{transform:none}}
+.ui-icon{width:22px;height:22px;display:block;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.fcv2-logo>span .ui-icon{width:42px;height:42px;stroke-width:1.7}
+.fcv2-enter>.ui-icon{width:20px;height:20px;color:#087a3e}
+.fcv2-menu .ui-icon{width:22px;height:22px;margin:auto}
+.fcv2-pill .ui-icon{width:18px;height:18px;stroke-width:2.1}
+.fcv2-actions button{gap:9px}.fcv2-actions button .ui-icon{width:21px;height:21px;stroke-width:2}
+.fcv2-proof i .ui-icon,.fcv2-benefits i .ui-icon{width:28px;height:28px;stroke-width:1.8}
+.fcv2-proof i,.fcv2-benefits i{color:#07883f}
+.fcv2-login .social b .ui-icon{width:22px;height:22px}.fcv2-login .social b.google{color:#4285f4}.fcv2-login .social b.apple{color:#111}
+.fcv2-login form>label>span .ui-icon{width:20px;height:20px;stroke-width:1.8}
+.fcv2-login [data-eye] .ui-icon{width:20px;height:20px;color:#667085}
+.fcv2-login [data-eye]:hover .ui-icon{color:#07883f}
+.ui-star{fill:none}
+@media(max-width:600px){.fcv2-logo>span .ui-icon{width:30px;height:30px}.fcv2-proof i .ui-icon,.fcv2-benefits i .ui-icon{width:26px;height:26px}}
+.mobile-exp li>.ui-icon,.mobile-exp li>svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.phone-screen>small{display:flex;align-items:center;gap:5px}.phone-screen>small .ui-icon{width:14px;height:14px}.footer-about>b{display:flex;align-items:center;gap:7px}.footer-about>b .ui-icon{width:27px;height:27px;color:#8bd7aa}.social-icon{width:18px;height:18px;display:block}

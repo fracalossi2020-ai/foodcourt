@@ -1,8 +1,8 @@
-import { api } from '../api.js'
-import { store } from '../store.js'
-import { el, esc, money, toast, bindGotos, skeletonCards, errorState, ratingPill } from '../ui.js'
-import { openProduct } from '../product.js'
-import { setFeeContext, renderCartUI } from '../cart.js'
+import { api } from '../core/api.js'
+import { store } from '../core/store.js'
+import { el, esc, money, toast, bindGotos, skeletonCards, errorState, ratingPill } from '../core/ui.js'
+import { openProduct } from '../core/product.js'
+import { setFeeContext, renderCartUI } from '../core/cart.js'
 
 export async function render(view, boot, params) {
   view.innerHTML = `<div class="page">${skeletonCards(2, false)}</div>`
