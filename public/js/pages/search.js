@@ -35,9 +35,9 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
   const allData = await api.search('').catch(() => ({ restaurants: [] }))
   window.__restByTag = (tag) => allData.restaurants.find(r => (r.tags || []).includes(tag))
   view.innerHTML = `
-  <div class="page">
-    <h1 class="h-lg" style="margin-bottom:16px">Buscar</h1>
-    <div class="searchbar-lg">
+  <div class="page search-page">
+    <header class="search-visual-hero"><div><span>TUDO QUE VOCÊ QUER</span><h1>Buscar</h1><p>Encontre restaurantes, pratos, bebidas e mercados perto de você.</p></div></header>
+    <div class="searchbar-lg searchbar-floating">
       <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--text-3)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="searchInput" type="search" placeholder="Restaurantes, pratos, bebidas, mercados..." autocomplete="off" value="${initialQ.replace(/"/g, '&quot;')}" aria-label="Buscar">
       <button class="btn btn-dark btn-sm" id="clearSearch" hidden aria-label="Limpar busca">✕</button>

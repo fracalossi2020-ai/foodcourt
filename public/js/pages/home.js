@@ -4,7 +4,8 @@ import { restaurantCard, productCard, skeletonCards, errorState, bindGotos, gree
 import { icon, categoryIcon } from '../core/icons.js'
 import { filterByCategory, discoveryTitles, validCategory } from '../data/category-discovery.js'
 
-const HOME_FAQ=[['Como encontro restaurantes?','Use as categorias da página inicial ou acesse Buscar para pesquisar restaurantes, pratos e produtos.'],['Como faço um pedido?','Escolha um restaurante, adicione os produtos ao carrinho e siga as etapas de endereço, entrega e pagamento.'],['Como acompanho meu pedido?','Abra a área Pedidos e selecione o pedido atual para visualizar todas as etapas da entrega.'],['Como altero o endereço?','Clique em “Entregando em” no início da página ou use a área Endereços dentro do seu perfil.'],['Onde encontro promoções?','Acesse Ofertas no menu ou confira as promoções exibidas na página inicial.'],['Como falo com o suporte?','Abra seu Perfil e entre em Ajuda e suporte para enviar uma solicitação.']]
+let homeEffectsCleanup=null
+export function cleanup(){homeEffectsCleanup?.();homeEffectsCleanup=null}
 
 export async function render(view, boot, params = {}, query = new URLSearchParams()) {
   view.innerHTML = `<div class="page consumer-page"><div class="home-intro skeleton-intro"><div class="skel" style="width:280px;height:30px"></div><div class="skel" style="width:190px;height:15px;margin-top:10px"></div></div>${skeletonCards(4)}</div>`
@@ -13,11 +14,11 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
 
   const selectedCategory = validCategory(query.get('category') || 'all', boot.categories)
 
-  view.innerHTML = `<div class="page consumer-page">
-    <header class="home-intro">
-      <h1>${greeting()}, ${firstName(boot.user.fullName || boot.user.name)} <span aria-hidden="true">👋</span></h1>
-      <p>O que vamos pedir hoje?</p>
-      <button class="intro-location" data-location-short>${icon('pin')} Entregando em <b>${esc(store.address.label)}</b></button>
+  view.innerHTML = `<div class="page consumer-page home-effects-root"><div class="home-scroll-progress" aria-hidden="true"><i></i></div>
+    <header class="home-intro home-visual-hero">
+      <div><span class="home-kicker">SABORES PERTO DE VOCÊ</span><h1>${greeting()}, ${firstName(boot.user.fullName || boot.user.name)} <span aria-hidden="true">👋</span></h1>
+      <p>Descubra restaurantes, aproveite ofertas e peça o que você ama.</p>
+      <div class="home-hero-actions"><a class="btn btn-primary" href="#/buscar">Explorar restaurantes</a><button class="intro-location" data-location-short>${icon('pin')} Entregando em <b>${esc(store.address.label)}</b></button></div></div>
     </header>
 
     ${sectionHeader('Categorias','Escolha uma categoria para filtrar toda a experiência.','','', true)}
@@ -31,13 +32,12 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
 
     ${repeatSection()}
     <section class="consumer-partner-cta"><div><span>PARA ESTABELECIMENTOS</span><h2>Tem um estabelecimento?<br><em>Venda também pelo FoodCourt.</em></h2><p>Leve seu cardápio para novos clientes, receba pedidos pela plataforma e tenha um espaço próprio dentro do FoodCourt.</p><ul><li>✓ Sua loja dentro do FoodCourt</li><li>✓ Cardápio digital</li><li>✓ Recebimento de pedidos</li><li>✓ Painel completo</li></ul><div><a href="#/para-estabelecimentos">QUERO VENDER NO FOODCOURT</a><a href="#/para-estabelecimentos?secao=plano">Conhecer o plano</a></div></div><aside><span>PLANO FOODCOURT</span><strong>R$ 119,90<small>/mês</small></strong><p>Portal completo do estabelecimento.</p></aside></section>
-    ${helpWidget()}
   </div>`
 
   bindGotos(view)
   bindCategorySelector(view)
+  bindHomeEffects(view)
   view.querySelector('[data-location-short]')?.addEventListener('click', () => document.getElementById('locBtn')?.click())
-  bindHelpWidget(view)
   view.querySelectorAll('[data-repeat]').forEach(button => button.addEventListener('click', () => {
     const order = store.getOrder(button.dataset.repeat)
     if (!order) return
@@ -49,10 +49,6 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
   if (query.get('focus') === 'categorias') requestAnimationFrame(() => view.querySelector('.modern-categories')?.scrollIntoView({ behavior:'smooth', block:'center' }))
 }
 
-function helpWidget(){return `<div class="fcv2-help"><button class="fcv2-help-button" type="button" aria-label="Abrir perguntas frequentes" aria-expanded="false"><span>?</span> Me ajude</button><section class="fcv2-help-panel" role="dialog" aria-label="Central de ajuda" hidden><header><div><small>CENTRAL DE AJUDA</small><h2>Como podemos ajudar?</h2></div><button type="button" class="fcv2-help-close" aria-label="Fechar ajuda">×</button></header><div class="fcv2-help-questions">${HOME_FAQ.map(item=>`<details><summary>${item[0]}<i>+</i></summary><p>${item[1]}</p></details>`).join('')}</div></section></div>`}
-
-function bindHelpWidget(view){const button=view.querySelector('.fcv2-help-button'),panel=view.querySelector('.fcv2-help-panel'),close=view.querySelector('.fcv2-help-close');const setOpen=open=>{panel.hidden=!open;button.setAttribute('aria-expanded',String(open));view.querySelector('.fcv2-help').classList.toggle('open',open);if(open)close.focus()};button.addEventListener('click',()=>setOpen(panel.hidden));close.addEventListener('click',()=>{setOpen(false);button.focus()});panel.addEventListener('keydown',event=>{if(event.key==='Escape'){setOpen(false);button.focus()}})}
-
 function categoryButton(category, selectedCategory) {
   const active = category.id === selectedCategory
   return `<button class="modern-category ${active ? 'active' : ''}" data-category-id="${esc(category.id)}" aria-pressed="${active}"><i>${categoryIcon(category.id)}</i><span>${esc(category.name)}</span></button>`
@@ -60,13 +56,15 @@ function categoryButton(category, selectedCategory) {
 
 function bindCategorySelector(view) {
   view.querySelectorAll('[data-category-id]').forEach(button => button.addEventListener('click', () => {
-    location.hash = `#/inicio?category=${encodeURIComponent(button.dataset.categoryId)}`
+    const results=view.querySelector('[data-category-results]');results?.classList.add('category-results-leaving');setTimeout(()=>{location.hash = `#/inicio?category=${encodeURIComponent(button.dataset.categoryId)}`},matchMedia('(prefers-reduced-motion: reduce)').matches?0:170)
   }))
   view.querySelector('[data-clear-category]')?.addEventListener('click', event => {
     event.preventDefault()
     location.hash = '#/inicio'
   })
 }
+
+function bindHomeEffects(view){cleanup();const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches,root=view.querySelector('.home-effects-root'),hero=view.querySelector('.home-visual-hero'),progress=view.querySelector('.home-scroll-progress i'),help=document.querySelector('.app-global-help');const onScroll=()=>{if(!root||!progress)return;const distance=Math.max(1,root.scrollHeight-innerHeight),value=Math.min(1,Math.max(0,-root.getBoundingClientRect().top/distance));progress.style.transform=`scaleX(${value})`};addEventListener('scroll',onScroll,{passive:true});onScroll();let helpTimer=null;if(!reduce&&hero){hero.addEventListener('pointermove',event=>{const rect=hero.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;hero.style.setProperty('--home-x',`${x*100}%`);hero.style.setProperty('--home-y',`${y*100}%`);hero.style.setProperty('--home-shift-x',`${(x-.5)*8}px`);hero.style.setProperty('--home-shift-y',`${(y-.5)*6}px`)});hero.addEventListener('pointerleave',()=>{hero.style.setProperty('--home-shift-x','0px');hero.style.setProperty('--home-shift-y','0px')})}const cards=view.querySelectorAll('.rcard,.pcard,.offer-card');if(!reduce)cards.forEach(card=>{card.addEventListener('pointermove',event=>{const rect=card.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;card.style.setProperty('--card-rx',`${(y-.5)*-2.2}deg`);card.style.setProperty('--card-ry',`${(x-.5)*3}deg`)});card.addEventListener('pointerleave',()=>{card.style.setProperty('--card-rx','0deg');card.style.setProperty('--card-ry','0deg')})});if(help&&!sessionStorage.getItem('fc:home-help-seen'))helpTimer=setTimeout(()=>{if(!document.body.classList.contains('app-mode'))return;help.classList.add('help-nudge');const bubble=document.createElement('button');bubble.type='button';bubble.className='home-help-bubble';bubble.textContent='Precisa de ajuda para pedir?';bubble.onclick=()=>{help.querySelector('.fcv2-help-button')?.click();bubble.remove()};help.appendChild(bubble);sessionStorage.setItem('fc:home-help-seen','1');setTimeout(()=>bubble.remove(),7000)},3800);homeEffectsCleanup=()=>{removeEventListener('scroll',onScroll);clearTimeout(helpTimer);help?.querySelector('.home-help-bubble')?.remove()}}
 
 function discoveryContent(data, categoryId) {
   const titles = discoveryTitles(categoryId)
