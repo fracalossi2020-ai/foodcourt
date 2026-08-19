@@ -188,30 +188,27 @@ function updateNotifBadge() {
 
 function renderLocDrawer() {
   const drawer = document.getElementById('locDrawer')
+  drawer.classList.add('location-popover')
   drawer.innerHTML = `
-    <div class="drawer-head">
-      <h3>Endereço de entrega</h3>
+    <div class="drawer-head location-popover-head">
+      <h3><span>⌖</span> Entregar em</h3>
       <button class="icon-btn" data-close aria-label="Fechar">✕</button>
     </div>
-    <div class="drawer-body">
+    <div class="drawer-body location-popover-body">
       ${store.addresses.map(a => `
-        <button class="select-card ${a.id === store.address.id ? 'selected' : ''}" data-addr="${a.id}">
-          <span class="sc-emoji">${a.emoji}</span>
+        <button class="location-option ${a.id === store.address.id ? 'selected' : ''}" data-addr="${a.id}">
+          <span class="location-option-icon">${a.id==='home'?'⌂':a.id==='work'?'▣':'⌖'}</span>
           <span class="sc-main">
             <span class="sc-title">${esc(a.label)}</span>
-            <span class="sc-sub">${esc(a.street)} • ${esc(a.city)}</span>
           </span>
-          <span class="radio-big"></span>
+          <span class="location-check">✓</span>
         </button>`).join('')}
-      <button class="select-card" style="border-style:dashed" data-newaddr>
-        <span class="sc-emoji">➕</span>
-        <span class="sc-main"><span class="sc-title">Adicionar endereço</span><span class="sc-sub">Buscar por CEP ou rua</span></span>
+      <button class="location-option" data-newaddr>
+        <span class="location-option-icon">●</span>
+        <span class="sc-main"><span class="sc-title">Outro endereço</span></span>
       </button>
-      <div class="card" style="padding:16px;margin-top:10px">
-        <b class="text-sm">📍 Descoberta por localização</b>
-        <p class="muted text-sm" style="margin-top:4px">Em breve o Food Court sugere ofertas automaticamente conforme você se move pela cidade.</p>
-      </div>
-    </div>`
+    </div>
+    <a class="location-manage" href="#/perfil?secao=enderecos">Gerenciar endereços <span>›</span></a>`
   drawer.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => hide('locDrawer')))
   drawer.querySelectorAll('[data-addr]').forEach(b => b.addEventListener('click', () => {
     store.setAddress(b.dataset.addr)
@@ -219,7 +216,8 @@ function renderLocDrawer() {
     hide('locDrawer')
     toast(`Entrega alterada para ${store.address.label}`, 'success', '📍')
   }))
-  drawer.querySelector('[data-newaddr]')?.addEventListener('click', () => toast('Cadastro de endereço disponível em breve', 'info', '🚧'))
+  drawer.querySelector('[data-newaddr]')?.addEventListener('click', () => { hide('locDrawer'); location.hash='#/perfil?secao=enderecos' })
+  drawer.querySelector('.location-manage')?.addEventListener('click', () => hide('locDrawer'))
 }
 
 function wireTheme() {
@@ -269,7 +267,13 @@ function wireHeader() {
     else location.hash = destination
   })
   document.getElementById('cartBtn').addEventListener('click', openCart)
-  document.getElementById('locBtn').addEventListener('click', () => { renderLocDrawer(); show('locDrawer') })
+  document.getElementById('locBtn').addEventListener('click', event => {
+    renderLocDrawer()
+    const rect=event.currentTarget.getBoundingClientRect(),drawer=document.getElementById('locDrawer')
+    drawer.style.setProperty('--location-left',`${Math.max(12,rect.left)}px`)
+    drawer.style.setProperty('--location-top',`${rect.bottom+8}px`)
+    show('locDrawer')
+  })
   document.getElementById('searchTrigger').addEventListener('click', () => { location.hash = '#/buscar' })
   document.getElementById('notifBtn').addEventListener('click', () => { location.hash = '#/notificacoes' })
   document.getElementById('overlay').addEventListener('click', closeAllDrawers)

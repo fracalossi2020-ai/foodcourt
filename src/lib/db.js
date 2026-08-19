@@ -7,6 +7,10 @@ const DB_PATH = process.env.FC_DB_PATH || (process.env.RAILWAY_VOLUME_MOUNT_PATH
   ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'foodcourt-db.json')
   : path.join(__dirname, '..', '..', 'data', 'runtime', 'foodcourt-db.json'))
 
+function ensureDbDirectory() {
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
+}
+
 const EMPTY = () => ({ users: [], sessions: {}, resetTokens: {}, stores: [], subscriptions: [], storeMembers: [], platformOrders: [], promotions: [], reviews: [], supportTickets: [], auditLog: [], loyaltyEvents: [], referrals: [] })
 let state = EMPTY()
 let emailIndex = new Map()
@@ -19,7 +23,7 @@ function rebuildIndexes() {
 
 function load() {
   try {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive:true })
+    ensureDbDirectory()
     if (fs.existsSync(DB_PATH)) {
       state = { ...EMPTY(), ...JSON.parse(fs.readFileSync(DB_PATH, 'utf8')) }
     }
@@ -38,7 +42,7 @@ function save() {
 function saveNow() {
   clearTimeout(saveTimer)
   try {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive:true })
+    ensureDbDirectory()
     const tmp = DB_PATH + '.tmp'
     fs.writeFileSync(tmp, JSON.stringify(state, null, 2))
     fs.renameSync(tmp, DB_PATH)
