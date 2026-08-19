@@ -153,6 +153,10 @@ function updateNav(path, query = new URLSearchParams()) {
 }
 
 function enhanceInternalView(view) {
+  const page = view.querySelector(':scope > .page')
+  if (page && !page.querySelector(':scope > .internal-food-banner')) {
+    page.insertAdjacentHTML('afterbegin', '<div class="internal-food-banner" aria-hidden="true"></div>')
+  }
   const targets = view.querySelectorAll('.consumer-section-head, .section-head, .restaurant-row, .product-row, .offer-strip, .nearby-list, .grid-rest, .card:not(.rcard):not(.pcard)')
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
     targets.forEach(node => node.classList.add('reveal-visible'))
