@@ -145,7 +145,9 @@ function accountSubnav(active) {
 }
 
 function item(emoji, label, sub, href) {
-  return `<a class="plist-item" href="${href}"><span class="plist-emoji">${emoji}</span><span class="pl-label">${label}<span class="pl-sub">${sub}</span></span><span class="chev">→</span></a>`
+  const opensPartnerTab = href === '#/parceiro' || href.startsWith('#/para-estabelecimentos')
+  const externalTab = opensPartnerTab ? ' target="_blank" rel="noopener noreferrer"' : ''
+  return `<a class="plist-item" href="${href}"${externalTab}><span class="plist-emoji">${emoji}</span><span class="pl-label">${label}<span class="pl-sub">${sub}</span></span><span class="chev">→</span></a>`
 }
 
 async function logout(event) {

@@ -31,7 +31,7 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
     </div>
 
     ${repeatSection()}
-    <section class="consumer-partner-cta"><div><span>PARA ESTABELECIMENTOS</span><h2>Tem um estabelecimento?<br><em>Venda também pelo FoodCourt.</em></h2><p>Leve seu cardápio para novos clientes, receba pedidos pela plataforma e tenha um espaço próprio dentro do FoodCourt.</p><ul><li>✓ Sua loja dentro do FoodCourt</li><li>✓ Cardápio digital</li><li>✓ Recebimento de pedidos</li><li>✓ Painel completo</li></ul><div><a href="#/para-estabelecimentos">QUERO VENDER NO FOODCOURT</a><a href="#/para-estabelecimentos?secao=plano">Conhecer o plano</a></div></div><aside><span>PLANO FOODCOURT</span><strong>R$ 119,90<small>/mês</small></strong><p>Portal completo do estabelecimento.</p></aside></section>
+    <section class="consumer-partner-cta"><div><span>PARA ESTABELECIMENTOS</span><h2>Tem um estabelecimento?<br><em>Venda também pelo FoodCourt.</em></h2><p>Leve seu cardápio para novos clientes, receba pedidos pela plataforma e tenha um espaço próprio dentro do FoodCourt.</p><ul><li>✓ Sua loja dentro do FoodCourt</li><li>✓ Cardápio digital</li><li>✓ Recebimento de pedidos</li><li>✓ Painel completo</li></ul><div><a href="#/para-estabelecimentos" target="_blank" rel="noopener noreferrer">QUERO VENDER NO FOODCOURT</a><a href="#/para-estabelecimentos?secao=plano" target="_blank" rel="noopener noreferrer">Conhecer o plano</a></div></div><aside><span>PLANO FOODCOURT</span><strong>R$ 119,90<small>/mês</small></strong><p>Portal completo do estabelecimento.</p></aside></section>
   </div>`
 
   bindGotos(view)

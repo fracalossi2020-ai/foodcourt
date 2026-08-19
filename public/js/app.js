@@ -260,7 +260,7 @@ function wireHeader() {
   })
   document.querySelector('.desktop-links')?.addEventListener('click', event => {
     const link = event.target.closest('a[href^="#/"]')
-    if (!link) return
+    if (!link || link.target === '_blank') return
     event.preventDefault()
     const destination = link.getAttribute('href')
     if (location.hash === destination) navigate()
