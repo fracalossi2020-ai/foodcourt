@@ -1,3 +1,5 @@
+import { icon } from './icons.js'
+
 export function el(html) {
   const t = document.createElement('template')
   t.innerHTML = html.trim()
@@ -12,9 +14,10 @@ export const money = (v) => 'R$ ' + Number(v).toFixed(2).replace('.', ',')
 
 export const freeFee = (fee) => fee === 0
 
-export function toast(msg, type = 'info', emoji = '✨') {
+export function toast(msg, type = 'info', symbol = '') {
   const box = document.getElementById('toasts')
-  const t = el(`<div class="toast ${type}" role="status"><span class="t-emoji">${emoji}</span><span>${esc(msg)}</span></div>`)
+  const toastIcon = type === 'success' ? '✓' : type === 'error' ? '!' : 'i'
+  const t = el(`<div class="toast ${type}" role="status"><span class="t-emoji">${symbol || toastIcon}</span><span>${esc(msg)}</span></div>`)
   box.appendChild(t)
   setTimeout(() => {
     t.classList.add('leaving')
@@ -33,18 +36,17 @@ export function abbr(n) {
 
 export function restaurantCard(r, { horizontal = true } = {}) {
   const free = r.deliveryFee === 0
-  const disc = r.promo ? `<span class="badge badge-brand">🏷️ ${esc(r.promo)}</span>` : ''
+  const disc = r.promo ? `<span class="badge badge-brand">${icon('tag')} ${esc(r.promo)}</span>` : ''
   const badge = r.badge ? `<span class="badge badge-green">${esc(r.badge)}</span>` : ''
   return `
   <article class="card clickable rcard ${r.open ? '' : 'closed'}" data-goto="#/restaurante/${r.id}" role="link" tabindex="0" aria-label="${esc(r.name)}, ${r.category}">
-    <div class="rcard-cover" style="background:${r.cover}">
+    <div class="rcard-cover restaurant-photo rest-${esc(r.id)}">
       <div class="rcard-badges">${badge}${disc}</div>
-      <button class="fav-btn ${isFav(r.id) ? 'on' : ''}" data-fav="${r.id}" aria-label="Favoritar ${esc(r.name)}" style="${isFav(r.id) ? '' : 'background:rgba(10,10,11,.55)'}">${isFav(r.id) ? '❤️' : '🤍'}</button>
-      ${r.logo}
+      <button class="fav-btn ${isFav(r.id) ? 'on' : ''}" data-fav="${r.id}" aria-label="Favoritar ${esc(r.name)}">${icon('heart')}</button>
     </div>
     <div class="rcard-body">
       <div class="rcard-head">
-        <div class="rcard-logo">${r.logo}</div>
+        <div class="rcard-logo">${icon('store')}</div>
         <div style="min-width:0">
           <div class="rcard-title">${esc(r.name)}</div>
           <div class="rcard-cat">${esc(r.category)} • ${r.priceRange} • ${r.distance.toFixed(1)} km</div>
@@ -52,8 +54,8 @@ export function restaurantCard(r, { horizontal = true } = {}) {
       </div>
       <div class="rcard-meta">
         ${ratingPill(r)}
-        <span>🕐 ${r.deliveryTime[0]}–${r.deliveryTime[1]} min</span>
-        <span class="${free ? 'free' : ''}">${free ? '🚴 Grátis' : `🚴 ${money(r.deliveryFee)}`}</span>
+        <span>${icon('clock')} ${r.deliveryTime[0]}–${r.deliveryTime[1]} min</span>
+        <span class="${free ? 'free' : ''}">${icon('bike')} ${free ? 'Grátis' : money(r.deliveryFee)}</span>
         ${!r.open ? `<span class="badge badge-red">Fechado${r.opensAt ? ` • abre ${r.opensAt}` : ''}</span>` : ''}
       </div>
     </div>
@@ -65,9 +67,8 @@ function isFav(id) { return window.FC?.store?.isFavoriteRestaurant?.(id) || fals
 export function productCard(p, restaurantId, restaurantName) {
   return `
   <article class="card clickable pcard" data-goto="#/restaurante/${restaurantId}" role="link" tabindex="0">
-    <div class="pcard-img">
+    <div class="pcard-img product-photo product-${esc(p.id)}">
       ${p.discount ? `<span class="pcard-disc">-${p.discount}%</span>` : ''}
-      ${p.emoji}
     </div>
     <div class="pcard-body">
       <div class="pcard-name">${esc(p.name)}</div>
@@ -78,7 +79,7 @@ export function productCard(p, restaurantId, restaurantName) {
           <span class="now">${money(p.promoPrice ?? p.price)}</span>
           ${p.promoPrice ? `<span class="old">${money(p.price)}</span>` : ''}
         </div>
-        <button class="add-btn" data-open-product="${restaurantId}|${p.id}" aria-label="Adicionar ${esc(p.name)}">+</button>
+        <button class="add-btn" data-open-product="${restaurantId}|${p.id}" aria-label="Adicionar ${esc(p.name)}">${icon('plus')}</button>
       </div>
     </div>
   </article>`
@@ -147,8 +148,8 @@ export function bindGotos(root) {
       const id = n.dataset.fav
       const on = window.FC.store.toggleFavoriteRestaurant(id)
       n.classList.toggle('on', true)
-      n.textContent = on ? '❤️' : '🤍'
-      toast(on ? 'Adicionado aos favoritos' : 'Removido dos favoritos', 'info', on ? '❤️' : '🤍')
+      n.innerHTML = icon('heart')
+      toast(on ? 'Favorito salvo.' : 'Removido dos favoritos.', 'success')
     })
   })
 }

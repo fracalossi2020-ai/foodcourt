@@ -1,0 +1,24 @@
+{
+  "explorer.compactFolders": false,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json",
+    ".env.example": ".env",
+    "README.md": "docs/*.md"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/.tmp-*": true,
+    "logs/**/*.log": true,
+    "logs/browser-test-artifacts": true,
+    "data/runtime/*.json": true,
+    "data/runtime/*.tmp": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "logs": true,
+    "data/runtime": true,
+    "**/.tmp-*": true
+  }
+}

@@ -34,6 +34,7 @@ export async function render(view, boot, params) {
                 ${p.discount ? `<span class="badge badge-green">-${p.discount}%</span>` : ''}
               </div>
               <div class="mitem-desc">${esc(p.description)}</div>
+              <div class="product-food-info"><span>🔥 ${p.calories || '—'} kcal</span>${(p.dietary||[]).map(tag=>`<span>✓ ${esc(tag)}</span>`).join('')}${(p.allergens||[]).length?`<span class="allergen">Contém: ${esc(p.allergens.join(', '))}</span>`:''}</div>
               <div class="mitem-price">
                 <span class="now">${money(p.promoPrice ?? p.price)}</span>
                 ${p.promoPrice ? `<span class="old">${money(p.price)}</span>` : ''}

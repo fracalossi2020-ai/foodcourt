@@ -39,7 +39,8 @@ export function setFeeContext(fee, freeMin) { feeCtx = { fee, freeMin } }
 function render() {
   ensureEls()
   const { cart } = store
-  const restName = cart.items[0]?.restaurantName || ''
+  const restaurantNames = [...new Set(cart.items.map(item => item.restaurantName))]
+  const restName = restaurantNames.length > 1 ? `${restaurantNames.length} estabelecimentos` : restaurantNames[0] || ''
   const t = store.cartTotals(feeCtx.fee, feeCtx.freeMin)
 
   drawer.innerHTML = `
@@ -59,7 +60,7 @@ function render() {
           <button class="btn btn-primary" data-goto="#/">Ver restaurantes</button>
         </div>` : `
         ${freeShipBar(t.subtotal)}
-        ${cart.items.map(i => itemRow(i)).join('')}
+        ${restaurantNames.map(name => `<section class="cart-store-group"><header>🏪 ${esc(name)}</header>${cart.items.filter(item=>item.restaurantName===name).map(i=>itemRow(i)).join('')}</section>`).join('')}
         <div style="margin-top:18px">
           <div class="text-sm" style="font-weight:700;margin-bottom:8px">🎟️ Cupom de desconto</div>
           ${t.coupon
@@ -79,7 +80,7 @@ function render() {
     </div>
     ${cart.items.length ? `
       <div class="drawer-foot">
-        <button class="btn btn-primary btn-lg btn-block" data-checkout>CONTINUAR PARA PAGAMENTO →</button>
+        <a class="btn btn-primary btn-lg btn-block cart-checkout-link" data-checkout href="#/checkout?origem=carrinho&at=${Date.now()}" aria-label="Continuar do carrinho para escolher endereço e pagamento">CONTINUAR PARA PAGAMENTO →</a>
       </div>` : ''}
   `
 
@@ -96,7 +97,7 @@ function render() {
     render()
   })
   const checkout = drawer.querySelector('[data-checkout]')
-  if (checkout) checkout.addEventListener('click', () => { closeCart(); location.hash = '#/checkout' })
+  if (checkout) checkout.addEventListener('click', () => closeCart())
 }
 
 function applyCoupon() {
@@ -132,9 +133,9 @@ function itemRow(i) {
       ${i.note ? `<div class="ci-note">“${esc(i.note)}”</div>` : ''}
       <div class="ci-line">
         <div class="qty-stepper" style="transform:scale(.88);transform-origin:left">
-          <button class="qty-btn" data-qty-minus="${i.uid}" aria-label="Diminuir">−</button>
+          <button class="qty-btn" data-qty-minus="${i.cartKey || i.uid}" aria-label="Diminuir">−</button>
           <span class="qty-val">${i.qty}</span>
-          <button class="qty-btn" data-qty-plus="${i.uid}" aria-label="Aumentar">+</button>
+          <button class="qty-btn" data-qty-plus="${i.cartKey || i.uid}" aria-label="Aumentar">+</button>
         </div>
         <span class="ci-price">${money(i.unitPrice * i.qty)}</span>
       </div>
@@ -149,6 +150,13 @@ export function renderCartUI() {
   else dot.hidden = true
 
   let bar = document.getElementById('cartbar')
+  const routePath = (location.hash.replace(/^#/, '').split('?')[0] || '/')
+  const isCheckoutFlow = routePath === '/checkout' || routePath.startsWith('/pedido/')
+  if (isCheckoutFlow) {
+    bar?.remove()
+    if (drawer && drawer.classList.contains('open')) render()
+    return
+  }
   if (n > 0) {
     const t = store.cartTotals(feeCtx.fee, feeCtx.freeMin)
     if (!bar) {

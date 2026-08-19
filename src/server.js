@@ -7,6 +7,8 @@ const data = require('./data/catalog')
 const db = require('./lib/db')
 const auth = require('./lib/auth')
 const mailer = require('./lib/mailer')
+const platform = require('./lib/platform')
+const QRCode = require('qrcode')
 
 const PORT = process.env.PORT || 3000
 const PUBLIC_DIR = path.join(__dirname, '..', 'public')
@@ -27,13 +29,24 @@ if (db.state.users.length === 0) {
     memberSince: '2024',
     points: 1250,
     level: 'Prata',
-    cashback: 5,
+    cashback: 5, role: 'customer',
     createdAt: new Date('2024-05-10T12:00:00Z').toISOString(),
     updatedAt: new Date('2024-05-10T12:00:00Z').toISOString(),
     lastLogin: null
   })
   console.log('[db] Conta demo criada: joao@foodcourt.com / foodcourt123')
 }
+
+function ensureDemoUser(email, fullName, phone, password, role) {
+  let user = db.findByEmail(email)
+  if (!user) user = db.addUser({ id:db.uid('user'), fullName, email, phone, passwordHash:auth.hashPassword(password), status:'active', avatarEmoji:role==='merchant'?'👨‍🍳':'🛡️', memberSince:'2026', points:0, level:role==='merchant'?'Parceiro':'Administrador', cashback:0, role, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), lastLogin:null })
+  else if (!user.role) { user.role = role; db.saveUser() }
+  return user
+}
+const merchantDemo = ensureDemoUser('dono@foodcourt.com','Carlos Mendes','(11) 98888-1000','foodcourt123','merchant')
+ensureDemoUser('admin@foodcourt.com','Admin FoodCourt','(11) 98888-2000','foodcourt123','admin')
+platform.seed()
+if (db.state.stores[0] && !db.state.stores[0].ownerId) { db.state.stores[0].ownerId = merchantDemo.id; db.saveNow() }
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -105,13 +118,13 @@ function normalize(s) {
 
 function restaurantCard(r) {
   return {
-    id: r.id, name: r.name, category: r.category, tags: r.tags,
+    id: r.id, name: r.name, category: r.category, categoryId: r.categoryId, tags: r.tags,
     rating: r.rating, reviews: r.reviews,
     deliveryTime: r.deliveryTime, deliveryFee: r.deliveryFee,
     freeShippingMin: r.freeShippingMin, distance: r.distance,
     priceRange: r.priceRange, open: r.open, opensAt: r.opensAt || null,
     promo: r.promo || null, badge: r.badge || null,
-    logo: r.logo, cover: r.cover, benefits: r.benefits || []
+    logo: r.logo, cover: r.cover, benefits: r.benefits || [], demo: Boolean(r.demo)
   }
 }
 
@@ -295,7 +308,16 @@ const api = {
 
   'GET /api/home': () => {
     const all = data.restaurants
+    const products = all.flatMap(restaurant => restaurant.menu.flatMap(section => section.items.map(item => ({
+      ...item,
+      categoryId: item.categoryId || restaurant.categoryId,
+      restaurantId: restaurant.id,
+      restaurantName: restaurant.name
+    }))))
     return {
+      restaurants: all.map(restaurantCard),
+      products,
+      offers: data.categoryOffers,
       sections: [
         { id: 'recommended', title: 'Recomendados para você', subtitle: 'Baseado nos seus pedidos', restaurants: all.filter(r => r.rating >= 4.6).map(restaurantCard) },
         { id: 'free', title: 'Frete grátis', subtitle: 'Entrega por conta da casa', restaurants: all.filter(r => r.deliveryFee === 0 || r.freeShippingMin > 0).map(restaurantCard) },
@@ -334,6 +356,95 @@ const api = {
   'GET /api/flash-deals': () => data.flashDeals
 }
 
+const PIX_KEY = '3ddfdfec-13f0-4a48-8350-1f6d37ba892a'
+function pixField(id, value) {
+  const text = String(value)
+  return `${id}${String(Buffer.byteLength(text, 'utf8')).padStart(2, '0')}${text}`
+}
+function pixCrc(payload) {
+  let crc = 0xffff
+  for (const byte of Buffer.from(payload, 'utf8')) {
+    crc ^= byte << 8
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0')
+}
+function createPixPayload(amount, txid) {
+  const merchantAccount = pixField('00', 'br.gov.bcb.pix') + pixField('01', PIX_KEY) + pixField('02', 'Pedido FoodCourt')
+  const additional = pixField('05', txid)
+  const base = pixField('00', '01') + pixField('26', merchantAccount) + pixField('52', '0000') + pixField('53', '986') + pixField('54', amount.toFixed(2)) + pixField('58', 'BR') + pixField('59', 'FOODCOURT') + pixField('60', 'SAO PAULO') + pixField('62', additional) + '6304'
+  return base + pixCrc(base)
+}
+api['POST /api/pix-charge'] = async (params, query, body) => {
+  const amount = Number(body.amount)
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) return { status:400, body:{ error:'Valor do Pix inválido.' } }
+  const txid = `FC${Date.now().toString(36).toUpperCase()}`.slice(0, 25)
+  const payload = createPixPayload(amount, txid)
+  const qrCode = await QRCode.toDataURL(payload, { width:360, margin:2, errorCorrectionLevel:'M', color:{ dark:'#10251A', light:'#FFFFFFFF' } })
+  return { payload, qrCode, amount:+amount.toFixed(2), key:PIX_KEY, txid, expiresIn:420, expiresAt:Date.now() + 420000, mode:'test' }
+}
+
+function forbidden(role) { return { status:403, body:{ error:`Acesso exclusivo para ${role}.` } } }
+const cepCache = new Map([
+  ['35180312', { cep:'35180-312', street:'Avenida Monsenhor Rafael', neighborhood:'Timirim', city:'Timóteo', state:'MG', ibge:'3168705' }]
+])
+Object.assign(api, {
+  'GET /api/cep/:id': async (params) => {
+    const cep=String(params.id||'').replace(/\D/g,'')
+    if(!/^\d{8}$/.test(cep))return {status:400,body:{error:'Informe um CEP com 8 dígitos.'}}
+    if(cepCache.has(cep))return {address:cepCache.get(cep)}
+    try{const response=await fetch(`https://viacep.com.br/ws/${cep}/json/`,{signal:AbortSignal.timeout(5000),headers:{Accept:'application/json'}});if(!response.ok)throw new Error('Serviço de CEP indisponível.');const payload=await response.json();if(payload.erro)return {status:404,body:{error:'CEP não encontrado.'}};const address={cep:payload.cep,street:payload.logradouro||'',neighborhood:payload.bairro||'',city:payload.localidade||'',state:payload.uf||'',ibge:payload.ibge||''};cepCache.set(cep,address);return {address}}catch(error){return {status:503,body:{error:'Não foi possível consultar o CEP agora. Preencha o endereço manualmente.'}}}
+  },
+  'GET /api/partner-dashboard': (params,query,body,ctx) => {
+    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros')
+    const store=platform.storeForUser(ctx.user); return { store, ...platform.dashboard(store.id) }
+  },
+  'GET /api/partner-orders': (params,query,body,ctx) => {
+    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros')
+    const store=platform.storeForUser(ctx.user); return { orders:db.state.platformOrders.filter(order=>order.storeId===store.id) }
+  },
+  'POST /api/partner-order-status': (params,query,body,ctx) => {
+    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros')
+    const store=platform.storeForUser(ctx.user); const order=db.state.platformOrders.find(item=>item.id===body.orderId&&item.storeId===store.id)
+    const allowed=['pending','accepted','preparing','ready','delivered','cancelled']; if(!order||!allowed.includes(body.status)) return {status:400,body:{error:'Pedido ou status inválido.'}}
+    order.status=body.status;order.statusHistory=order.statusHistory||[];order.statusHistory.push({status:body.status,at:platform.now()});order.updatedAt=platform.now();
+    if(body.status==='delivered'&&order.customerId&&!order.loyaltyGranted){const customer=db.state.users.find(user=>user.id===order.customerId);if(customer){const points=Math.max(10,Math.floor(order.total));customer.points=(customer.points||0)+points;db.state.loyaltyEvents.unshift({id:db.uid('loyalty'),userId:customer.id,type:'order',points,label:`Pedido ${order.id}`,at:platform.now()});order.loyaltyGranted=true}}
+    platform.audit(ctx.user,'order.status','order',order.id,body.status);return {order}
+  },
+  'GET /api/partner-catalog': (params,query,body,ctx) => {
+    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros'); const store=platform.storeForUser(ctx.user); return {storeId:store.id,products:store.products}
+  },
+  'POST /api/partner-product': (params,query,body,ctx) => {
+    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros'); const store=platform.storeForUser(ctx.user)
+    let product=store.products.find(item=>item.id===body.id); if(product) Object.assign(product,{name:body.name,category:body.category,price:Number(body.price),stock:Number(body.stock),active:Boolean(body.active)}); else {product={id:db.uid('product'),name:String(body.name||'Novo produto'),category:String(body.category||'Geral'),price:Number(body.price||0),stock:Number(body.stock||0),active:true,sold:0};store.products.push(product)}
+    platform.audit(ctx.user,body.id?'product.update':'product.create','product',product.id);return {product}
+  },
+  'GET /api/partner-promotions': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user);return {promotions:db.state.promotions.filter(p=>p.storeId===store.id)} },
+  'GET /api/partner-finance': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');return platform.finance(platform.storeForUser(ctx.user).id) },
+  'GET /api/partner-team': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user);return {members:db.state.storeMembers.filter(m=>m.storeId===store.id)} },
+  'GET /api/partner-reviews': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user);return {reviews:db.state.reviews.filter(r=>r.storeId===store.id)} },
+  'GET /api/partner-support': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user);return {tickets:db.state.supportTickets.filter(t=>t.storeId===store.id)} },
+  'GET /api/admin-dashboard': (params,query,body,ctx) => { if(ctx.user.role!=='admin') return forbidden('administradores');return {metrics:{users:db.state.users.length,stores:db.state.stores.length,orders:db.state.platformOrders.length,gross:db.state.platformOrders.reduce((sum,o)=>sum+o.total,0),openTickets:db.state.supportTickets.filter(t=>t.status==='open').length},stores:db.state.stores,users:db.state.users.map(auth.publicUser),audit:db.state.auditLog.slice(0,30)} },
+  'GET /api/orders': (params,query,body,ctx) => ({orders:db.state.platformOrders.filter(order=>order.customerId===ctx.user.id)}),
+  'GET /api/order/:id': (params,query,body,ctx) => {
+    const order=db.state.platformOrders.find(item=>item.id===params.id&&item.customerId===ctx.user.id);return order?{order}:{status:404,body:{error:'Pedido não encontrado.'}}
+  },
+  'POST /api/orders': (params,query,body,ctx) => {
+    const catalogRestaurant=data.restaurants.find(item=>item.id===body.storeId);const partnerStore=platform.storeForId(body.storeId)||db.state.stores.find(item=>item.slug===body.storeId)
+    if((!catalogRestaurant&&!partnerStore)||!Array.isArray(body.items)||!body.items.length)return {status:400,body:{error:'Pedido inválido.'}}
+    const catalogItems=catalogRestaurant?catalogRestaurant.menu.flatMap(section=>section.items):partnerStore.products
+    try{const items=body.items.map(line=>{const product=catalogItems.find(item=>item.id===line.productId);const quantity=Math.max(1,Math.min(20,Number(line.quantity)||1));if(!product)throw new Error('Produto indisponível.');return {productId:product.id,name:product.name,quantity,unitPrice:Number(product.promoPrice??product.price),options:Array.isArray(line.options)?line.options:[]}})
+      const subtotal=items.reduce((sum,item)=>sum+item.quantity*item.unitPrice,0);const deliveryFee=Number(catalogRestaurant?.deliveryFee??0);const order={id:'FC-'+Date.now(),customerId:ctx.user.id,storeId:partnerStore?.id||catalogRestaurant.id,restaurantId:catalogRestaurant?.id||partnerStore.slug,restaurantName:catalogRestaurant?.name||partnerStore.name,status:'pending',statusHistory:[{status:'pending',at:platform.now()}],customerName:ctx.user.fullName,items,subtotal,deliveryFee,discount:0,total:Number((subtotal+deliveryFee).toFixed(2)),paymentMethod:body.paymentMethod||'Simulado',address:body.address||'',createdAt:platform.now(),updatedAt:platform.now(),cancelReason:null};db.state.platformOrders.unshift(order);platform.audit(ctx.user,'order.create','order',order.id);return {status:201,body:{order}}
+    }catch(error){return {status:400,body:{error:error.message}}}
+  },
+  'POST /api/order-cancel': (params,query,body,ctx) => {const order=db.state.platformOrders.find(item=>item.id===body.orderId&&item.customerId===ctx.user.id);if(!order)return {status:404,body:{error:'Pedido não encontrado.'}};if(!['pending','accepted'].includes(order.status))return {status:409,body:{error:'Este pedido já está em preparação e não pode ser cancelado automaticamente.'}};order.status='cancelled';order.cancelReason=String(body.reason||'Cancelado pelo cliente');order.statusHistory.push({status:'cancelled',at:platform.now()});order.updatedAt=platform.now();platform.audit(ctx.user,'order.cancel','order',order.id,order.cancelReason);return {order}},
+  'GET /api/customer-reviews': (params,query,body,ctx) => ({reviews:db.state.reviews.filter(review=>review.customerId===ctx.user.id)}),
+  'POST /api/customer-reviews': (params,query,body,ctx) => {const order=db.state.platformOrders.find(item=>item.id===body.orderId&&item.customerId===ctx.user.id&&item.status==='delivered');if(!order)return {status:400,body:{error:'Apenas pedidos entregues podem ser avaliados.'}};if(db.state.reviews.some(review=>review.orderId===order.id))return {status:409,body:{error:'Este pedido já foi avaliado.'}};const rating=Math.max(1,Math.min(5,Number(body.rating)||5));const review={id:db.uid('review'),orderId:order.id,customerId:ctx.user.id,storeId:order.storeId,customerName:ctx.user.fullName,rating,comment:String(body.comment||'').slice(0,500),replied:false,createdAt:platform.now()};db.state.reviews.unshift(review);ctx.user.points=(ctx.user.points||0)+10;db.state.loyaltyEvents.unshift({id:db.uid('loyalty'),userId:ctx.user.id,type:'review',points:10,label:'Avaliação de pedido',at:platform.now()});db.saveNow();return {status:201,body:{review,points:ctx.user.points}}},
+  'GET /api/loyalty': (params,query,body,ctx) => {const points=ctx.user.points||0;const levels=[{name:'Bronze',min:0},{name:'Prata',min:500},{name:'Ouro',min:1500},{name:'Diamante',min:3000}];const level=[...levels].reverse().find(item=>points>=item.min);const next=levels[levels.findIndex(item=>item.name===level.name)+1]||null;return {points,level:level.name,next,events:db.state.loyaltyEvents.filter(event=>event.userId===ctx.user.id).slice(0,30),missions:[{id:'mission_categories',title:'Explore 3 categorias',progress:1,target:3,reward:80},{id:'mission_orders',title:'Faça 5 pedidos',progress:db.state.platformOrders.filter(o=>o.customerId===ctx.user.id).length,target:5,reward:150},{id:'mission_review',title:'Avalie um pedido',progress:db.state.reviews.some(r=>r.customerId===ctx.user.id)?1:0,target:1,reward:10}]}},
+  'GET /api/customer-support': (params,query,body,ctx) => ({tickets:db.state.supportTickets.filter(ticket=>ticket.customerId===ctx.user.id)}),
+  'POST /api/customer-support': (params,query,body,ctx) => {const ticket={id:db.uid('ticket'),customerId:ctx.user.id,storeId:body.storeId||null,orderId:body.orderId||null,subject:String(body.subject||'Atendimento').slice(0,120),status:'open',priority:'normal',messages:[{from:'customer',text:String(body.message||'').slice(0,1000),at:platform.now()}],createdAt:platform.now()};db.state.supportTickets.unshift(ticket);platform.audit(ctx.user,'support.create','ticket',ticket.id);return {status:201,body:{ticket}}}
+})
+
 /* ============ ESTÁTICOS ============ */
 
 function serveStatic(req, res, pathname) {
@@ -353,7 +464,7 @@ function serveStatic(req, res, pathname) {
     const ext = path.extname(filePath).toLowerCase()
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': ext === '.html' ? 'no-store' : 'public, max-age=3600'
+      'Cache-Control': 'no-store, no-cache, must-revalidate'
     })
     res.end(fileData)
   })
@@ -400,7 +511,7 @@ const server = http.createServer(async (req, res) => {
     try {
       let body = {}
       if (req.method === 'POST') body = await readBody(req)
-      const result = handler({ id: sub }, url.searchParams, body, ctx)
+      const result = await handler({ id: sub }, url.searchParams, body, ctx)
       if (result && result.status) sendJson(res, result.status, result.body)
       else sendJson(res, 200, result)
     } catch (e) {

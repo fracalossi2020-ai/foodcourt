@@ -4,7 +4,7 @@ import { toast } from '../core/ui.js'
 export async function render(view) {
   view.innerHTML = `<div class="fc-landing-v2">
     <header class="fcv2-nav">
-      <a class="fcv2-logo" href="#/" aria-label="FoodCourt - início"><span>${uiIcon('brand')}</span> FOOD<b>COURT</b></a>
+      <a class="fcv2-logo" href="#/" aria-label="FoodCourt - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a>
       <nav aria-label="Navegação da landing"><button data-scroll="top" class="active">Início</button><button data-scroll="como">Como funciona</button><button data-scroll="vantagens">Vantagens</button><button data-scroll="parceiros">Para estabelecimentos</button><button data-scroll="contato">Contato</button></nav>
       <div><a class="fcv2-enter" href="#/login">${uiIcon('user')} <span>Entrar</span></a><a class="fcv2-create" href="#/cadastro">Criar conta</a><button class="fcv2-menu" aria-label="Abrir menu" aria-expanded="false">${uiIcon('menu')}</button></div>
     </header>
@@ -45,6 +45,13 @@ export async function render(view) {
     ${introduction()}${howItWorks()}${variety()}${whyFoodCourt()}${promotion()}${mobileExperience()}${trust()}${testimonials()}${partnerSection()}${faq()}${finalCta()}${landingFooter()}
   </div>`
   bind(view)
+  if (location.hash.replace(/^#/, '').split('?')[0] === '/login') {
+    requestAnimationFrame(() => {
+      const login = view.querySelector('.fcv2-login')
+      login?.scrollIntoView({ behavior:'smooth', block:'center' })
+      setTimeout(() => login?.querySelector('input[name="email"]')?.focus(), 250)
+    })
+  }
 }
 
 function proof(icon,title,text){return `<article><i>${uiIcon(icon)}</i><p><b>${title}</b><span>${text}</span></p></article>`}
@@ -65,9 +72,15 @@ function testimonials(){return `<section class="fcv2-section fcv2-testimonials r
 function partnerSection(){return `<section class="fcv2-partner reveal" id="parceiros"><div class="fcv2-section"><div><span class="section-kicker light">PARA ESTABELECIMENTOS</span><h2>Seu estabelecimento<br><em>também pode estar aqui.</em></h2><p>Leve seu cardápio para novos clientes e faça parte do FoodCourt.</p><ul><li>Mais visibilidade</li><li>Novos clientes</li><li>Pedidos pela plataforma</li><li>Divulgação de promoções</li><li>Presença digital</li></ul><div><a href="#/cadastro">Quero vender no FoodCourt</a><button data-scroll="contato">Conhecer para estabelecimentos</button></div></div><aside><div class="partner-photo" role="img" aria-label="Mesa de restaurante preparada para atendimento"></div><div class="delivery-pack"><b>FOOD<span>COURT</span></b><small>Seu pedido, do seu jeito.</small></div></aside></div></section>`}
 function faq(){const qs=[['O que é o FoodCourt?','Uma plataforma para descobrir estabelecimentos, escolher produtos e fazer seus pedidos.'],['Como faço para criar uma conta?','Clique em “Criar conta”, informe seus dados e siga as etapas.'],['Como encontro estabelecimentos perto de mim?','Após entrar, informe sua localização para visualizar opções na sua região.'],['Posso acompanhar meu pedido?','Sim. A área interna mostra o andamento do pedido até a entrega.'],['Como funcionam os pagamentos?','As formas disponíveis são apresentadas durante a finalização do pedido.'],['Tenho um estabelecimento. Como posso vender no FoodCourt?','Acesse o cadastro e selecione a opção destinada a estabelecimentos.'],['Existe aplicativo para celular?','Os aplicativos serão divulgados quando estiverem disponíveis.'],['Como entro em contato com o suporte?','Utilize os canais que serão publicados na área de suporte.']];return `<section class="fcv2-section fcv2-faq reveal"><header class="section-title"><span class="section-kicker">FAQ</span><h2>Ficou com alguma dúvida?</h2></header><div>${qs.map((q,i)=>`<details ${i===0?'open':''}><summary>${q[0]}<i>+</i></summary><p>${q[1]}</p></details>`).join('')}</div></section>`}
 function finalCta(){return `<section class="fcv2-section final-signup reveal"><span class="food-edge left">◔</span><div><span class="section-kicker light">O PRÓXIMO SABOR ESPERA POR VOCÊ</span><h2>Pronto para descobrir<br>seu próximo favorito?</h2><p>Crie sua conta e tenha o FoodCourt sempre por perto.</p><a href="#/cadastro">CRIAR MINHA CONTA</a><small>É rápido, simples e gratuito.</small></div><span class="food-edge right">◉</span></section>`}
-function landingFooter(){const cols=[['FOODCOURT',['Sobre nós','Como funciona','Vantagens','Contato']],['DESCUBRA',['Categorias','Ofertas','Novidades']],['PARA ESTABELECIMENTOS',['Cadastre seu negócio','Como funciona','Central do parceiro']],['SUPORTE',['Central de ajuda','Fale conosco','Dúvidas frequentes']],['LEGAL',['Termos de uso','Política de privacidade','Cookies']]];return `<footer class="fcv2-footer" id="contato"><div class="footer-main"><div class="footer-about"><b>${uiIcon('brand')} FOOD<span>COURT</span></b><p>Seu pedido, do seu jeito.</p><nav aria-label="Redes sociais"><a href="#" aria-label="Instagram">${socialIcon('instagram')}</a><a href="#" aria-label="Facebook">${socialIcon('facebook')}</a><a href="#" aria-label="TikTok">${socialIcon('tiktok')}</a><a href="#" aria-label="WhatsApp">${socialIcon('whatsapp')}</a></nav></div>${cols.map(c=>`<div><h3>${c[0]}</h3>${c[1].map(x=>`<button data-footer-scroll="${x}">${x}</button>`).join('')}</div>`).join('')}</div><div class="footer-bottom">© ${new Date().getFullYear()} FoodCourt. Todos os direitos reservados.</div></footer>`}
+function landingFooter(){const cols=[['FOODCOURT',['Sobre nós','Como funciona','Vantagens','Contato']],['DESCUBRA',['Categorias','Ofertas','Novidades']],['PARA ESTABELECIMENTOS',['Cadastre seu negócio','Como funciona','Central do parceiro']],['SUPORTE',['Central de ajuda','Fale conosco','Dúvidas frequentes']],['LEGAL',['Termos de uso','Política de privacidade','Cookies']]];return `<footer class="fcv2-footer" id="contato"><div class="footer-main"><div class="footer-about"><a class="footer-brand-logo" href="#/" aria-label="Food Court - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a><p>Seu pedido, do seu jeito.</p><nav aria-label="Redes sociais"><a href="#" aria-label="Instagram">${socialIcon('instagram')}</a><a href="#" aria-label="Facebook">${socialIcon('facebook')}</a><a href="#" aria-label="TikTok">${socialIcon('tiktok')}</a><a href="#" aria-label="WhatsApp">${socialIcon('whatsapp')}</a></nav></div>${cols.map(c=>`<div><h3>${c[0]}</h3>${c[1].map(x=>`<button data-footer-scroll="${x}">${x}</button>`).join('')}</div>`).join('')}</div><div class="footer-bottom">© ${new Date().getFullYear()} FoodCourt. Todos os direitos reservados.</div></footer>`}
 function socialIcon(name){const paths={instagram:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>',facebook:'<path d="M14 8h4V3h-4c-4 0-6 2.4-6 6v3H4v5h4v5h5v-5h4l1-5h-5V9c0-.7.3-1 1-1Z"/>',tiktok:'<path d="M14 3v11.5a4.5 4.5 0 1 1-4-4.5M14 3c.5 3 2 4.5 5 5"/>',whatsapp:'<path d="M20 11.6a8 8 0 0 1-11.8 7L4 20l1.4-4.1A8 8 0 1 1 20 11.6Z"/><path d="M9 8c.5 3 2 4.5 5 6l2-1"/>',search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>'};return `<svg class="social-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`}
 function bind(view){
+  view.querySelectorAll('a[href="#/login"],a[href="#/cadastro"]').forEach(link=>link.addEventListener('click',event=>{
+    event.preventDefault()
+    const destination=link.getAttribute('href')
+    if(location.hash===destination) window.dispatchEvent(new HashChangeEvent('hashchange'))
+    else location.hash=destination
+  }))
   const root=view.querySelector('.fc-landing-v2')
   root.classList.add('js-reveal')
   view.querySelector('.fcv2-menu').addEventListener('click',e=>{const open=view.querySelector('.fcv2-nav').classList.toggle('open');e.currentTarget.setAttribute('aria-expanded',String(open))})
@@ -81,6 +94,6 @@ function bind(view){
     const email=form.email.value.trim(),password=form.password.value
     if(!email||!password){error.textContent='Informe seu e-mail e sua senha.';error.hidden=false;return}
     submit.disabled=true;submit.textContent='Entrando...'
-    try{const res=await api.login({email,password});window.dispatchEvent(new CustomEvent('fc:auth',{detail:res.user}));location.hash='#/inicio'}catch(err){error.textContent=err.message;error.hidden=false;submit.disabled=false;submit.textContent='Entrar'}
+    try{const res=await api.login({email,password});window.dispatchEvent(new CustomEvent('fc:auth',{detail:res.user}));location.hash=res.user.role==='merchant'?'#/parceiro':res.user.role==='admin'?'#/admin':'#/inicio'}catch(err){error.textContent=err.message;error.hidden=false;submit.disabled=false;submit.textContent='Entrar'}
   })
 }

@@ -1,102 +1,21 @@
+import { api } from '../core/api.js'
 import { store } from '../core/store.js'
-import { esc, money, emptyState } from '../core/ui.js'
+import { esc, money, emptyState, toast } from '../core/ui.js'
 
-const STAGES = [
-  { emoji: '✓', title: 'Pedido recebido', sub: 'O Food Court recebeu seu pedido', at: 0 },
-  { emoji: '✓', title: 'Restaurante confirmou', sub: 'Seu pedido foi aceito pela cozinha', at: 0.06 },
-  { emoji: '🍳', title: 'Preparando pedido', sub: 'A cozinha está preparando tudo com capricho', at: 0.15 },
-  { emoji: '🚴', title: 'Entregador a caminho', sub: 'Pedido saiu para entrega', at: 0.55 },
-  { emoji: '📍', title: 'Pedido chegando', sub: 'O entregador está no seu bairro', at: 0.85 },
-  { emoji: '✓', title: 'Entregue', sub: 'Bom apetite!', at: 1 }
-]
-
-const TOTAL_MS = 1000 * 60 * 30
-
-export async function render(view, boot, params) {
-  const order = store.getOrder(params.id)
-  if (!order) {
-    view.innerHTML = `<div class="page">${emptyState({ emoji: '📦', title: 'Pedido não encontrado', sub: 'Verifique seus pedidos em andamento.', action: '#/pedidos', actionLabel: 'Ver meus pedidos' })}</div>`
-    return
+const stages=[['pending','Pedido recebido','A loja recebeu seu pedido.'],['accepted','Pedido aceito','A cozinha confirmou o pedido.'],['preparing','Em preparação','Seu pedido está sendo preparado.'],['ready','Pedido pronto','Tudo pronto para a próxima etapa.'],['delivered','Entregue','Bom apetite!']]
+export async function render(view,boot,params){
+  let order
+  try{order=(await api.order(params.id)).order}catch{order=store.getOrder(params.id)}
+  if(!order){view.innerHTML=`<div class="page">${emptyState({emoji:'📦',title:'Pedido não encontrado',sub:'Consulte seu histórico de pedidos.',action:'#/pedidos',actionLabel:'Ver pedidos'})}</div>`;return}
+  const createdAt=typeof order.createdAt==='number'?order.createdAt:new Date(order.createdAt).getTime()
+  view.innerHTML='<div class="page" style="max-width:720px;margin:0 auto"><div id="trackRoot"></div></div>'
+  const root=view.querySelector('#trackRoot')
+  function draw(){
+    const current=Math.max(0,stages.findIndex(stage=>stage[0]===order.status));const finished=['delivered','cancelled'].includes(order.status)
+    root.innerHTML=`<a class="profile-back" href="#/pedidos">← Voltar aos pedidos</a><section class="tracking-status"><div class="pair" style="justify-content:space-between"><span class="badge ${order.status==='cancelled'?'badge-red':finished?'badge-green':'badge-brand'}">${order.status==='cancelled'?'CANCELADO':finished?'ENTREGUE':'ACOMPANHAMENTO AO VIVO'}</span><span class="badge badge-dark">#${esc(order.id)}</span></div><h1>${order.status==='cancelled'?'Pedido cancelado':stages[current][1]}</h1><p>${order.status==='cancelled'?esc(order.cancelReason||'Cancelado pelo cliente.'):stages[current][2]}</p><small>Atualizado em ${new Date(order.updatedAt||createdAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</small></section><section class="card" style="padding:22px;margin-top:16px"><div class="order-head"><div class="order-logo">🍔</div><div class="oh-main"><b>${esc(order.restaurantName||'Estabelecimento')}</b><div class="muted text-sm">${esc(order.address||'Endereço selecionado')}</div></div><b>${money(order.total)}</b></div><div class="timeline" style="margin-top:24px">${stages.map((stage,index)=>`<div class="tl-item ${index<current||finished&&order.status==='delivered'?'done':index===current&&!finished?'current':''}"><div class="tl-rail"><div class="tl-dot">${index<=current&&order.status!=='cancelled'?'✓':''}</div>${index<stages.length-1?'<div class="tl-line"></div>':''}</div><div class="tl-content"><div class="tl-title">${stage[1]}</div><div class="tl-sub">${stage[2]}</div></div></div>`).join('')}</div>${['pending','accepted'].includes(order.status)?'<button class="btn btn-ghost btn-block" data-cancel>Cancelar pedido</button>':''}</section><div class="pair" style="margin-top:14px"><a class="btn btn-outline" href="#/pedidos" style="flex:1">Meus pedidos</a><a class="btn btn-primary" href="#/inicio" style="flex:1">Continuar explorando</a></div>`
+    root.querySelector('[data-cancel]')?.addEventListener('click',async()=>{const reason=window.prompt('Por que deseja cancelar?','Mudei de ideia');if(reason===null)return;try{order=(await api.cancelOrder(order.id,reason)).order;toast('Pedido cancelado.','success');draw()}catch(error){toast(error.message,'error')}})
   }
-
-  view.innerHTML = `
-  <div class="page" style="max-width:680px;margin:0 auto">
-    <div id="trackRoot"></div>
-  </div>`
-
-  const root = document.getElementById('trackRoot')
-  let timer
-
-  function draw() {
-    const elapsed = Date.now() - order.createdAt
-    const progress = Math.min(1, elapsed / TOTAL_MS)
-    let current = 0
-    STAGES.forEach((s, i) => { if (progress >= s.at) current = i })
-    const remaining = Math.max(0, Math.ceil((TOTAL_MS - elapsed) / 60000))
-    const done = progress >= 1
-
-    root.innerHTML = `
-      <div class="tracking-status" style="margin-bottom:22px">
-        <div class="pair" style="justify-content:space-between;margin-bottom:6px">
-          <span class="badge ${done ? 'badge-green' : 'badge-brand'}">${done ? '✓ ENTREGUE' : 'PEDIDO CONFIRMADO ✓'}</span>
-          <span class="badge badge-dark">#${esc(order.id)}</span>
-        </div>
-        <div class="tracking-eta">${done ? '🗑' : remaining} <small>${done ? 'esperando você de novo' : 'min restantes aprox.'}</small></div>
-        <div class="muted text-sm" style="margin-top:4px">Pedido feito às ${new Date(order.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
-      </div>
-
-      <div class="card" style="padding:20px 22px;margin-bottom:14px">
-        <div class="order-head" style="margin-bottom:18px">
-          <div class="order-logo">${order.emoji}</div>
-          <div class="oh-main">
-            <b>${esc(order.restaurantName)}</b>
-            <div class="muted text-sm">${esc(order.address)}</div>
-          </div>
-          <a class="btn btn-dark btn-sm" href="#/restaurante/${order.restaurantId}">Ver loja</a>
-        </div>
-        <div class="timeline">
-          ${STAGES.map((s, i) => `
-          <div class="tl-item ${i < current ? 'done' : i === current && !done ? 'current' : done ? 'done' : ''}">
-            <div class="tl-rail">
-              <div class="tl-dot">${i <= current ? s.emoji : ''}</div>
-              ${i < STAGES.length - 1 ? '<div class="tl-line"></div>' : ''}
-            </div>
-            <div class="tl-content">
-              <div class="tl-title">${esc(s.title)}</div>
-              <div class="tl-sub">${esc(s.sub)}</div>
-            </div>
-          </div>`).join('')}
-        </div>
-        ${current >= 3 && !done ? `
-        <div class="card" style="padding:14px;display:flex;align-items:center;gap:12px;background:var(--surface-2)">
-          <div class="order-logo" style="width:42px;height:42px;font-size:1.1rem">🛵</div>
-          <div style="flex:1">
-            <b class="text-sm">Carlos M.</b>
-            <div class="text-xs dim">Entregador • Moto Honda Preta • FC-42</div>
-          </div>
-          <button class="icon-btn" aria-label="Ligar com entregador">📞</button>
-        </div>` : ''}
-      </div>
-
-      <div class="card" style="padding:16px 18px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px">
-        <div class="pair text-sm"><span>💳</span><span class="muted">${esc(order.payment)}</span></div>
-        <div class="pair text-sm"><span>📍</span><span class="muted">${esc(order.address)}</span></div>
-        ${order.coupon ? `<div class="pair text-sm"><span>🎟️</span><span class="muted">Cupom ${esc(order.coupon)}</span></div>` : ''}
-        <div class="pair text-sm" style="justify-content:space-between;border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
-          <b>Total</b><b class="brand-text">${money(order.total)}</b>
-        </div>
-      </div>
-
-      <div class="pair">
-        <a class="btn btn-ghost" href="#/pedidos" style="flex:1">Meus pedidos</a>
-        <a class="btn btn-outline" href="#/" style="flex:1">Pedir mais algo 🍔</a>
-      </div>
-      <p class="text-xs dim" style="text-align:center;margin-top:18px">📍 Localização do entregador em tempo real em breve no Food Court</p>`
-
-    if (!done) { clearTimeout(window.__trackTimer); window.__trackTimer = setTimeout(draw, 15000) }
-  }
-
   draw()
+  if(!['delivered','cancelled'].includes(order.status))window.__trackTimer=setInterval(async()=>{try{order=(await api.order(order.id)).order;draw()}catch{}},10000)
 }
-
-export function cleanup() { clearTimeout(window.__trackTimer) }
+export function cleanup(){clearInterval(window.__trackTimer)}

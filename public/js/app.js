@@ -7,7 +7,7 @@ window.FC = { store }
 
 const routes = [
   { pattern: /^\/$/, page: 'landing', public: true, landing: true },
-  { pattern: /^\/login$/, page: 'auth', public: true, mode: 'login' },
+  { pattern: /^\/login$/, page: 'landing', public: true, landing: true },
   { pattern: /^\/cadastro$/, page: 'auth', public: true, mode: 'register' },
   { pattern: /^\/esqueci-senha$/, page: 'auth', public: true, mode: 'forgot' },
   { pattern: /^\/redefinir-senha$/, page: 'auth', public: true, mode: 'reset' },
@@ -21,6 +21,10 @@ const routes = [
   { pattern: /^\/ofertas$/, page: 'offers' },
   { pattern: /^\/notificacoes$/, page: 'notifications' },
   { pattern: /^\/perfil$/, page: 'profile' }
+  ,{ pattern: /^\/parceiro$/, page: 'partner' }
+  ,{ pattern: /^\/admin$/, page: 'admin' }
+  ,{ pattern: /^\/fidelidade$/, page: 'loyalty' }
+  ,{ pattern: /^\/suporte$/, page: 'support' }
 ]
 
 let currentPage = null
@@ -43,12 +47,19 @@ async function ensureAuth() {
 }
 
 let navigating = false
+let navigationQueued = false
 
 async function navigate() {
-  if (navigating) return
+  if (navigating) {
+    navigationQueued = true
+    return
+  }
   navigating = true
+  const view = document.getElementById('view')
+  if (!view.innerHTML.trim()) {
+    view.innerHTML = `<div class="page route-loading" role="status"><i></i><b>Carregando FoodCourt</b><span>Preparando sua experiência...</span></div>`
+  }
   try {
-    const view = document.getElementById('view')
     const raw = location.hash.replace(/^#/, '') || '/'
     const [path, qs] = raw.split('?')
     const query = new URLSearchParams(qs || '')
@@ -68,14 +79,13 @@ async function navigate() {
       document.body.classList.add('auth-mode')
       document.body.classList.remove('landing-mode', 'app-mode')
       document.getElementById('cartbar')?.remove()
-      if (route.mode !== 'reset' && await ensureAuth()) {
-        location.hash = '#/inicio'
-        return
-      }
     } else {
       document.body.classList.remove('auth-mode')
       document.body.classList.remove('landing-mode')
       document.body.classList.add('app-mode')
+      if (path === '/checkout' || path.startsWith('/pedido/')) {
+        document.getElementById('cartbar')?.remove()
+      }
       const target = path + (qs ? `?${qs}` : '')
       if (!(await ensureAuth())) {
         location.hash = `#/login?redirect=${encodeURIComponent(target)}`
@@ -83,7 +93,7 @@ async function navigate() {
       }
     }
 
-    const mod = await import(`./pages/${route.page}.js`)
+    const mod = await import(`./pages/${route.page}.js?v=20260819-29`)
     currentPage = mod
     window.scrollTo(0, 0)
 
@@ -92,10 +102,26 @@ async function navigate() {
     } else {
       const boot = await getBoot()
       await mod.render(view, boot, params ? { id: params[1] } : {}, query)
+      enhanceInternalView(view)
     }
-    updateNav(path)
+    updateNav(path, query)
+  } catch (error) {
+    console.error('[navigation]', error)
+    const target = location.hash.replace(/^#/, '') || '/'
+    const isSessionError = error?.status === 401 || /autentic|sessão|sessao/i.test(error?.message || '')
+    if (isSessionError && !isAuthPath(target)) {
+      navigationQueued = true
+      location.hash = `#/login?redirect=${encodeURIComponent(target)}`
+    } else {
+      view.innerHTML = `<div class="page route-error"><span>⚠️</span><h1>Não foi possível carregar esta página</h1><p>${esc(error?.message || 'Ocorreu um erro inesperado.')}</p><div><button class="btn btn-primary" data-route-retry>Tentar novamente</button><a class="btn btn-ghost" href="#/inicio">Ir para o início</a></div></div>`
+      view.querySelector('[data-route-retry]')?.addEventListener('click', () => navigate())
+    }
   } finally {
     navigating = false
+    if (navigationQueued) {
+      navigationQueued = false
+      queueMicrotask(navigate)
+    }
   }
 }
 
@@ -107,13 +133,33 @@ function getBoot() {
   return bootPromise
 }
 
-function updateNav(path) {
-  document.querySelectorAll('.bottomnav a').forEach(a => {
+function updateNav(path, query = new URLSearchParams()) {
+  document.querySelectorAll('.bottomnav a, .desktop-links a[data-nav]').forEach(a => {
     const target = a.dataset.nav
-    a.classList.toggle('active', target === '/inicio' ? path === '/inicio' : path.startsWith(target))
+    const categories = target === '/categorias' && path === '/inicio' && query.get('focus') === 'categorias'
+    const home = target === '/inicio' && path === '/inicio' && query.get('focus') !== 'categorias'
+    a.classList.toggle('active', target === '/inicio' ? home : target === '/categorias' ? categories : path.startsWith(target))
   })
   const logo = document.querySelector('.header .logo')
   if (logo) logo.href = document.body.classList.contains('app-mode') ? '#/inicio' : '#/'
+}
+
+function enhanceInternalView(view) {
+  const targets = view.querySelectorAll('.consumer-section-head, .section-head, .restaurant-row, .product-row, .offer-strip, .nearby-list, .grid-rest, .card:not(.rcard):not(.pcard)')
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+    targets.forEach(node => node.classList.add('reveal-visible'))
+    return
+  }
+  const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+    if (!entry.isIntersecting) return
+    entry.target.classList.add('reveal-visible')
+    observer.unobserve(entry.target)
+  }), { threshold: .06, rootMargin: '0px 0px -24px' })
+  targets.forEach((node, index) => {
+    node.classList.add('premium-reveal')
+    node.style.setProperty('--reveal-delay', `${Math.min(index % 5, 4) * 55}ms`)
+    observer.observe(node)
+  })
 }
 
 function syncHeader() {
@@ -206,6 +252,14 @@ function wireHeader() {
     document.querySelector('.header')?.classList.remove('mobile-open')
     menuBtn?.setAttribute('aria-expanded', 'false')
   })
+  document.querySelector('.desktop-links')?.addEventListener('click', event => {
+    const link = event.target.closest('a[href^="#/"]')
+    if (!link) return
+    event.preventDefault()
+    const destination = link.getAttribute('href')
+    if (location.hash === destination) navigate()
+    else location.hash = destination
+  })
   document.getElementById('cartBtn').addEventListener('click', openCart)
   document.getElementById('locBtn').addEventListener('click', () => { renderLocDrawer(); show('locDrawer') })
   document.getElementById('searchTrigger').addEventListener('click', () => { location.hash = '#/buscar' })
@@ -214,6 +268,30 @@ function wireHeader() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAllDrawers() })
   window.addEventListener('fc:notifs', updateNotifBadge)
   store.onChange(() => updateNotifBadge())
+
+  // Fallback global: o checkout continua navegável mesmo se o carrinho tiver
+  // sido redesenhado durante o toque ou se a rota atual já for /checkout.
+  document.addEventListener('click', event => {
+    const checkout = event.target.closest('[data-checkout]')
+    if (!checkout) return
+    event.preventDefault()
+    closeAllDrawers()
+    const destination = `#/checkout?origem=carrinho&at=${Date.now()}`
+    if (location.hash === destination) navigate()
+    else location.hash = destination
+  }, true)
+}
+
+function wireVisualFeedback() {
+  if (!matchMedia('(hover:hover) and (pointer:fine)').matches) return
+  const interactive = '.rcard,.pcard,.mitem,.profile-option,.plist-item,.order-card,.notif-item,.support-ticket,.mission-card,.partner-metric,.partner-product,.partner-feature-card'
+  document.addEventListener('pointermove', event => {
+    const card = event.target.closest(interactive)
+    if (!card) return
+    const rect = card.getBoundingClientRect()
+    card.style.setProperty('--mx', `${event.clientX - rect.left}px`)
+    card.style.setProperty('--my', `${event.clientY - rect.top}px`)
+  }, { passive:true })
 }
 
 function wireAuthEvents() {
@@ -248,6 +326,15 @@ function show(id) {
 
 wireTheme()
 wireHeader()
+wireVisualFeedback()
 wireAuthEvents()
 window.addEventListener('hashchange', navigate)
 navigate()
+
+// Nunca mantém a aplicação em branco caso uma extensão, cache antigo ou falha
+// de rede interrompa o primeiro carregamento.
+setTimeout(() => {
+  const view = document.getElementById('view')
+  if (!view || !view.querySelector('.route-loading')) return
+  view.innerHTML = `<div class="page route-error"><span>↻</span><h1>Vamos carregar novamente</h1><p>A página inicial não terminou de abrir.</p><div><button class="btn btn-primary" onclick="location.hash='#/inicio';location.reload()">Abrir página inicial</button><a class="btn btn-ghost" href="#/login">Entrar novamente</a></div></div>`
+}, 6000)

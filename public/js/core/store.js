@@ -7,7 +7,11 @@ const persisted = {
   orders: [],
   readNotifs: [],
   searchHistory: [],
-  addressId: 'home'
+  addressId: 'home',
+  preferredPaymentId: 'pix',
+  profileOverrides: {},
+  customAddresses: [],
+  preferences: { orderUpdates: true, promotions: true, darkMode: false, personalizedOffers: true }
 }
 
 function load() {
@@ -40,27 +44,51 @@ export const store = {
 
   setAddress(id) { persisted.addressId = id; commit() },
 
+  addAddress(address) {
+    const item = { ...address, id: address.id || `address_${Date.now()}`, emoji: address.emoji || '📍', current: false, custom: true }
+    persisted.customAddresses.push(item)
+    store.addresses = [...store.addresses.filter(existing => existing.id !== item.id), item]
+    persisted.addressId = item.id
+    commit()
+    return item
+  },
+
+  setPreferredPayment(id) { persisted.preferredPaymentId = id; commit() },
+
+  get preferredPaymentId() { return persisted.preferredPaymentId },
+
+  updateProfile(fields) {
+    persisted.profileOverrides = { ...persisted.profileOverrides, ...fields }
+    store.user = { ...store.user, ...persisted.profileOverrides }
+    commit()
+  },
+
+  get preferences() { return persisted.preferences },
+
+  setPreference(key, value) {
+    persisted.preferences[key] = Boolean(value)
+    commit()
+  },
+
   cartCount() { return persisted.cart.items.reduce((n, i) => n + i.qty, 0) },
 
   cartAdd(restaurantId, restaurantName, item) {
-    if (persisted.cart.restaurantId && persisted.cart.restaurantId !== restaurantId) {
-      return 'conflict'
-    }
-    const key = item.uid
-    const existing = persisted.cart.items.find(i => i.uid === key)
+    const key = `${restaurantId}|${item.uid}`
+    const existing = persisted.cart.items.find(i => i.cartKey === key)
     if (existing) existing.qty += item.qty
-    else persisted.cart.items.push({ ...item, restaurantName })
-    persisted.cart.restaurantId = restaurantId
+    else persisted.cart.items.push({ ...item, cartKey:key, restaurantId, restaurantName })
+    persisted.cart.restaurantId = persisted.cart.items[0]?.restaurantId || restaurantId
     commit()
     return 'ok'
   },
 
   cartUpdateQty(uid, delta) {
-    const it = persisted.cart.items.find(i => i.uid === uid)
+    const it = persisted.cart.items.find(i => (i.cartKey || i.uid) === uid)
     if (!it) return
     it.qty += delta
-    if (it.qty <= 0) persisted.cart.items = persisted.cart.items.filter(i => i.uid !== uid)
+    if (it.qty <= 0) persisted.cart.items = persisted.cart.items.filter(i => (i.cartKey || i.uid) !== uid)
     if (!persisted.cart.items.length) persisted.cart.restaurantId = null
+    else persisted.cart.restaurantId = persisted.cart.items[0].restaurantId
     commit()
   },
 
@@ -139,6 +167,7 @@ export const store = {
   },
 
   unreadNotifs() { return store.notifications.filter(n => !persisted.readNotifs.includes(n.id)).length },
+  isNotificationRead(id) { return persisted.readNotifs.includes(id) },
   markNotifsRead() {
     persisted.readNotifs = store.notifications.map(n => n.id)
     commit()
@@ -166,8 +195,8 @@ export function setAuthUser(user) {
 }
 
 export function hydrateBootstrap(boot) {
-  if (boot.user) store.user = boot.user
-  store.addresses = boot.addresses
+  if (boot.user) store.user = { ...boot.user, ...persisted.profileOverrides }
+  store.addresses = [...boot.addresses, ...persisted.customAddresses]
   store.notifications = boot.notifications
   store.couponDefs = boot.coupons
   commit()

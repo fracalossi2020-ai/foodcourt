@@ -156,6 +156,7 @@ function publicUser(u) {
     points: u.points,
     level: u.level,
     cashback: u.cashback,
+    role: u.role || 'customer',
     createdAt: u.createdAt,
     lastLogin: u.lastLogin || null
   }

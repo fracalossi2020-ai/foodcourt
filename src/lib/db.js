@@ -3,9 +3,9 @@ const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
 
-const DB_PATH = process.env.FC_DB_PATH || path.join(__dirname, '..', 'data', 'foodcourt-db.json')
+const DB_PATH = process.env.FC_DB_PATH || path.join(__dirname, '..', '..', 'data', 'runtime', 'foodcourt-db.json')
 
-const EMPTY = () => ({ users: [], sessions: {}, resetTokens: {} })
+const EMPTY = () => ({ users: [], sessions: {}, resetTokens: {}, stores: [], storeMembers: [], platformOrders: [], promotions: [], reviews: [], supportTickets: [], auditLog: [], loyaltyEvents: [], referrals: [] })
 let state = EMPTY()
 let emailIndex = new Map()
 let phoneIndex = new Map()

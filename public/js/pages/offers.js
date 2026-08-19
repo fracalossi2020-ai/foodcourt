@@ -8,9 +8,10 @@ export async function render(view, boot) {
   const freeShip = boot.coupons.find(c => c.type === 'shipping')
 
   view.innerHTML = `
-  <div class="page">
-    <h1 class="h-lg" style="margin-bottom:4px">Ofertas & Cupons</h1>
-    <p class="muted text-sm" style="margin-bottom:20px">Descontos selecionados para o seu perfil 🔥</p>
+  <div class="page account-destination-page">
+    <a class="profile-back" href="#/perfil">← <span>Voltar ao perfil</span></a>
+    <header class="destination-heading"><span class="destination-icon">🎟️</span><div><span class="account-kicker">MINHA CONTA</span><h1>Ofertas & Cupons</h1><p>Economize com benefícios selecionados para o seu perfil.</p></div></header>
+    <div class="destination-summary"><div><b>${store.coupons.length}</b><span>Na carteira</span></div><div><b>${boot.coupons.length}</b><span>Disponíveis</span></div><a href="#/buscar">Usar agora</a></div>
 
     <section class="section">
       <div class="section-head">

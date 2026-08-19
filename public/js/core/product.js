@@ -120,12 +120,6 @@ export function openProduct(restaurant, product) {
       uid, id: product.id, name: product.name, emoji: product.emoji,
       optionNames: names, note: note(), qty, unitPrice
     })
-    if (res === 'conflict') {
-      if (confirm(`Seu carrinho tem itens de outro restaurante.\nDeseja limpar o carrinho e adicionar este item?`)) {
-        store.cartClear()
-        store.cartAdd(restaurant.id, restaurant.name, { uid, id: product.id, name: product.name, emoji: product.emoji, optionNames: names, note: note(), qty, unitPrice })
-      } else return
-    }
     flyPlus(addBtn)
     toast(`${qty}× ${product.name} no carrinho`, 'success', '🛒')
     hide('productDrawer')

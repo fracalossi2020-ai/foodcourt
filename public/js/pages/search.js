@@ -1,11 +1,11 @@
 import { api } from '../core/api.js'
 import { store } from '../core/store.js'
-import { restaurantCard, productCard, emptyState, bindGotos, skeletonCards } from '../core/ui.js'
+import { restaurantCard, productCard, emptyState, bindGotos, skeletonCards, esc } from '../core/ui.js'
 
 let debounceTimer
 
-export async function render(view, boot, query = {}) {
-  const initialQ = query.q || ''
+export async function render(view, boot, params = {}, query = new URLSearchParams()) {
+  const initialQ = query.get?.('q') || query.q || ''
   const allData = await api.search('').catch(() => ({ restaurants: [] }))
   window.__restByTag = (tag) => allData.restaurants.find(r => (r.tags || []).includes(tag))
   view.innerHTML = `
@@ -22,6 +22,9 @@ export async function render(view, boot, query = {}) {
       <button class="chip" data-filter="open">🟢 Abertos</button>
       <button class="chip" data-filter="free">🚴 Frete grátis</button>
       <button class="chip" data-filter="promo">🏷️ Com promoção</button>
+      <button class="chip" data-filter="fast">⚡ Até 35 min</button>
+      <button class="chip" data-filter="rating">⭐ Nota 4,7+</button>
+      <button class="chip" data-filter="budget">💚 Econômicos</button>
     </div>
 
     <div id="searchBody">${initialQ ? '' : idleView(boot)}</div>
@@ -84,6 +87,9 @@ export async function render(view, boot, query = {}) {
     if (filter === 'open') rests = rests.filter(r => r.open)
     if (filter === 'free') rests = rests.filter(r => r.deliveryFee === 0 || r.freeShippingMin > 0)
     if (filter === 'promo') rests = rests.filter(r => r.promo)
+    if (filter === 'fast') rests = rests.filter(r => r.deliveryTime[1] <= 35)
+    if (filter === 'rating') rests = rests.filter(r => r.rating >= 4.7)
+    if (filter === 'budget') rests = rests.filter(r => r.priceRange === '$')
 
     const relatedCats = data.categories.slice(0, 5)
     const products = data.products.slice(0, 8)

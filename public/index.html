@@ -14,26 +14,32 @@
       if (m && document.documentElement.dataset.theme === 'dark') m.setAttribute('content', '#0a0a0b')
     } catch (e) { }
   </script>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23ff6b00'/><text x='50' y='68' font-size='52' text-anchor='middle'>🍔</text></svg>">
+  <link rel="icon" type="image/png" href="/assets/images/foodcourt-logo.png?v=20260819-1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/core/base.css">
+  <link rel="stylesheet" href="/css/themes/consumer.css">
   <link rel="stylesheet" href="/css/landing/hero.css">
   <link rel="stylesheet" href="/css/landing/sections.css">
   <link rel="stylesheet" href="/css/landing/icons.css">
-  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/pages/auth.css?v=20260816-2">
+  <link rel="stylesheet" href="/css/pages/consumer.css?v=20260818-10">
+  <link rel="stylesheet" href="/css/themes/interactions.css?v=20260816-4">
+  <link rel="stylesheet" href="/css/pages/partner.css?v=20260818-1">
+  <link rel="stylesheet" href="/css/themes/refinement.css?v=20260818-2">
+  <link rel="stylesheet" href="/css/themes/tech.css?v=20260818-3">
+  <link rel="stylesheet" href="/css/responsive.css?v=20260819-5">
 </head>
 <body>
   <div class="app">
     <header class="header">
       <div class="header-inner">
         <a href="#/" class="logo" aria-label="Food Court — início">
-          <span class="logo-mark">♨</span>
-          <span>FOOD<b>COURT</b></span>
+          <img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court">
         </a>
         <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span><span></span></button>
-        <nav class="desktop-links"><a href="#/" class="active">Início</a><a href="#/buscar">Restaurantes</a><a href="#/buscar">Categorias</a><a href="#/ofertas">Ofertas</a><a href="#/perfil">Para estabelecimentos</a></nav>
+        <nav class="desktop-links"><a href="#/inicio" data-nav="/inicio">Início</a><a href="#/buscar" data-nav="/buscar">Restaurantes</a><a href="#/inicio?focus=categorias" data-nav="/categorias">Categorias</a><a href="#/ofertas" data-nav="/ofertas">Ofertas</a><a href="#/parceiro" data-nav="/parceiro">Para estabelecimentos</a></nav>
         <button class="header-loc" id="locBtn" aria-label="Alterar endereço de entrega">
           <span class="loc-emoji" id="locEmoji">📍</span>
           <span class="loc-full" style="text-align:left">
@@ -65,7 +71,7 @@
       </div>
     </header>
 
-    <main class="main" id="view" aria-live="polite"></main>
+    <main class="main" id="view" aria-live="polite"><div class="page route-loading" role="status"><i></i><b>Carregando FoodCourt</b><span>Preparando sua experiência...</span></div></main>
 
     <nav class="bottomnav" aria-label="Navegação principal">
       <a href="#/inicio" data-nav="/inicio">
@@ -99,6 +105,6 @@
 
   <div class="toasts" id="toasts" aria-live="assertive"></div>
 
-  <script type="module" src="/js/app.js"></script>
+  <script type="module" src="/js/app.js?v=20260819-29"></script>
 </body>
 </html>

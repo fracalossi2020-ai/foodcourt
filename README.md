@@ -1,5 +1,7 @@
 # FoodCourt
 
+> Consulte [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) para o mapa atualizado de pastas e convenções do projeto.
+
 Plataforma de pedidos de comida com landing page pública, autenticação e área interna do cliente.
 
 ## Executar
@@ -59,3 +61,40 @@ foodcourt/
 
 - E-mail: `joao@foodcourt.com`
 - Senha: `foodcourt123`
+
+## Portais funcionais locais
+
+### Cliente
+
+- URL: `http://localhost:3000/#/inicio`
+- E-mail: `joao@foodcourt.com`
+- Senha: `foodcourt123`
+
+O portal do cliente inclui busca com filtros, categorias, cardápios com dados
+alimentares e alergênicos, carrinho multiestabelecimento, checkout com pedidos
+separados por loja, histórico persistente, rastreamento por status operacional,
+cancelamento antes do preparo, avaliações verificadas, pontos e missões de
+fidelidade e central de suporte.
+
+### Dono do estabelecimento
+
+- URL: `http://localhost:3000/#/parceiro`
+- E-mail: `dono@foodcourt.com`
+- Senha: `foodcourt123`
+
+O portal inclui visão operacional, pedidos, cardápio e estoque, promoções,
+financeiro, avaliações, equipe e suporte. Mudanças de status e produtos são
+persistidas na base local.
+
+### Administração FOODCOURT
+
+- URL: `http://localhost:3000/#/admin`
+- E-mail: `admin@foodcourt.com`
+- Senha: `foodcourt123`
+
+O painel consolida usuários, estabelecimentos, pedidos, volume financeiro e
+ações de auditoria. As APIs verificam o papel da conta no servidor.
+
+> Esta fase usa persistência local e pagamentos simulados. A modelagem separa
+> cliente, parceiro e administrador para permitir a futura migração para
+> PostgreSQL e integrações reais sem transformar o produto em uma praça física.

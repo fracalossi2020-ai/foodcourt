@@ -1,21 +1,108 @@
 import { api } from '../core/api.js'
 import { store } from '../core/store.js'
-import { restaurantCard, skeletonCards, errorState, bindGotos, greeting } from '../core/ui.js'
+import { restaurantCard, productCard, skeletonCards, errorState, bindGotos, greeting, money } from '../core/ui.js'
+import { icon, categoryIcon } from '../core/icons.js'
+import { filterByCategory, discoveryTitles, validCategory } from '../data/category-discovery.js'
 
-export async function render(view, boot) {
-  view.innerHTML = `<div class="page"><div class="greeting"><h1>${greeting()}, ${esc(boot.user.name)} 👋</h1><p>Encontre sua próxima refeição.</p></div>${skeletonCards(4)}</div>`
+export async function render(view, boot, params = {}, query = new URLSearchParams()) {
+  view.innerHTML = `<div class="page consumer-page"><div class="home-intro skeleton-intro"><div class="skel" style="width:280px;height:30px"></div><div class="skel" style="width:190px;height:15px;margin-top:10px"></div></div>${skeletonCards(4)}</div>`
   let data
-  try { data = await api.home() } catch { view.innerHTML = `<div class="page">${errorState(() => render(view, boot))}</div>`; return }
-  view.innerHTML = `<div class="page customer-home">
-    <div class="greeting"><h1>${greeting()}, ${esc(boot.user.name)} 👋</h1><p>Entrega em <b class="brand-text">${esc(store.address.label)}</b> • Escolha, peça e acompanhe tudo por aqui.</p></div>
-    <section class="customer-banner"><div><span>FEITO PARA VOCÊ</span><h2>O que você quer pedir hoje?</h2><p>Restaurantes, mercados e suas comidas favoritas perto de você.</p><a href="#/buscar" class="btn btn-primary">Buscar comida</a></div><div>🍔 🍕 🍣</div></section>
-    <section class="section"><div class="section-head"><div><h2>Categorias</h2><div class="sub">Explore por tipo de comida</div></div><a href="#/buscar" class="see-all">Ver todas →</a></div><div class="cat-scroll no-scrollbar">${boot.categories.map(c => `<div class="cat-tile" data-cat="${esc(c.query)}" role="button" tabindex="0"><div class="cat-bubble">${c.emoji}</div><span>${esc(c.name)}</span></div>`).join('')}</div></section>
-    ${data.sections.slice(0,4).map(s => `<section class="section"><div class="section-head"><div><h2>${esc(s.title)}</h2>${s.subtitle?`<div class="sub">${esc(s.subtitle)}</div>`:''}</div><a href="#/buscar" class="see-all">Ver todos →</a></div><div class="hscroll no-scrollbar">${s.restaurants.map(r=>restaurantCard(r)).join('')}</div></section>`).join('')}
+  try { data = await api.home() } catch { view.innerHTML = `<div class="page">${errorState(() => render(view, boot, params, query))}</div>`; return }
+
+  const selectedCategory = validCategory(query.get('category') || 'all', boot.categories)
+
+  view.innerHTML = `<div class="page consumer-page">
+    <header class="home-intro">
+      <h1>${greeting()}, ${firstName(boot.user.fullName || boot.user.name)} <span aria-hidden="true">👋</span></h1>
+      <p>O que vamos pedir hoje?</p>
+      <button class="intro-location" data-location-short>${icon('pin')} Entregando em <b>${esc(store.address.label)}</b></button>
+    </header>
+
+    ${sectionHeader('Categorias','Escolha uma categoria para filtrar toda a experiência.','','', true)}
+    <section class="modern-categories no-scrollbar" aria-label="Categorias de descoberta">
+      ${boot.categories.map(category => categoryButton(category, selectedCategory)).join('')}
+    </section>
+
+    <div class="category-results" data-category-results aria-live="polite">
+      ${discoveryContent(data, selectedCategory)}
+    </div>
+
+    ${repeatSection()}
   </div>`
+
   bindGotos(view)
-  view.querySelectorAll('[data-cat]').forEach(tile => {
-    const go = () => { location.hash = `#/buscar?q=${encodeURIComponent(tile.dataset.cat)}` }
-    tile.addEventListener('click', go); tile.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
+  bindCategorySelector(view)
+  view.querySelector('[data-location-short]')?.addEventListener('click', () => document.getElementById('locBtn')?.click())
+  view.querySelectorAll('[data-repeat]').forEach(button => button.addEventListener('click', () => {
+    const order = store.getOrder(button.dataset.repeat)
+    if (!order) return
+    store.repeatOrder(order)
+    location.hash = `#/restaurante/${order.restaurantId}`
+  }))
+
+  requestAnimationFrame(() => view.querySelector('.modern-category.active')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }))
+  if (query.get('focus') === 'categorias') requestAnimationFrame(() => view.querySelector('.modern-categories')?.scrollIntoView({ behavior:'smooth', block:'center' }))
+}
+
+function categoryButton(category, selectedCategory) {
+  const active = category.id === selectedCategory
+  return `<button class="modern-category ${active ? 'active' : ''}" data-category-id="${esc(category.id)}" aria-pressed="${active}"><i>${categoryIcon(category.id)}</i><span>${esc(category.name)}</span></button>`
+}
+
+function bindCategorySelector(view) {
+  view.querySelectorAll('[data-category-id]').forEach(button => button.addEventListener('click', () => {
+    location.hash = `#/inicio?category=${encodeURIComponent(button.dataset.categoryId)}`
+  }))
+  view.querySelector('[data-clear-category]')?.addEventListener('click', event => {
+    event.preventDefault()
+    location.hash = '#/inicio'
   })
 }
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+function discoveryContent(data, categoryId) {
+  const titles = discoveryTitles(categoryId)
+  const restaurants = filterByCategory(data.restaurants || [], categoryId)
+  const products = filterByCategory(data.products || [], categoryId)
+  const offers = filterByCategory(data.offers || [], categoryId)
+  const limitedRestaurants = categoryId === 'all' ? restaurants.slice(0, 8) : restaurants
+  const limitedProducts = (categoryId === 'all' ? products.filter(product => product.popular) : products).slice(0, 8)
+  const limitedOffers = offers.slice(0, 3)
+
+  if (categoryId !== 'all' && !restaurants.length && !products.length && !offers.length) return emptyCategoryState()
+
+  return `<div class="category-results-inner">
+    ${sectionHeader(titles.offers,'Promoções demonstrativas selecionadas para esta categoria.')}
+    <section class="offer-strip no-scrollbar">${limitedOffers.length ? offerCards(limitedOffers) : emptyInline('Nenhuma oferta encontrada nesta categoria.')}</section>
+
+    ${sectionHeader(titles.restaurants,'Estabelecimentos fictícios para validar a experiência de descoberta.','#/buscar','Explorar')}
+    <section class="restaurant-row no-scrollbar">${limitedRestaurants.length ? limitedRestaurants.map(restaurant => restaurantCard(restaurant)).join('') : emptyInline('Nenhum estabelecimento encontrado nesta categoria.')}</section>
+
+    ${sectionHeader(titles.products,'Produtos de demonstração relacionados à sua escolha.')}
+    <section class="product-row no-scrollbar">${limitedProducts.length ? limitedProducts.map(product => productCard(product, product.restaurantId, product.restaurantName)).join('') : emptyInline('Nenhum produto encontrado nesta categoria.')}</section>
+  </div>`
+}
+
+function offerCards(offers) {
+  return offers.map((offer, index) => `<article class="offer-card tone-${index % 2 ? 'green' : 'orange'}">
+    <i>${icon(offer.type === 'shipping' ? 'bike' : offer.type === 'combo' ? 'tag' : 'percent')}</i>
+    <div><b>${esc(offer.title)}</b><span>${esc(offer.description)}</span><em>Oferta demonstrativa</em></div>
+  </article>`).join('')
+}
+
+function emptyCategoryState() {
+  return `<section class="empty-category-state">${icon('search')}<h3>Nenhum resultado nesta categoria</h3><p>Estamos preparando novas opções para você.</p><button class="btn btn-primary" data-clear-category>Ver todas as categorias</button></section>`
+}
+
+function sectionHeader(title, subtitle, href = '', label = '', clear = false) {
+  const action = clear ? '<a href="#/inicio" data-clear-category>Ver todas ' + icon('chevron') + '</a>' : href ? `<a href="${href}">${label} ${icon('chevron')}</a>` : ''
+  return `<header class="consumer-section-head"><div><h2>${title}</h2><p>${subtitle}</p></div>${action}</header>`
+}
+
+function repeatSection() {
+  const order = store.orders[0]
+  return `${sectionHeader('Peça de novo','Seus pedidos recentes, a poucos cliques.')}<section class="repeat-order">${order ? `<div class="repeat-icon">${icon('bag')}</div><div><span>Seu último pedido</span><h3>${esc(order.restaurantName)}</h3><p>${esc(order.summary)}</p><b>${money(order.total)}</b></div><button class="btn btn-primary" data-repeat="${order.id}">Pedir novamente</button>` : `<div class="empty-modern">${icon('bag')}<div><h3>Nenhum pedido recente</h3><p>Quando você fizer seu primeiro pedido, ele aparecerá aqui.</p></div><a href="#/buscar">Explorar restaurantes</a></div>`}</section>`
+}
+
+function emptyInline(text) { return `<div class="empty-inline">${icon('store')}<span>${text}</span></div>` }
+function firstName(name) { return esc(String(name).trim().split(/\s+/)[0] || 'cliente') }
+function esc(value) { return String(value ?? '').replace(/[&<>"']/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character])) }

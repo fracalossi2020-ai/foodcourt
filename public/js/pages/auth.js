@@ -10,12 +10,10 @@ import { esc, toast } from '../core/ui.js'
 
 let mode = 'login'
 let redirectAfter = '/inicio'
-let registerSuccessUser = null
 
 export async function render(view, boot, params, query) {
   mode = params.mode || 'login'
   redirectAfter = query.get('redirect') || '/inicio'
-  registerSuccessUser = null
   draw(view, query)
 }
 
@@ -27,14 +25,14 @@ function draw(view, query = new URLSearchParams()) {
 /* ============ LAYOUT ============ */
 
 function layout(m, query) {
+  if (m === 'register') return registerLayout()
   const isReset = m === 'reset'
   return `
   <div class="auth-page ${isReset ? 'no-visual' : ''}">
     <aside class="auth-visual" aria-hidden="true">
       <div class="auth-visual-inner">
         <div class="logo auth-logo">
-          <span class="logo-mark">🍔</span>
-          <span>FOOD<b>COURT</b></span>
+          <img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court">
         </div>
         <div class="auth-hero">
           <h2 class="auth-headline">Seu próximo<br><em>pedido</em> está a<br>poucos cliques.</h2>
@@ -50,17 +48,42 @@ function layout(m, query) {
     <main class="auth-panel">
       <div class="auth-panel-inner">
         <div class="mobile-brand logo">
-          <span class="logo-mark">🍔</span>
-          <span>FOOD<b>COURT</b></span>
+          <img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court">
         </div>
         ${m === 'login' ? loginForm() : ''}
         ${m === 'register' ? registerForm() : ''}
         ${m === 'forgot' ? forgotForm() : ''}
         ${m === 'reset' ? resetForm(query) : ''}
-        ${m === 'register-success' ? registerSuccess() : ''}
         ${m === 'forgot-success' ? forgotSuccess() : ''}
         ${m === 'reset-success' ? resetSuccess() : ''}
       </div>
+    </main>
+  </div>`
+}
+
+function registerLayout() {
+  return `
+  <div class="signup-page">
+    <header class="signup-nav">
+      <a class="signup-logo" href="#/" aria-label="Food Court - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a>
+      <nav aria-label="Navegação principal">
+        <a href="#/">Início</a><a href="#/">Como funciona</a><a href="#/">Vantagens</a><a href="#/">Para estabelecimentos</a><a href="#/">Contato</a>
+      </nav>
+      <a class="signup-nav-cta" href="#/cadastro">Criar conta</a>
+    </header>
+    <main class="signup-content">
+      <section class="signup-copy">
+        <span class="signup-pill">● Sua próxima refeição está aqui!</span>
+        <h1>Seu pedido<br>favorito,<br><em>do seu jeito.</em></h1>
+        <p>É rápido, fácil e grátis.<br>Em poucos passos você já pode<br>pedir suas comidas favoritas.</p>
+        <div class="signup-benefits">
+          <article>${ICONS.bag}<b>Conta gratuita</b><span>Sem mensalidades</span></article>
+          <article>${ICONS.shield}<b>Pedidos rápidos</b><span>Onde você estiver</span></article>
+          <article>${ICONS.tag}<b>Ofertas exclusivas</b><span>Todos os dias</span></article>
+        </div>
+        <small>Já tem uma conta? <a href="#/login">Entrar</a></small>
+      </section>
+      <section class="signup-card">${registerForm()}</section>
     </main>
   </div>`
 }
@@ -107,19 +130,21 @@ function registerForm() {
   return `
   <div class="auth-body">
     <h1>Crie sua <em>conta</em></h1>
-    <p class="auth-sub">Cadastre-se grátis e aproveite o Food Court</p>
+    <p class="auth-sub">Preencha seus dados para começar.</p>
     <form id="authForm" novalidate>
       ${field({ id: 'fullName', label: 'Nome completo', type: 'text', placeholder: 'Digite seu nome completo', icon: 'user', autocomplete: 'name' })}
       ${field({ id: 'email', label: 'E-mail', type: 'email', placeholder: 'Digite seu e-mail', icon: 'mail', autocomplete: 'email' })}
+      ${field({ id: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-00', icon: 'card', autocomplete: 'off', mask: 'cpf' })}
       ${field({ id: 'phone', label: 'Número de telefone', type: 'tel', placeholder: '(00) 00000-0000', icon: 'phone', autocomplete: 'tel-national', mask: 'phone' })}
       ${field({ id: 'password', label: 'Senha', type: 'password', placeholder: 'Crie uma senha', icon: 'lock', autocomplete: 'new-password', eye: true, strength: true })}
       ${field({ id: 'confirmPassword', label: 'Confirmar senha', type: 'password', placeholder: 'Digite sua senha novamente', icon: 'lock', autocomplete: 'new-password', eye: true })}
       ${formError()}
-      <button type="submit" class="btn btn-primary btn-lg btn-block auth-submit" data-loading="Criando conta...">Criar conta →</button>
+      <button type="submit" class="btn btn-primary btn-lg btn-block auth-submit" data-loading="Criando conta...">Criar conta grátis</button>
       <div class="auth-divider"><span>ou</span></div>
-      <a href="#/login" class="btn btn-ghost btn-lg btn-block auth-alt-btn">Já tenho conta · <em>Entrar</em> →</a>
+      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="Google">${ICONS.google}<span>Continuar com Google</span></button>
+      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="Apple">${ICONS.apple}<span>Continuar com Apple</span></button>
+      <p class="signup-login">Já tem uma conta? <a href="#/login">Entrar</a></p>
     </form>
-    ${termsFooter()}
   </div>`
 }
 
@@ -165,16 +190,6 @@ function resetForm(query) {
   </div>`
 }
 
-function registerSuccess() {
-  return `
-  <div class="auth-body auth-success">
-    <div class="auth-success-emoji">🎉</div>
-    <h1>Conta criada com <em>sucesso</em>!</h1>
-    <p class="auth-sub">Bem-vindo ao Food Court, ${esc(registerSuccessUser || '')}.</p>
-    <button class="btn btn-primary btn-lg btn-block auth-submit" id="goApp">Ir para o Food Court →</button>
-  </div>`
-}
-
 function forgotSuccess() {
   return `
   <div class="auth-body auth-success">
@@ -199,10 +214,15 @@ function resetSuccess() {
 /* ============ COMPONENTES ============ */
 
 const ICONS = {
+  brand: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17h16M6 14a6 6 0 0 1 12 0H6Zm6-6V5M10 5h4M13 3c2-2 4-1 5-3-3 0-5 1-5 3Z"/></svg>`,
   mail: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m2 7 10 6 10-6"/></svg>`,
   lock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1.4" fill="currentColor" stroke="none"/></svg>`,
   user: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.4-3.6 4.4-5.5 8-5.5s6.6 1.9 8 5.5"/></svg>`,
   phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>`,
+  card: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="11" r="2"/><path d="M6 16c.4-1.4 1-2 2-2s1.6.6 2 2M14 10h4M14 14h4"/></svg>`,
+  bag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8h14l1 13H4L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>`,
+  google: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285f4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.7h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.8 3-4.3 3-7.2Z"/><path fill="#34a853" d="M12 22c2.7 0 5-.9 6.6-2.5l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22Z"/><path fill="#fbbc05" d="M6.4 13.9a6 6 0 0 1 0-3.8V7.5H3.1a10 10 0 0 0 0 9l3.3-2.6Z"/><path fill="#ea4335" d="M12 6c1.5 0 2.8.5 3.9 1.5l2.8-2.8A9.5 9.5 0 0 0 3.1 7.5l3.3 2.6C7.2 7.8 9.4 6 12 6Z"/></svg>`,
+  apple: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.7 12.6c0-2 1.6-3 1.7-3.1-1-1.4-2.4-1.5-3-1.5-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.9-3.5 2.2-1.5 2.6-.4 6.5 1 8.6.7 1 1.6 2.1 2.7 2 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1 2.7-2 1-1.2 1.3-2.4 1.3-2.5-.1 0-2.8-1.1-2.8-3.7ZM14.6 6.6c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.7 1.3-.6.7-1.1 1.7-1 2.7 1 .1 2.1-.5 2.8-1.2Z"/></svg>`,
   bolt: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
   tag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9 9 10-10-9-9z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>`,
   shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
@@ -329,6 +349,11 @@ function maskPhone(v) {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
 }
 
+function maskCpf(v) {
+  const d = v.replace(/\D/g, '').slice(0, 11)
+  return d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+}
+
 /* ============ SUBMISSÃO ============ */
 
 function loadingBtn(view, on) {
@@ -355,7 +380,8 @@ function completeAuth(user) {
 }
 
 function goAfterLogin() {
-  const target = redirectAfter && redirectAfter !== '/' ? redirectAfter : '/inicio'
+    const roleTarget = res.user.role === 'merchant' ? '/parceiro' : res.user.role === 'admin' ? '/admin' : '/inicio'
+    const target = redirectAfter && redirectAfter !== '/' ? redirectAfter : roleTarget
   location.hash = '#' + target
 }
 
@@ -381,6 +407,14 @@ function bind(view, query) {
     const pos = input.value.length
     input.value = maskPhone(input.value)
     if (pos <= input.value.length) input.setSelectionRange(input.value.length, input.value.length)
+  }))
+
+  view.querySelectorAll('[data-mask="cpf"]').forEach(input => input.addEventListener('input', () => {
+    input.value = maskCpf(input.value)
+  }))
+
+  view.querySelectorAll('[data-social]').forEach(button => button.addEventListener('click', () => {
+    toast(`Cadastro com ${button.dataset.social} estará disponível em breve.`, 'info')
   }))
 
   view.querySelectorAll('input[id^="f-password"]').forEach(input => input.addEventListener('input', () => {
@@ -434,6 +468,7 @@ async function submitLogin(view) {
 async function submitRegister(view) {
   const fullName = document.getElementById('f-fullName').value
   const email = document.getElementById('f-email').value.trim()
+  const cpf = document.getElementById('f-cpf').value.replace(/\D/g, '')
   const phone = document.getElementById('f-phone').value
   const password = document.getElementById('f-password').value
   const confirmPassword = document.getElementById('f-confirmPassword').value
@@ -441,6 +476,7 @@ async function submitRegister(view) {
   let ok = true
   ok = setFieldError(view, 'fullName', V.name(fullName)) && ok
   ok = setFieldError(view, 'email', V.email(email)) && ok
+  ok = setFieldError(view, 'cpf', cpf.length === 11 ? '' : 'Digite um CPF válido.') && ok
   ok = setFieldError(view, 'phone', V.phone(phone)) && ok
   ok = setFieldError(view, 'password', V.password(password)) && ok
   ok = setFieldError(view, 'confirmPassword', password !== confirmPassword ? 'As senhas não coincidem.' : '') && ok
@@ -449,9 +485,7 @@ async function submitRegister(view) {
   try {
     const res = await api.register({ fullName, email, phone, password, confirmPassword })
     completeAuth(res.user)
-    registerSuccessUser = res.user.name
-    mode = 'register-success'
-    draw(view)
+    location.hash = '#/inicio'
   } catch (e) {
     if (e.fields) {
       const map = { fullName: 'fullName', email: 'email', phone: 'phone', password: 'password', confirmPassword: 'confirmPassword' }

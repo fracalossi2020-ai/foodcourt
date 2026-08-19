@@ -12,6 +12,8 @@ const categories = [
   { id: 'market', name: 'Mercado', emoji: '🛒', query: 'mercado' }
 ]
 
+const categoryIdByName = Object.fromEntries(categories.map(category => [category.name, category.id]))
+
 const banners = [
   {
     id: 'b1', tag: 'OFERTA RELÂMPAGO', title: 'Combos Neon com 20% OFF',
@@ -438,6 +440,21 @@ const restaurants = [
   }
 ]
 
+restaurants.forEach(restaurant => {
+  restaurant.categoryId = restaurant.categoryId || categoryIdByName[restaurant.category]
+  restaurant.demo = true
+  restaurant.menu.forEach(section => section.items.forEach(item => {
+    item.categoryId = item.categoryId || restaurant.categoryId
+    item.demo = true
+    item.dietary = item.dietary || (restaurant.categoryId === 'healthy' ? ['Opção equilibrada'] : restaurant.categoryId === 'dessert' ? ['Vegetariano'] : [])
+    item.allergens = item.allergens || (['pizza','pasta','burger'].includes(restaurant.categoryId) ? ['Glúten','Leite'] : restaurant.categoryId === 'japanese' ? ['Peixe','Soja'] : [])
+    item.calories = item.calories || 280 + (item.id.length % 6) * 70
+  }))
+})
+
+const categoryDemo = require('./category-demo').createDemoData(categories, restaurants)
+restaurants.push(...categoryDemo.restaurants)
+
 const coupons = [
   { code: 'BEMVINDO10', title: 'R$ 10 OFF', description: 'Válido no primeiro pedido, mínimo R$ 30', rules: ['Mínimo R$ 30', 'Válido por 30 dias', '1 uso por cliente'], type: 'fixed', value: 10, min: 30, tone: 'orange' },
   { code: 'FRETEGRATIS20', title: 'Frete grátis', description: 'Entrega grátis em pedidos acima de R$ 20', rules: ['Mínimo R$ 20', 'Restaurantes parceiros'], type: 'shipping', value: 0, min: 20, tone: 'dark' },
@@ -483,4 +500,4 @@ const paymentMethods = [
   { id: 'wallet', name: 'Carteira Food Court', description: 'Saldo R$ 24,50 + cashback', emoji: '🅵' }
 ]
 
-module.exports = { categories, banners, restaurants, coupons, notifications, user, addresses, flashDeals, paymentMethods, optionGroups }
+module.exports = { categories, banners, restaurants, categoryOffers: categoryDemo.offers, coupons, notifications, user, addresses, flashDeals, paymentMethods, optionGroups }

@@ -1,0 +1,160 @@
+{
+  "users": [
+    {
+      "id": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "fullName": "João Silva",
+      "email": "joao@foodcourt.com",
+      "phone": "(11) 98765-4321",
+      "passwordHash": "scrypt:5e114f36974b9bbd5cd87f323e99de09:dc93eb99df59a8ef324c71a6510661daf8ecde2f595479faf20c51b4f7ba83fb321d768fdc2c35f7a335e346523bb124ef2013f5819e0a87e7c56bbfe35ec806",
+      "status": "active",
+      "avatarEmoji": "🧑‍💻",
+      "memberSince": "2024",
+      "points": 1250,
+      "level": "Prata",
+      "cashback": 5,
+      "createdAt": "2024-05-10T12:00:00.000Z",
+      "updatedAt": "2026-08-15T04:32:22.255Z",
+      "lastLogin": "2026-08-15T04:32:22.255Z"
+    },
+    {
+      "id": "user_dd259a8e-4723-4613-90b5-026f82e24c7d",
+      "fullName": "Maria Oliveira",
+      "email": "maria@teste.com",
+      "phone": "(21) 98888-7777",
+      "passwordHash": "scrypt:04da9371c351d56711310b3297919ff0:6dd50dc0a390a8036c883e28ee52bd96ea8302af8153270f0ac7163039a6722f48834416abc1ea170613f9f54e8584d4201952673f72ea5cc02d325bbaa5b134",
+      "status": "active",
+      "avatarEmoji": "🧑‍💻",
+      "memberSince": "2026",
+      "points": 100,
+      "level": "Bronze",
+      "cashback": 2,
+      "createdAt": "2026-08-14T16:39:12.047Z",
+      "updatedAt": "2026-08-14T16:39:15.277Z",
+      "lastLogin": "2026-08-14T16:39:15.277Z"
+    },
+    {
+      "id": "user_bd7a8014-790a-4570-a47d-300dfea221cc",
+      "fullName": "Maria Teste",
+      "email": "maria12345@teste.com",
+      "phone": "(11) 91234-5678",
+      "passwordHash": "scrypt:4ad9595cdcc4d7a81f69920ae9735433:f3f1633d444de7e4ede90e782cb02edd55d25d6c647d33616ccc6b62d3a057026a365180cd029f219f0e5ce6f6446c9398614f65d7a5e30a4fae13209412d667",
+      "status": "active",
+      "avatarEmoji": "🧑‍💻",
+      "memberSince": "2026",
+      "points": 100,
+      "level": "Bronze",
+      "cashback": 2,
+      "createdAt": "2026-08-14T17:01:09.395Z",
+      "updatedAt": "2026-08-14T17:01:09.395Z",
+      "lastLogin": "2026-08-14T17:01:09.395Z"
+    },
+    {
+      "id": "user_562c9df3-fd64-4624-a0cf-241ee2718ba0",
+      "fullName": "Fracalossi Dev",
+      "email": "fracalossi2020@gmail.com",
+      "phone": "(31) 97107-5127",
+      "passwordHash": "scrypt:9387937864daa2565448d62988aad4ad:92ad3a59bb99ae57767bf0851f710bdecda7aa884d12d8bab1403feda15541376409a46eeba08aceebae653a76af9642a9fa03110fff6ddcae11e3bf3d2c8267",
+      "status": "active",
+      "avatarEmoji": "🧑‍💻",
+      "memberSince": "2026",
+      "points": 100,
+      "level": "Bronze",
+      "cashback": 2,
+      "createdAt": "2026-08-15T00:29:10.652Z",
+      "updatedAt": "2026-08-15T00:42:17.375Z",
+      "lastLogin": "2026-08-15T00:42:17.375Z"
+    }
+  ],
+  "sessions": {
+    "1a08c1e9a3035a30af3e66ea136367b6b0b8c85a4ce6a869df04760158b08ce7": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786725549237,
+      "lastSeen": 1786725549237,
+      "expiresAt": 1787330349237
+    },
+    "acd71b0e76b8e9bbcaee112d1719900053c0e85df0fe48934fc2a1af60ab9a99": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786726811429,
+      "lastSeen": 1786726811429,
+      "expiresAt": 1787331611429
+    },
+    "98a5c32d08ef1e02a93b1c4ff777dff293e282458b4cc75c4b5858b425cf2d40": {
+      "userId": "user_bd7a8014-790a-4570-a47d-300dfea221cc",
+      "createdAt": 1786726869428,
+      "lastSeen": 1786726869428,
+      "expiresAt": 1787331669428
+    },
+    "f51127299f6f707fe34803c00bebf2cceb47b6e7eab9aed77fd2bec48b85a500": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786727517774,
+      "lastSeen": 1786727517774,
+      "expiresAt": 1787332317774
+    },
+    "c0005975e4600f0fa7bd1a2a852698089f8b454101e39b93c05b481135246167": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786727609452,
+      "lastSeen": 1786727609452,
+      "expiresAt": 1787332409452
+    },
+    "e82d0f590cdcee2957fa4eedb5b153f9e5cb67f2b745f4f0ee4ed8a9d78e7a8e": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786749603403,
+      "lastSeen": 1786749603403,
+      "expiresAt": 1787354403403
+    },
+    "6180ff67cc6abe1a5d4049a238c97db27222087b5053de7ac7daf28e46288261": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786750499155,
+      "lastSeen": 1786750499155,
+      "expiresAt": 1787355299155
+    },
+    "73b8525a6002aab0e8c2d9466b7dac7e5c219fab2357207d10e6c9a66f3a73ed": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786752145977,
+      "lastSeen": 1786752145977,
+      "expiresAt": 1787356945977
+    },
+    "b35b79aa0d44db0765474a4acf0de585f5e3f9922835bc29cffe152026833c0d": {
+      "userId": "user_562c9df3-fd64-4624-a0cf-241ee2718ba0",
+      "createdAt": 1786753750715,
+      "lastSeen": 1786753750715,
+      "expiresAt": 1787358550715
+    },
+    "f697605b6aa2e36609df8fc2046287e791e8b303f8d32ec7e2f9ce946d0dff44": {
+      "userId": "user_562c9df3-fd64-4624-a0cf-241ee2718ba0",
+      "createdAt": 1786753751167,
+      "lastSeen": 1786753751167,
+      "expiresAt": 1787358551167
+    },
+    "4130948caba00f2a09476e60148b6c565e6d2801ebbda35915c4f7579b14fb51": {
+      "userId": "user_562c9df3-fd64-4624-a0cf-241ee2718ba0",
+      "createdAt": 1786753984369,
+      "lastSeen": 1786855754833,
+      "expiresAt": 1787460554833
+    },
+    "bada9b35fe90dab7fabcec6f11267571592d4b0ada52812754d1a5443b3f370b": {
+      "userId": "user_562c9df3-fd64-4624-a0cf-241ee2718ba0",
+      "createdAt": 1786754537375,
+      "lastSeen": 1786754537375,
+      "expiresAt": 1787359337375
+    },
+    "5c6ae35315cc04e3374763565dfd715cda2fb5a266f3a8e16c3e34ce2b227b99": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786768334094,
+      "lastSeen": 1786768334094,
+      "expiresAt": 1787373134094
+    },
+    "aaaa315ce51a763636c86504757e11d1051767b266496be676b055631ca14f15": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "createdAt": 1786768342255,
+      "lastSeen": 1786768342255,
+      "expiresAt": 1787373142255
+    }
+  },
+  "resetTokens": {
+    "02e4555a64ba77c579f0058aa0b3b7a16cd96a348caa4fa9de0b29443d542fbf": {
+      "userId": "user_e823fd9e-d7fd-4d7c-b559-46c17e734029",
+      "expiresAt": 1786730460944
+    }
+  }
+}
