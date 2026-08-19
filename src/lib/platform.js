@@ -8,7 +8,9 @@ function seed() {
   const state = db.state
   if (!state.stores.length) state.stores.push({
     id: 'store_burger_neon', ownerId: null, name: 'Burger Neon', slug: 'burger-neon', category: 'Hambúrguer',
-    status: 'active', open: true, rating: 4.8, commissionRate: 12, preparationMinutes: 28,
+    status: 'active', open: true, rating: 4.8, commissionRate: 12, preparationMinutes: 28, description:'Hambúrgueres artesanais e combos.',
+    categories:['Hambúrguer','Combos','Porções'], deliveryModes:['delivery'], minimumOrder:20,
+    hours:{mon:['08:00','22:00'],tue:['08:00','22:00'],wed:['08:00','22:00'],thu:['08:00','22:00'],fri:['08:00','23:00'],sat:['10:00','23:00'],sun:['10:00','21:00']}, onboardingProgress:100,
     address: 'Av. Central, 100', phone: '(11) 4000-2026', createdAt: now(),
     products: [
       { id:'prod_neon_duplo', name:'Neon Duplo', category:'Hambúrguer', price:42.9, promoPrice:34.9, stock:42, active:true, sold:186 },
@@ -41,10 +43,11 @@ function seed() {
     { id:'review_2', storeId:'store_burger_neon', customerName:'Rafael Lima', rating:4, comment:'Gostei, mas poderia chegar mais quente.', replied:false, createdAt:now() }
   )
   if (!state.supportTickets.length) state.supportTickets.push({ id:'ticket_1', customerId:null, storeId:'store_burger_neon', subject:'Dúvida sobre item', status:'open', priority:'normal', messages:[{ from:'customer', text:'O lanche pode ser preparado sem cebola?', at:now() }], createdAt:now() })
+  if (!state.subscriptions.some(item=>item.storeId==='store_burger_neon')) state.subscriptions.push({id:'sub_demo',storeId:'store_burger_neon',planId:'foodcourt_partner',planName:'FoodCourt Parceiro',price:119.90,currency:'BRL',interval:'month',status:'ACTIVE',provider:null,nextBillingAt:null,createdAt:now(),updatedAt:now()})
   db.saveNow()
 }
 
-function storeForUser(user) { return db.state.stores.find(store => store.ownerId === user.id) || db.state.stores[0] }
+function storeForUser(user) { return user.role==='admin' ? db.state.stores[0] || null : db.state.stores.find(store => store.ownerId === user.id) || null }
 function audit(user, action, entityType, entityId, detail='') { db.state.auditLog.unshift({ id:uid('audit'), userId:user.id, role:user.role, action, entityType, entityId, detail, at:now() }); db.save() }
 function dashboard(storeId) {
   const orders=db.state.platformOrders.filter(order=>order.storeId===storeId)

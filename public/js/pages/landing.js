@@ -1,7 +1,8 @@
 import { api } from '../core/api.js'
 import { toast } from '../core/ui.js'
 
-export async function render(view) {
+export async function render(view,boot,params={},query=new URLSearchParams()) {
+  const partnerLogin=query.get('portal')==='parceiro'
   view.innerHTML = `<div class="fc-landing-v2">
     <header class="fcv2-nav">
       <a class="fcv2-logo" href="#/" aria-label="FoodCourt - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a>
@@ -21,7 +22,7 @@ export async function render(view) {
       </div>
 
       <aside class="fcv2-login" aria-label="Acessar sua conta">
-        <h2>Que bom te ver por aqui!</h2><p>Entre ou crie sua conta para continuar.</p>
+        <h2>${partnerLogin?'Portal do Parceiro':'Que bom te ver por aqui!'}</h2><p>${partnerLogin?'Entre com a conta do seu estabelecimento.':'Entre ou crie sua conta para continuar.'}</p>
         <button class="social" data-social="Google"><b class="google">${uiIcon('google')}</b>Continuar com Google</button>
         <button class="social" data-social="Apple"><b class="apple">${uiIcon('apple')}</b>Continuar com Apple</button>
         <div class="fcv2-or"><span>ou</span></div>
@@ -29,10 +30,10 @@ export async function render(view) {
           <label><span>${uiIcon('mail')}</span><input name="email" type="email" autocomplete="email" placeholder="E-mail" aria-label="E-mail"></label>
           <label><span>${uiIcon('lock')}</span><input name="password" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha"><button type="button" data-eye aria-label="Mostrar senha">${uiIcon('eye')}</button></label>
           <div class="fcv2-error" role="alert" hidden></div>
-          <button class="fcv2-submit" type="submit">Entrar</button>
+          <button class="fcv2-submit" type="submit">${partnerLogin?'Entrar no Portal':'Entrar'}</button>
           <div class="fcv2-loginrow"><label><input type="checkbox"> Lembrar de mim</label><a href="#/esqueci-senha">Esqueci minha senha</a></div>
         </form>
-        <footer>Ainda não tem uma conta? <a href="#/cadastro">Criar conta</a></footer>
+        <footer>${partnerLogin?'Ainda não cadastrou sua loja? <a href="#/cadastro-parceiro">Cadastrar estabelecimento</a>':'Ainda não tem uma conta? <a href="#/cadastro">Criar conta</a>'}</footer>
       </aside>
     </section>
 
@@ -44,7 +45,7 @@ export async function render(view) {
     </section>
     ${introduction()}${howItWorks()}${variety()}${whyFoodCourt()}${promotion()}${mobileExperience()}${trust()}${testimonials()}${partnerSection()}${faq()}${finalCta()}${landingFooter()}
   </div>`
-  bind(view)
+  bind(view,partnerLogin)
   if (location.hash.replace(/^#/, '').split('?')[0] === '/login') {
     requestAnimationFrame(() => {
       const login = view.querySelector('.fcv2-login')
@@ -74,7 +75,8 @@ function faq(){const qs=[['O que é o FoodCourt?','Uma plataforma para descobrir
 function finalCta(){return `<section class="fcv2-section final-signup reveal"><span class="food-edge left">◔</span><div><span class="section-kicker light">O PRÓXIMO SABOR ESPERA POR VOCÊ</span><h2>Pronto para descobrir<br>seu próximo favorito?</h2><p>Crie sua conta e tenha o FoodCourt sempre por perto.</p><a href="#/cadastro">CRIAR MINHA CONTA</a><small>É rápido, simples e gratuito.</small></div><span class="food-edge right">◉</span></section>`}
 function landingFooter(){const cols=[['FOODCOURT',['Sobre nós','Como funciona','Vantagens','Contato']],['DESCUBRA',['Categorias','Ofertas','Novidades']],['PARA ESTABELECIMENTOS',['Cadastre seu negócio','Como funciona','Central do parceiro']],['SUPORTE',['Central de ajuda','Fale conosco','Dúvidas frequentes']],['LEGAL',['Termos de uso','Política de privacidade','Cookies']]];return `<footer class="fcv2-footer" id="contato"><div class="footer-main"><div class="footer-about"><a class="footer-brand-logo" href="#/" aria-label="Food Court - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a><p>Seu pedido, do seu jeito.</p><nav aria-label="Redes sociais"><a href="#" aria-label="Instagram">${socialIcon('instagram')}</a><a href="#" aria-label="Facebook">${socialIcon('facebook')}</a><a href="#" aria-label="TikTok">${socialIcon('tiktok')}</a><a href="#" aria-label="WhatsApp">${socialIcon('whatsapp')}</a></nav></div>${cols.map(c=>`<div><h3>${c[0]}</h3>${c[1].map(x=>`<button data-footer-scroll="${x}">${x}</button>`).join('')}</div>`).join('')}</div><div class="footer-bottom">© ${new Date().getFullYear()} FoodCourt. Todos os direitos reservados.</div></footer>`}
 function socialIcon(name){const paths={instagram:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>',facebook:'<path d="M14 8h4V3h-4c-4 0-6 2.4-6 6v3H4v5h4v5h5v-5h4l1-5h-5V9c0-.7.3-1 1-1Z"/>',tiktok:'<path d="M14 3v11.5a4.5 4.5 0 1 1-4-4.5M14 3c.5 3 2 4.5 5 5"/>',whatsapp:'<path d="M20 11.6a8 8 0 0 1-11.8 7L4 20l1.4-4.1A8 8 0 1 1 20 11.6Z"/><path d="M9 8c.5 3 2 4.5 5 6l2-1"/>',search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>'};return `<svg class="social-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`}
-function bind(view){
+function bind(view,partnerLogin=false){
+  view.querySelector('.fcv2-partner a[href="#/cadastro"]')?.setAttribute('href','#/para-estabelecimentos')
   view.querySelectorAll('a[href="#/login"],a[href="#/cadastro"]').forEach(link=>link.addEventListener('click',event=>{
     event.preventDefault()
     const destination=link.getAttribute('href')
@@ -94,6 +96,6 @@ function bind(view){
     const email=form.email.value.trim(),password=form.password.value
     if(!email||!password){error.textContent='Informe seu e-mail e sua senha.';error.hidden=false;return}
     submit.disabled=true;submit.textContent='Entrando...'
-    try{const res=await api.login({email,password});window.dispatchEvent(new CustomEvent('fc:auth',{detail:res.user}));location.hash=res.user.role==='merchant'?'#/parceiro':res.user.role==='admin'?'#/admin':'#/inicio'}catch(err){error.textContent=err.message;error.hidden=false;submit.disabled=false;submit.textContent='Entrar'}
+    try{const res=await api.login({email,password});if(partnerLogin&&res.user.role!=='merchant'){await api.logout();throw new Error('Esta conta não pertence a um estabelecimento. Entre com a conta do vendedor.')}window.dispatchEvent(new CustomEvent('fc:auth',{detail:res.user}));location.hash=res.user.role==='merchant'?'#/parceiro':res.user.role==='admin'?'#/admin':'#/inicio'}catch(err){error.textContent=err.message;error.hidden=false;submit.disabled=false;submit.textContent=partnerLogin?'Entrar no Portal':'Entrar'}
   })
 }

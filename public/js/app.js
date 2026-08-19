@@ -8,9 +8,12 @@ window.FC = { store }
 const routes = [
   { pattern: /^\/$/, page: 'landing', public: true, landing: true },
   { pattern: /^\/login$/, page: 'landing', public: true, landing: true },
+  { pattern: /^\/login-parceiro$/, page: 'partner-login', public: true, mode: 'partner-login' },
   { pattern: /^\/cadastro$/, page: 'auth', public: true, mode: 'register' },
   { pattern: /^\/esqueci-senha$/, page: 'auth', public: true, mode: 'forgot' },
   { pattern: /^\/redefinir-senha$/, page: 'auth', public: true, mode: 'reset' },
+  { pattern: /^\/para-estabelecimentos$/, page: 'partner-marketing', public: true, mode: 'marketing' },
+  { pattern: /^\/cadastro-parceiro$/, page: 'partner-marketing', public: true, mode: 'register' },
   { pattern: /^\/inicio$/, page: 'home' },
   { pattern: /^\/buscar$/, page: 'search' },
   { pattern: /^\/restaurante\/([\w-]+)$/, page: 'restaurant' },
@@ -64,6 +67,11 @@ async function navigate() {
     const [path, qs] = raw.split('?')
     const query = new URLSearchParams(qs || '')
 
+    if (path === '/login' && query.get('portal') === 'parceiro') {
+      location.hash = '#/login-parceiro'
+      return
+    }
+
     if (currentPage?.cleanup) currentPage.cleanup()
     closeAllDrawers()
 
@@ -93,7 +101,7 @@ async function navigate() {
       }
     }
 
-    const mod = await import(`./pages/${route.page}.js?v=20260819-29`)
+    const mod = await import(`./pages/${route.page}.js?v=20260819-38`)
     currentPage = mod
     window.scrollTo(0, 0)
 

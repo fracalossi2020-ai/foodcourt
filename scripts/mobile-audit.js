@@ -6,6 +6,8 @@ const port = process.argv[2] || '9223'
 const width = Number(process.argv[3] || 390)
 const route = process.argv[4] || '/'
 const output = process.argv[5] || `logs/mobile-${width}.png`
+const email = process.argv[6] || 'joao@foodcourt.com'
+const password = process.argv[7] || 'foodcourt123'
 
 async function run() {
   const pages = await fetch(`http://127.0.0.1:${port}/json`).then(response => response.json())
@@ -39,7 +41,7 @@ async function run() {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       credentials:'include',
-      body:JSON.stringify({ email:'joao@foodcourt.com', password:'foodcourt123' })
+      body:JSON.stringify({ email:${JSON.stringify(email)}, password:${JSON.stringify(password)} })
     }).then(response => response.json())` })
   }
   await call('Page.navigate', { url:`http://127.0.0.1:3000/?mobileAudit=${Date.now()}#${route}` })

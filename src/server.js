@@ -77,7 +77,7 @@ function readBody(req) {
     let size = 0
     req.on('data', (c) => {
       size += c.length
-      if (size > 100 * 1024) { reject(new Error('payload-too-large')); req.destroy(); return }
+      if (size > 2 * 1024 * 1024) { reject(new Error('payload-too-large')); req.destroy(); return }
       raw += c
     })
     req.on('end', () => {
@@ -185,6 +185,7 @@ const authApi = {
       points: 100,
       level: 'Bronze',
       cashback: 2,
+      role: 'customer',
       createdAt: now,
       updatedAt: now,
       lastLogin: now
@@ -356,6 +357,14 @@ const api = {
   'GET /api/flash-deals': () => data.flashDeals
 }
 
+function safeUploadedImage(value) {
+  if (!value) return null
+  const image=String(value)
+  if (!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) return null
+  if (Buffer.byteLength(image,'utf8') > 850 * 1024) return null
+  return image
+}
+
 const PIX_KEY = '3ddfdfec-13f0-4a48-8350-1f6d37ba892a'
 function pixField(id, value) {
   const text = String(value)
@@ -384,6 +393,20 @@ api['POST /api/pix-charge'] = async (params, query, body) => {
   return { payload, qrCode, amount:+amount.toFixed(2), key:PIX_KEY, txid, expiresIn:420, expiresAt:Date.now() + 420000, mode:'test' }
 }
 
+api['POST /api/partner-subscription-pix'] = async (params, query, body, ctx) => {
+  if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros')
+  const store=platform.storeForUser(ctx.user)
+  if(!store)return {status:404,body:{error:'Estabelecimento não encontrado.'}}
+  const subscription=db.state.subscriptions.find(item=>item.storeId===store.id)
+  if(!subscription)return {status:404,body:{error:'Assinatura não encontrada.'}}
+  if(subscription.status==='ACTIVE')return {status:409,body:{error:'Esta assinatura já está ativa.'}}
+  if(['CANCELED','BLOCKED'].includes(subscription.status))return {status:409,body:{error:'Esta assinatura não pode receber pagamento no status atual.'}}
+  const amount=119.90,txid=`FCP${Date.now().toString(36).toUpperCase()}`.slice(0,25),payload=createPixPayload(amount,txid)
+  const qrCode=await QRCode.toDataURL(payload,{width:360,margin:2,errorCorrectionLevel:'M',color:{dark:'#10251A',light:'#FFFFFFFF'}})
+  subscription.status='PENDING';subscription.pendingCharge={method:'PIX',txid,amount,expiresAt:Date.now()+420000,createdAt:platform.now()};subscription.updatedAt=platform.now();platform.audit(ctx.user,'subscription.pix.create','subscription',subscription.id,txid);db.saveNow()
+  return {payload,qrCode,amount,key:PIX_KEY,txid,expiresIn:420,expiresAt:subscription.pendingCharge.expiresAt,mode:'test',subscriptionStatus:subscription.status}
+}
+
 function forbidden(role) { return { status:403, body:{ error:`Acesso exclusivo para ${role}.` } } }
 const cepCache = new Map([
   ['35180312', { cep:'35180-312', street:'Avenida Monsenhor Rafael', neighborhood:'Timirim', city:'Timóteo', state:'MG', ibge:'3168705' }]
@@ -395,9 +418,32 @@ Object.assign(api, {
     if(cepCache.has(cep))return {address:cepCache.get(cep)}
     try{const response=await fetch(`https://viacep.com.br/ws/${cep}/json/`,{signal:AbortSignal.timeout(5000),headers:{Accept:'application/json'}});if(!response.ok)throw new Error('Serviço de CEP indisponível.');const payload=await response.json();if(payload.erro)return {status:404,body:{error:'CEP não encontrado.'}};const address={cep:payload.cep,street:payload.logradouro||'',neighborhood:payload.bairro||'',city:payload.localidade||'',state:payload.uf||'',ibge:payload.ibge||''};cepCache.set(cep,address);return {address}}catch(error){return {status:503,body:{error:'Não foi possível consultar o CEP agora. Preencha o endereço manualmente.'}}}
   },
+
+  'POST /api/auth/partner-register': (params, query, body, ctx) => {
+    const name=auth.validName(body.fullName),email=auth.validEmail(body.email),phone=auth.validPhone(body.phone),pw=auth.validPassword(body.password)
+    const document=String(body.document||'').replace(/\D/g,''),companyDocument=String(body.companyDocument||'').replace(/\D/g,'')
+    const required={fullName:name,email,phone,password:pw};const fields={}
+    for(const [key,value] of Object.entries(required))if(!value.ok)fields[key]=value.error
+    if(![11].includes(document.length))fields.document='Informe um CPF válido.'
+    if(![11,14].includes(companyDocument.length))fields.companyDocument='Informe CPF ou CNPJ do estabelecimento.'
+    if(!String(body.storeName||'').trim())fields.storeName='Informe o nome fantasia.'
+    if(!String(body.category||'').trim())fields.category='Escolha uma categoria.'
+    if(!String(body.cep||'').replace(/\D/g,'').match(/^\d{8}$/))fields.cep='Informe um CEP válido.'
+    if(Object.keys(fields).length)return {status:400,body:{error:'Revise os dados do cadastro.',fields}}
+    const existing=db.findByEmail(email.value),phoneOwner=db.findByPhone(phone.value)
+    if(phoneOwner&&phoneOwner.id!==existing?.id)return {status:409,body:{error:'Este telefone já está cadastrado em outra conta.',code:'PHONE_EXISTS'}}
+    if(existing&&platform.storeForUser(existing))return {status:409,body:{error:'Esta conta já possui um estabelecimento. Entre pelo Portal do Parceiro.',code:'STORE_EXISTS'}}
+    if(existing&&!auth.verifyPassword(pw.value,existing.passwordHash))return {status:401,body:{error:'Para vincular sua conta existente, informe a mesma senha usada no FoodCourt.',code:'PASSWORD_MISMATCH'}}
+    const createdAt=platform.now();const user=existing||db.addUser({id:db.uid('user'),fullName:name.value,email:email.value,phone:phone.value,passwordHash:auth.hashPassword(pw.value),document,status:'active',avatarEmoji:'👤',memberSince:String(new Date().getFullYear()),points:0,level:'Parceiro',cashback:0,role:'merchant',createdAt,updatedAt:createdAt,lastLogin:createdAt})
+    if(existing)Object.assign(user,{fullName:name.value,phone:phone.value,document,role:'merchant',level:'Parceiro',updatedAt:createdAt,lastLogin:createdAt})
+    const store={id:db.uid('store'),ownerId:user.id,name:auth.sanitize(body.storeName).slice(0,100),legalName:auth.sanitize(body.legalName).slice(0,140),document:companyDocument,slug:`${auth.sanitize(body.storeName).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${Date.now().toString(36)}`,category:auth.sanitize(body.category),description:auth.sanitize(body.description).slice(0,500),status:'pending',open:false,rating:0,commissionRate:0,preparationMinutes:Math.max(5,Math.min(180,Number(body.preparationMinutes)||30)),minimumOrder:Math.max(0,Number(body.minimumOrder)||0),phone:auth.sanitize(body.commercialPhone||phone.value),email:auth.sanitize(body.commercialEmail||email.value),address:{street:auth.sanitize(body.street),number:auth.sanitize(body.number),complement:auth.sanitize(body.complement),neighborhood:auth.sanitize(body.neighborhood),city:auth.sanitize(body.city),state:auth.sanitize(body.state).toUpperCase().slice(0,2),cep:String(body.cep).replace(/\D/g,'')},deliveryModes:Array.isArray(body.deliveryModes)?body.deliveryModes.filter(item=>['delivery','pickup'].includes(item)):['delivery'],hours:body.hours&&typeof body.hours==='object'?body.hours:{},logo:safeUploadedImage(body.logo),cover:safeUploadedImage(body.cover),categories:[],products:[],onboardingProgress:body.logo||body.cover?35:25,createdAt,updatedAt:createdAt}
+    db.state.stores.push(store);const subscription={id:db.uid('subscription'),storeId:store.id,planId:'foodcourt_partner',planName:'FoodCourt Parceiro',price:119.90,currency:'BRL',interval:'month',status:'PENDING',provider:null,nextBillingAt:null,createdAt,updatedAt:createdAt};db.state.subscriptions.push(subscription);db.saveNow()
+    const token=auth.createSession(user.id);sessionCookie(ctx.req,ctx.res,token,auth.SESSION_TTL/1000)
+    return {status:201,body:{user:auth.publicUser(user),store:{id:store.id,name:store.name,status:store.status,onboardingProgress:store.onboardingProgress},subscription}}
+  },
   'GET /api/partner-dashboard': (params,query,body,ctx) => {
     if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros')
-    const store=platform.storeForUser(ctx.user); return { store, ...platform.dashboard(store.id) }
+    const store=platform.storeForUser(ctx.user); const subscription=db.state.subscriptions.find(item=>item.storeId===store.id);return { store,subscription, ...platform.dashboard(store.id) }
   },
   'GET /api/partner-orders': (params,query,body,ctx) => {
     if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros')
@@ -418,6 +464,15 @@ Object.assign(api, {
     if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros'); const store=platform.storeForUser(ctx.user)
     let product=store.products.find(item=>item.id===body.id); if(product) Object.assign(product,{name:body.name,category:body.category,price:Number(body.price),stock:Number(body.stock),active:Boolean(body.active)}); else {product={id:db.uid('product'),name:String(body.name||'Novo produto'),category:String(body.category||'Geral'),price:Number(body.price||0),stock:Number(body.stock||0),active:true,sold:0};store.products.push(product)}
     platform.audit(ctx.user,body.id?'product.update':'product.create','product',product.id);return {product}
+  },
+  'POST /api/partner-store': (params,query,body,ctx) => {
+    const store=platform.storeForUser(ctx.user);if(!store)return {status:404,body:{error:'Estabelecimento não encontrado.'}}
+    if(typeof body.open==='boolean')store.open=body.open
+    for(const field of ['name','description','phone','email','category'])if(body[field]!==undefined)store[field]=auth.sanitize(body[field]).slice(0,field==='description'?500:120)
+    if(body.preparationMinutes!==undefined)store.preparationMinutes=Math.max(5,Math.min(180,Number(body.preparationMinutes)||30))
+    if(body.minimumOrder!==undefined)store.minimumOrder=Math.max(0,Number(body.minimumOrder)||0)
+    if(body.hours&&typeof body.hours==='object')store.hours=body.hours
+    store.updatedAt=platform.now();platform.audit(ctx.user,'store.update','store',store.id);return {store}
   },
   'GET /api/partner-promotions': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user);return {promotions:db.state.promotions.filter(p=>p.storeId===store.id)} },
   'GET /api/partner-finance': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');return platform.finance(platform.storeForUser(ctx.user).id) },
@@ -493,6 +548,15 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
+    if (clean.startsWith('/api/partner-')) {
+      if (!['merchant','admin'].includes(ctxUser.role)) { sendJson(res,403,{error:'Acesso exclusivo para parceiros.',code:'PARTNER_ROLE_REQUIRED'});return }
+      const ownedStore=platform.storeForUser(ctxUser)
+      if (!ownedStore) { sendJson(res,403,{error:'Nenhum estabelecimento está vinculado a esta conta.',code:'STORE_REQUIRED'});return }
+      const subscription=db.state.subscriptions.find(item=>item.storeId===ownedStore.id)
+      const allowsPendingSubscription=clean==='/api/partner-subscription-pix'
+      if (!allowsPendingSubscription && ctxUser.role!=='admin' && subscription?.status!=='ACTIVE') { sendJson(res,403,{error:'A assinatura do estabelecimento ainda não está ativa.',code:'SUBSCRIPTION_INACTIVE',subscription:subscription?{status:subscription.status,planName:subscription.planName,price:subscription.price}:null});return }
+    }
+
     let key
     let sub = null
     if (isAuthEndpoint) {
@@ -504,7 +568,7 @@ const server = http.createServer(async (req, res) => {
       key = `${req.method} /api/${section}${sub ? '/:id' : ''}`
     }
 
-    const table = isAuthEndpoint ? authApi : api
+    const table = isAuthEndpoint ? (clean === '/api/auth/partner-register' ? api : authApi) : api
     const handler = table[key]
     if (!handler) { sendJson(res, 404, { error: 'Endpoint não encontrado' }); return }
 
