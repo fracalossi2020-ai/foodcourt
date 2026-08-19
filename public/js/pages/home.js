@@ -4,6 +4,8 @@ import { restaurantCard, productCard, skeletonCards, errorState, bindGotos, gree
 import { icon, categoryIcon } from '../core/icons.js'
 import { filterByCategory, discoveryTitles, validCategory } from '../data/category-discovery.js'
 
+const HOME_FAQ=[['Como encontro restaurantes?','Use as categorias da página inicial ou acesse Buscar para pesquisar restaurantes, pratos e produtos.'],['Como faço um pedido?','Escolha um restaurante, adicione os produtos ao carrinho e siga as etapas de endereço, entrega e pagamento.'],['Como acompanho meu pedido?','Abra a área Pedidos e selecione o pedido atual para visualizar todas as etapas da entrega.'],['Como altero o endereço?','Clique em “Entregando em” no início da página ou use a área Endereços dentro do seu perfil.'],['Onde encontro promoções?','Acesse Ofertas no menu ou confira as promoções exibidas na página inicial.'],['Como falo com o suporte?','Abra seu Perfil e entre em Ajuda e suporte para enviar uma solicitação.']]
+
 export async function render(view, boot, params = {}, query = new URLSearchParams()) {
   view.innerHTML = `<div class="page consumer-page"><div class="home-intro skeleton-intro"><div class="skel" style="width:280px;height:30px"></div><div class="skel" style="width:190px;height:15px;margin-top:10px"></div></div>${skeletonCards(4)}</div>`
   let data
@@ -29,11 +31,13 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
 
     ${repeatSection()}
     <section class="consumer-partner-cta"><div><span>PARA ESTABELECIMENTOS</span><h2>Tem um estabelecimento?<br><em>Venda também pelo FoodCourt.</em></h2><p>Leve seu cardápio para novos clientes, receba pedidos pela plataforma e tenha um espaço próprio dentro do FoodCourt.</p><ul><li>✓ Sua loja dentro do FoodCourt</li><li>✓ Cardápio digital</li><li>✓ Recebimento de pedidos</li><li>✓ Painel completo</li></ul><div><a href="#/para-estabelecimentos">QUERO VENDER NO FOODCOURT</a><a href="#/para-estabelecimentos?secao=plano">Conhecer o plano</a></div></div><aside><span>PLANO FOODCOURT</span><strong>R$ 119,90<small>/mês</small></strong><p>Portal completo do estabelecimento.</p></aside></section>
+    ${helpWidget()}
   </div>`
 
   bindGotos(view)
   bindCategorySelector(view)
   view.querySelector('[data-location-short]')?.addEventListener('click', () => document.getElementById('locBtn')?.click())
+  bindHelpWidget(view)
   view.querySelectorAll('[data-repeat]').forEach(button => button.addEventListener('click', () => {
     const order = store.getOrder(button.dataset.repeat)
     if (!order) return
@@ -44,6 +48,10 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
   requestAnimationFrame(() => view.querySelector('.modern-category.active')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }))
   if (query.get('focus') === 'categorias') requestAnimationFrame(() => view.querySelector('.modern-categories')?.scrollIntoView({ behavior:'smooth', block:'center' }))
 }
+
+function helpWidget(){return `<div class="fcv2-help"><button class="fcv2-help-button" type="button" aria-label="Abrir perguntas frequentes" aria-expanded="false"><span>?</span> Me ajude</button><section class="fcv2-help-panel" role="dialog" aria-label="Central de ajuda" hidden><header><div><small>CENTRAL DE AJUDA</small><h2>Como podemos ajudar?</h2></div><button type="button" class="fcv2-help-close" aria-label="Fechar ajuda">×</button></header><div class="fcv2-help-questions">${HOME_FAQ.map(item=>`<details><summary>${item[0]}<i>+</i></summary><p>${item[1]}</p></details>`).join('')}</div></section></div>`}
+
+function bindHelpWidget(view){const button=view.querySelector('.fcv2-help-button'),panel=view.querySelector('.fcv2-help-panel'),close=view.querySelector('.fcv2-help-close');const setOpen=open=>{panel.hidden=!open;button.setAttribute('aria-expanded',String(open));view.querySelector('.fcv2-help').classList.toggle('open',open);if(open)close.focus()};button.addEventListener('click',()=>setOpen(panel.hidden));close.addEventListener('click',()=>{setOpen(false);button.focus()});panel.addEventListener('keydown',event=>{if(event.key==='Escape'){setOpen(false);button.focus()}})}
 
 function categoryButton(category, selectedCategory) {
   const active = category.id === selectedCategory
