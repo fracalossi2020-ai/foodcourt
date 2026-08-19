@@ -62,6 +62,18 @@ foodcourt/
 - E-mail: `joao@foodcourt.com`
 - Senha: `foodcourt123`
 
+## Publicação no Railway
+
+Os usuários cadastrados no localhost ficam apenas no banco local e não são enviados ao GitHub. Depois do primeiro deploy, cadastre novamente as contas no endereço público.
+
+Para impedir que contas, lojas e sessões sejam perdidas a cada deploy:
+
+1. No projeto do Railway, anexe um **Volume** ao serviço do FoodCourt.
+2. Defina o mount path como `/data`.
+3. Faça um novo deploy. O servidor detecta `RAILWAY_VOLUME_MOUNT_PATH` e grava o banco em `/data/foodcourt-db.json`.
+
+Sem um Volume, o sistema de arquivos do deploy é temporário. Não envie `data/runtime/foodcourt-db.json` ao GitHub, pois ele contém dados privados e hashes de senha.
+
 ## Portais funcionais locais
 
 ### Cliente

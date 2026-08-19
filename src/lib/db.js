@@ -3,7 +3,9 @@ const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
 
-const DB_PATH = process.env.FC_DB_PATH || path.join(__dirname, '..', '..', 'data', 'runtime', 'foodcourt-db.json')
+const DB_PATH = process.env.FC_DB_PATH || (process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'foodcourt-db.json')
+  : path.join(__dirname, '..', '..', 'data', 'runtime', 'foodcourt-db.json'))
 
 const EMPTY = () => ({ users: [], sessions: {}, resetTokens: {}, stores: [], subscriptions: [], storeMembers: [], platformOrders: [], promotions: [], reviews: [], supportTickets: [], auditLog: [], loyaltyEvents: [], referrals: [] })
 let state = EMPTY()
@@ -17,6 +19,7 @@ function rebuildIndexes() {
 
 function load() {
   try {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive:true })
     if (fs.existsSync(DB_PATH)) {
       state = { ...EMPTY(), ...JSON.parse(fs.readFileSync(DB_PATH, 'utf8')) }
     }
@@ -35,6 +38,7 @@ function save() {
 function saveNow() {
   clearTimeout(saveTimer)
   try {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive:true })
     const tmp = DB_PATH + '.tmp'
     fs.writeFileSync(tmp, JSON.stringify(state, null, 2))
     fs.renameSync(tmp, DB_PATH)
@@ -46,6 +50,7 @@ function saveNow() {
 const uid = (prefix = 'id') => prefix + '_' + crypto.randomUUID()
 
 module.exports = {
+  path: DB_PATH,
   load,
   save,
   saveNow,

@@ -16,6 +16,7 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public')
 /* ============ BANCO + SEED DA CONTA DEMO ============ */
 
 db.load()
+console.log(`[db] Persistência: ${db.path}${process.env.RAILWAY_VOLUME_MOUNT_PATH ? ' (Railway Volume)' : ''}`)
 
 if (db.state.users.length === 0) {
   db.addUser({
