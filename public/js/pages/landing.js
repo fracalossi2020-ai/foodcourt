@@ -6,6 +6,7 @@ const FAQ_ITEMS=[['O que é o FoodCourt?','Uma plataforma para descobrir estabel
 export async function render(view,boot,params={},query=new URLSearchParams()) {
   const partnerLogin=query.get('portal')==='parceiro'
   view.innerHTML = `<div class="fc-landing-v2">
+    <div class="landing-scroll-progress" aria-hidden="true"><i></i></div>
     <header class="fcv2-nav">
       <a class="fcv2-logo" href="#/" aria-label="FoodCourt - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a>
       <nav aria-label="Navegação da landing"><button data-scroll="top" class="active">Início</button><button data-scroll="como">Como funciona</button><button data-scroll="vantagens">Vantagens</button><button data-scroll="parceiros">Para estabelecimentos</button><button data-scroll="contato">Contato</button></nav>
@@ -13,6 +14,11 @@ export async function render(view,boot,params={},query=new URLSearchParams()) {
     </header>
 
     <section id="top" class="fcv2-hero">
+      <div class="hero-float-layer" aria-hidden="true">
+        <span class="hero-float-card hero-delivery"><i>${uiIcon('scooter')}</i><span><b>Entrega rápida</b><small>Chega em 20–30 min</small></span></span>
+        <span class="hero-float-card hero-offer"><i>${uiIcon('tag')}</i><span><b>Oferta do dia</b><small>até 30% de desconto</small></span></span>
+        <span class="hero-leaf hero-leaf-one">◆</span><span class="hero-leaf hero-leaf-two">◆</span>
+      </div>
       <div class="fcv2-copy">
         <span class="fcv2-pill">${uiIcon('leaf')} Sua próxima refeição está aqui!</span>
         <h1>Seu pedido favorito,<br><em>do seu jeito.</em></h1>
@@ -91,6 +97,12 @@ function bind(view,partnerLogin=false){
   }))
   const root=view.querySelector('.fc-landing-v2')
   root.classList.add('js-reveal')
+  window.__fcLandingScrollCleanup?.()
+  const nav=view.querySelector('.fcv2-nav'),progress=view.querySelector('.landing-scroll-progress i')
+  const onLandingScroll=()=>{if(!root.isConnected)return;const rect=root.getBoundingClientRect(),distance=Math.max(1,root.scrollHeight-innerHeight),amount=Math.min(1,Math.max(0,-rect.top/distance));progress.style.transform=`scaleX(${amount})`;nav.classList.toggle('scrolled',scrollY>36)}
+  addEventListener('scroll',onLandingScroll,{passive:true});onLandingScroll();window.__fcLandingScrollCleanup=()=>removeEventListener('scroll',onLandingScroll)
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches){const counters=view.querySelectorAll('.fcv2-proof b,.trust b');const counterObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(!entry.isIntersecting)return;const element=entry.target,original=element.textContent,match=original.match(/[\d.,]+/);if(!match){counterObserver.unobserve(element);return}const raw=match[0],target=Number(raw.replace(/\./g,'').replace(',','.'));if(!Number.isFinite(target)){counterObserver.unobserve(element);return}const decimal=raw.includes(','),start=performance.now(),duration=900;const tick=now=>{const value=target*Math.min(1,(now-start)/duration),shown=decimal?value.toFixed(1).replace('.',','):Math.round(value).toLocaleString('pt-BR');element.textContent=original.replace(match[0],shown);if(now-start<duration)requestAnimationFrame(tick)};requestAnimationFrame(tick);counterObserver.unobserve(element)}),{threshold:.65});counters.forEach(counter=>counterObserver.observe(counter))}
+  if(matchMedia('(hover:hover) and (pointer:fine)').matches&&!matchMedia('(prefers-reduced-motion: reduce)').matches)view.querySelectorAll('.food-mosaic article').forEach(card=>{card.addEventListener('pointermove',event=>{const rect=card.getBoundingClientRect(),px=(event.clientX-rect.left)/rect.width,py=(event.clientY-rect.top)/rect.height;card.style.setProperty('--mosaic-rx',`${(py-.5)*-3}deg`);card.style.setProperty('--mosaic-ry',`${(px-.5)*4}deg`);card.style.setProperty('--mosaic-x',`${px*100}%`);card.style.setProperty('--mosaic-y',`${py*100}%`)});card.addEventListener('pointerleave',()=>{card.style.setProperty('--mosaic-rx','0deg');card.style.setProperty('--mosaic-ry','0deg');card.style.setProperty('--mosaic-x','50%');card.style.setProperty('--mosaic-y','50%')})})
   view.querySelector('.fcv2-menu').addEventListener('click',e=>{const open=view.querySelector('.fcv2-nav').classList.toggle('open');e.currentTarget.setAttribute('aria-expanded',String(open))})
   view.querySelectorAll('[data-scroll]').forEach(b=>b.addEventListener('click',()=>{document.getElementById(b.dataset.scroll)?.scrollIntoView({behavior:'smooth'});view.querySelector('.fcv2-nav').classList.remove('open')}))
   view.querySelectorAll('[data-footer-scroll]').forEach(b=>b.addEventListener('click',()=>{const label=b.dataset.footerScroll;const target=label==='Como funciona'?'como':label==='Vantagens'?'vantagens':label==='Contato'||label==='Fale conosco'?'contato':label.includes('estabelecimento')||label.includes('negócio')?'parceiros':'top';document.getElementById(target)?.scrollIntoView({behavior:'smooth'})}))
