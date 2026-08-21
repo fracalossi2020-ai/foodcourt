@@ -47,7 +47,13 @@ function seed() {
   db.saveNow()
 }
 
-function storeForUser(user) { return user.role==='admin' ? db.state.stores[0] || null : db.state.stores.find(store => store.ownerId === user.id) || null }
+function storeForUser(user) {
+  if (user.role === 'admin') return db.state.stores[0] || null
+  const ownedStore = db.state.stores.find(store => store.ownerId === user.id)
+  if (ownedStore) return ownedStore
+  const membership = db.state.storeMembers.find(member => member.active && member.email.toLowerCase() === user.email.toLowerCase())
+  return membership ? db.state.stores.find(store => store.id === membership.storeId) || null : null
+}
 function audit(user, action, entityType, entityId, detail='') { db.state.auditLog.unshift({ id:uid('audit'), userId:user.id, role:user.role, action, entityType, entityId, detail, at:now() }); db.save() }
 function dashboard(storeId) {
   const orders=db.state.platformOrders.filter(order=>order.storeId===storeId)

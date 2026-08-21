@@ -48,6 +48,23 @@ const merchantDemo = ensureDemoUser('dono@foodcourt.com','Carlos Mendes','(11) 9
 ensureDemoUser('admin@foodcourt.com','Admin FoodCourt','(11) 98888-2000','foodcourt123','admin')
 platform.seed()
 if (db.state.stores[0] && !db.state.stores[0].ownerId) { db.state.stores[0].ownerId = merchantDemo.id; db.saveNow() }
+const joaoDemo = db.findByEmail('joao@foodcourt.com')
+if (joaoDemo) {
+  joaoDemo.role = 'merchant'
+  joaoDemo.level = 'Parceiro'
+  if (!db.state.storeMembers.some(member => member.email.toLowerCase() === joaoDemo.email.toLowerCase())) {
+    db.state.storeMembers.push({ id:db.uid('member'), storeId:'store_burger_neon', name:joaoDemo.fullName, email:joaoDemo.email, role:'manager', active:true })
+  }
+  const joaoStore = platform.storeForUser(joaoDemo)
+  const joaoSubscription = joaoStore && db.state.subscriptions.find(subscription => subscription.storeId === joaoStore.id)
+  if (joaoStore) joaoStore.status = 'active'
+  if (joaoSubscription) {
+    joaoSubscription.status = 'ACTIVE'
+    delete joaoSubscription.pendingCharge
+    joaoSubscription.updatedAt = platform.now()
+  }
+  db.saveNow()
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -553,9 +570,8 @@ const server = http.createServer(async (req, res) => {
       if (!['merchant','admin'].includes(ctxUser.role)) { sendJson(res,403,{error:'Acesso exclusivo para parceiros.',code:'PARTNER_ROLE_REQUIRED'});return }
       const ownedStore=platform.storeForUser(ctxUser)
       if (!ownedStore) { sendJson(res,403,{error:'Nenhum estabelecimento está vinculado a esta conta.',code:'STORE_REQUIRED'});return }
-      const subscription=db.state.subscriptions.find(item=>item.storeId===ownedStore.id)
-      const allowsPendingSubscription=clean==='/api/partner-subscription-pix'
-      if (!allowsPendingSubscription && ctxUser.role!=='admin' && subscription?.status!=='ACTIVE') { sendJson(res,403,{error:'A assinatura do estabelecimento ainda não está ativa.',code:'SUBSCRIPTION_INACTIVE',subscription:subscription?{status:subscription.status,planName:subscription.planName,price:subscription.price}:null});return }
+      // O pagamento ainda e simulado. Enquanto nao houver confirmacao por
+      // webhook, parceiros cadastrados podem acessar o portal normalmente.
     }
 
     let key
