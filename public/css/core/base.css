@@ -929,6 +929,8 @@ html[data-theme="dark"] .overlay { background: rgba(5, 5, 6, 0.7); }
   animation: toastin 0.35s var(--ease); pointer-events: auto;
 }
 .toast.leaving { animation: toastout 0.3s var(--ease) forwards; }
+.toast.toast-repeat { animation: toastRepeat 0.22s var(--ease); }
+@keyframes toastRepeat { 50% { transform: translateX(-4px); } }
 .toast .t-emoji { font-size: 1.2rem; }
 .toast.success { border-color: rgba(52, 211, 153, 0.4); }
 .toast.error { border-color: rgba(248, 113, 113, 0.4); }

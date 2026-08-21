@@ -14,14 +14,33 @@ export const money = (v) => 'R$ ' + Number(v).toFixed(2).replace('.', ',')
 
 export const freeFee = (fee) => fee === 0
 
+const activeToasts = new Map()
+
 export function toast(msg, type = 'info', symbol = '') {
   const box = document.getElementById('toasts')
+  if (!box) return
+  const key = `${type}:${String(msg).trim().toLowerCase()}`
+  const duplicate = activeToasts.get(key)
+  if (duplicate?.isConnected) {
+    duplicate.classList.remove('toast-repeat')
+    requestAnimationFrame(() => duplicate.classList.add('toast-repeat'))
+    return
+  }
   const toastIcon = type === 'success' ? '✓' : type === 'error' ? '!' : 'i'
   const t = el(`<div class="toast ${type}" role="status"><span class="t-emoji">${symbol || toastIcon}</span><span>${esc(msg)}</span></div>`)
+  t.dataset.toastKey = key
+  while (box.children.length >= 3) {
+    const oldest = box.firstElementChild
+    activeToasts.delete(oldest?.dataset.toastKey)
+    oldest?.remove()
+  }
+  activeToasts.set(key, t)
   box.appendChild(t)
   setTimeout(() => {
     t.classList.add('leaving')
-    t.addEventListener('animationend', () => t.remove(), { once: true })
+    const remove = () => { activeToasts.delete(key); t.remove() }
+    t.addEventListener('animationend', remove, { once: true })
+    setTimeout(remove, 400)
   }, 2600)
 }
 

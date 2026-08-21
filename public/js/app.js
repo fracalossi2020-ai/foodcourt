@@ -32,6 +32,7 @@ const routes = [
 
 let currentPage = null
 let authUser = null
+let handlingUnauthorized = false
 
 function isAuthPath(path) {
   return path.startsWith('/login') || path.startsWith('/cadastro') || path.startsWith('/esqueci-senha') || path.startsWith('/redefinir-senha')
@@ -319,11 +320,14 @@ function wireVisualFeedback() {
 function wireAuthEvents() {
   window.addEventListener('fc:auth', (e) => {
     authUser = e.detail
+    handlingUnauthorized = false
     setAuthUser(e.detail)
     bootPromise = null
   })
 
   window.addEventListener('fc:unauthorized', () => {
+    if (handlingUnauthorized) return
+    handlingUnauthorized = true
     authUser = null
     bootPromise = null
     if (!isAuthPath(location.hash.replace(/^#/, '') || '/')) {
@@ -335,6 +339,7 @@ function wireAuthEvents() {
   window.addEventListener('fc:logout', () => {
     authUser = null
     bootPromise = null
+    handlingUnauthorized = false
     location.hash = '#/login'
   })
 }
