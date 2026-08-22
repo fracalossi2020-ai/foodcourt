@@ -614,6 +614,10 @@ const server = http.createServer(async (req, res) => {
     if (sess && !ctxUser) auth.destroySession(cookies.fc_session)
     const ctx = { req, res, cookies, user: ctxUser }
 
+    // Mantém a sessão ativa por mais 2 horas a cada uso autenticado.
+    // Sem atividade, o cookie e a sessão no servidor expiram normalmente.
+    if (ctxUser && cookies.fc_session) sessionCookie(req, res, cookies.fc_session, auth.SESSION_TTL / 1000)
+
     const isAuthEndpoint = pathname.startsWith('/api/auth/')
     const clean = pathname.replace(/\/+$/, '')
     const requiresAuth = !isAuthEndpoint || clean === '/api/auth/me'
