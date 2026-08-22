@@ -2,8 +2,9 @@
 const crypto = require('crypto')
 const db = require('./db')
 
-const SESSION_TTL = 1000 * 60 * 60 * 24 * 7
-const SESSION_REFRESH = 1000 * 60 * 30
+const SESSION_HOURS = Math.max(1, Math.min(168, Number(process.env.SESSION_TTL_HOURS) || 2))
+const SESSION_TTL = 1000 * 60 * 60 * SESSION_HOURS
+const SESSION_REFRESH = 1000 * 60 * 15
 const RESET_TTL = 1000 * 60 * 60
 const KEYLEN = 64
 
