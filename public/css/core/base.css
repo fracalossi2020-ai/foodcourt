@@ -928,7 +928,7 @@ html[data-theme="dark"] .overlay { background: rgba(5, 5, 6, 0.7); }
   box-shadow: var(--shadow-2); font-size: 0.9rem; font-weight: 500;
   animation: toastin 0.35s var(--ease); pointer-events: auto;
 }
-.toast.leaving { animation: toastout 0.3s var(--ease) forwards; }
+.toast.leaving { pointer-events:none; animation:toastout 1.2s var(--ease) forwards!important; }
 .toast.toast-repeat { animation: toastRepeat 0.22s var(--ease); }
 @keyframes toastRepeat { 50% { transform: translateX(-4px); } }
 .toast .t-emoji { font-size: 1.2rem; }

@@ -40,8 +40,8 @@ export function toast(msg, type = 'info', symbol = '') {
     t.classList.add('leaving')
     const remove = () => { activeToasts.delete(key); t.remove() }
     t.addEventListener('animationend', remove, { once: true })
-    setTimeout(remove, 400)
-  }, 2600)
+    setTimeout(remove, 1400)
+  }, 7000)
 }
 
 export function ratingPill(r) {
