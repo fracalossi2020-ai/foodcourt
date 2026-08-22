@@ -23,6 +23,16 @@ const paths = {
   coffee: '<path d="M5 8h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5V8Z"/><path d="M17 10h2a2 2 0 0 1 0 4h-2M8 4v2M12 3v3"/>',
   drink: '<path d="M7 3h10l-1 18H8L7 3ZM8 8h8M14 3l3-2"/>',
   market: '<path d="M3 4h2l2 11h10l3-8H6M9 20h.01M17 20h.01"/>'
+  ,dashboard: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'
+  ,orders: '<path d="M7 3h10v3H7zM5 5v16h14V5M8 10h8M8 14h8M8 18h5"/>'
+  ,menu: '<path d="M4 5h16M4 12h16M4 19h16"/><circle cx="7" cy="5" r="1"/><circle cx="17" cy="12" r="1"/><circle cx="10" cy="19" r="1"/>'
+  ,wallet: '<path d="M3 6h16a2 2 0 0 1 2 2v11H5a2 2 0 0 1-2-2V6Z"/><path d="M3 7V5a2 2 0 0 1 2-2h12v4M15 12h6v4h-6a2 2 0 0 1 0-4Z"/>'
+  ,shop: '<path d="M4 10v11h16V10M3 4h18l-2 6H5L3 4Z"/><path d="M9 21v-7h6v7M5 10a3 3 0 0 0 4 0 3 3 0 0 0 6 0 3 3 0 0 0 4 0"/>'
+  ,calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>'
+  ,diamond: '<path d="m12 3 8 7-8 11-8-11 8-7Z"/><path d="m4 10 8 3 8-3M12 3v10"/>'
+  ,settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>'
+  ,users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'
+  ,help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.6 2.6 0 1 1 4.7 1.6c-.9 1.1-2.3 1.3-2.3 3M12 18h.01"/>'
 }
 
 export function icon(name, className = '') {

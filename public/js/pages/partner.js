@@ -1,7 +1,8 @@
 import { api } from '../core/api.js'
 import { esc, money, toast } from '../core/ui.js'
+import { icon } from '../core/icons.js'
 
-const nav=[['dashboard','Visão geral','⌂'],['pedidos','Pedidos','▣'],['cardapio','Cardápio','▤'],['promocoes','Promoções','%'],['financeiro','Financeiro','R$'],['avaliacoes','Avaliações','★'],['minhaloja','Minha loja','◈'],['horarios','Horários','◷'],['plano','Plano','◆'],['configuracoes','Configurações','⚙'],['equipe','Equipe','♟'],['suporte','Suporte','?']]
+const nav=[['dashboard','Visão geral','dashboard'],['pedidos','Pedidos','orders'],['cardapio','Cardápio','menu'],['promocoes','Promoções','percent'],['financeiro','Financeiro','wallet'],['avaliacoes','Avaliações','star'],['minhaloja','Minha loja','shop'],['horarios','Horários','calendar'],['plano','Plano','diamond'],['configuracoes','Configurações','settings'],['equipe','Equipe','users'],['suporte','Suporte','help']]
 const statusLabel={pending:'Novo',accepted:'Aceito',preparing:'Preparando',ready:'Pronto',delivered:'Entregue',cancelled:'Cancelado'}
 const guides={
   dashboard:['Comece por aqui','Veja o que precisa de atenção agora e use os atalhos para agir.',['Confira pedidos ativos','Observe produtos com estoque baixo','Pause a loja se não puder atender']],
@@ -24,7 +25,7 @@ export async function render(view,boot,params={},query=new URLSearchParams()){
   view.innerHTML=`<div class="partner-loading">Carregando central do parceiro...</div>`
   try{
     const payload=await load(section)
-    view.innerHTML=`<div class="partner-shell"><aside class="partner-sidebar"><a class="partner-brand" href="#/parceiro"><i>FC</i><span>Central do<br><b>Parceiro</b></span></a><p class="partner-nav-label">GERENCIAR</p><nav>${nav.map(([id,label,icon])=>`<a class="${section===id?'active':''}" href="#/parceiro?secao=${id}" title="Abrir ${label}"><span>${icon}</span><b>${label}</b>${section===id?'<i>Você está aqui</i>':''}</a>`).join('')}</nav><div class="partner-user"><span>${boot.user.avatarEmoji}</span><div><b>${esc(boot.user.fullName)}</b><small>Administrador da loja</small></div></div></aside><main class="partner-main"><div class="partner-mobile-context"><b>${nav.find(item=>item[0]===section)?.[1]}</b><span>Escolha uma área no menu para gerenciar sua loja.</span></div>${guide(section)}${content(section,payload)}</main></div>`
+    view.innerHTML=`<div class="partner-shell"><aside class="partner-sidebar"><a class="partner-brand" href="#/parceiro"><i>FC</i><span>Central do<br><b>Parceiro</b></span></a><p class="partner-nav-label">GERENCIAR</p><nav>${nav.map(([id,label,iconName],index)=>`<a class="${section===id?'active':''}" style="--nav-index:${index}" href="#/parceiro?secao=${id}" title="Abrir ${label}"><span>${icon(iconName)}</span><b>${label}</b>${section===id?'<i>Você está aqui</i>':''}</a>`).join('')}</nav><div class="partner-user"><span>${boot.user.avatarEmoji}</span><div><b>${esc(boot.user.fullName)}</b><small>Administrador da loja</small></div></div></aside><main class="partner-main"><div class="partner-mobile-context"><b>${nav.find(item=>item[0]===section)?.[1]}</b><span>Escolha uma área no menu para gerenciar sua loja.</span></div>${guide(section)}${content(section,payload)}</main></div>`
     bind(view,section,payload)
   }catch(error){
     if(error.code==='SUBSCRIPTION_INACTIVE'){
