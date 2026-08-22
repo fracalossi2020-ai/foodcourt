@@ -13,7 +13,7 @@ const QRCode = require('qrcode')
 const PORT = process.env.PORT || 3000
 const PUBLIC_DIR = path.join(__dirname, '..', 'public')
 
-/* ============ BANCO + SEED DA CONTA DEMO ============ */
+/* ============ BANCO + CONTAS INICIAIS ============ */
 
 db.load()
 console.log(`[db] Persistência: ${db.path}${process.env.RAILWAY_VOLUME_MOUNT_PATH ? ' (Railway Volume)' : ''}`)
@@ -52,17 +52,20 @@ const joaoDemo = db.findByEmail('joao@foodcourt.com')
 if (joaoDemo) {
   joaoDemo.role = 'merchant'
   joaoDemo.level = 'Parceiro'
-  if (!db.state.storeMembers.some(member => member.email.toLowerCase() === joaoDemo.email.toLowerCase())) {
-    db.state.storeMembers.push({ id:db.uid('member'), storeId:'store_burger_neon', name:joaoDemo.fullName, email:joaoDemo.email, role:'manager', active:true })
+  db.state.storeMembers = db.state.storeMembers.filter(member => member.email.toLowerCase() !== joaoDemo.email.toLowerCase())
+  let joaoStore = db.state.stores.find(store => store.ownerId === joaoDemo.id)
+  if (!joaoStore) {
+    joaoStore = {id:db.uid('store'),ownerId:joaoDemo.id,name:'Meu estabelecimento',legalName:'',document:'',slug:`meu-estabelecimento-${Date.now().toString(36)}`,category:'Restaurante',description:'',status:'active',open:false,rating:0,commissionRate:12,preparationMinutes:30,minimumOrder:0,phone:joaoDemo.phone||'',email:joaoDemo.email,address:{street:'',number:'',complement:'',neighborhood:'',city:'',state:'',cep:''},deliveryModes:['delivery','pickup'],hours:{},logo:'',cover:'',categories:[],products:[],onboardingProgress:10,orderNotifications:true,createdAt:platform.now(),updatedAt:platform.now()}
+    db.state.stores.push(joaoStore)
   }
-  const joaoStore = platform.storeForUser(joaoDemo)
-  const joaoSubscription = joaoStore && db.state.subscriptions.find(subscription => subscription.storeId === joaoStore.id)
-  if (joaoStore) joaoStore.status = 'active'
-  if (joaoSubscription) {
-    joaoSubscription.status = 'ACTIVE'
-    delete joaoSubscription.pendingCharge
-    joaoSubscription.updatedAt = platform.now()
+  joaoStore.status = 'active'
+  let joaoSubscription = db.state.subscriptions.find(subscription => subscription.storeId === joaoStore.id)
+  if (!joaoSubscription) {
+    joaoSubscription={id:db.uid('subscription'),storeId:joaoStore.id,planId:'owner_access',planName:'FoodCourt Proprietário',price:0,currency:'BRL',interval:'unlimited',createdAt:platform.now()}
+    db.state.subscriptions.push(joaoSubscription)
   }
+  Object.assign(joaoSubscription,{status:'ACTIVE',price:0,provider:'OWNER_ACCESS',nextBillingAt:null,complimentary:true,complimentaryReason:'Conta proprietária',updatedAt:platform.now()})
+  delete joaoSubscription.pendingCharge
   db.saveNow()
 }
 
