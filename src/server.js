@@ -386,6 +386,41 @@ function safeUploadedImage(value) {
   return image
 }
 
+const MENU_PROFILES = {
+  hamburgueria:{label:'Hamburgueria',categories:[['Hambúrgueres',['Hambúrguer da casa','Hambúrguer especial']],['Combos',['Combo individual','Combo para compartilhar']],['Porções',['Porção da casa']],['Bebidas',['Refrigerante','Suco']]]},
+  pizzaria:{label:'Pizzaria',categories:[['Pizzas tradicionais',['Pizza tradicional']],['Pizzas especiais',['Pizza especial da casa']],['Bebidas',['Refrigerante']],['Sobremesas',['Sobremesa da casa']]]},
+  japonesa:{label:'Culinária japonesa',categories:[['Combinados',['Combinado da casa']],['Sushis',['Seleção de sushis']],['Pratos quentes',['Prato quente da casa']],['Bebidas',['Bebida']]]},
+  acai:{label:'Açaí e sobremesas',categories:[['Açaí',['Açaí tradicional','Açaí especial']],['Complementos',['Complementos']],['Bebidas',['Suco natural']]]},
+  cafeteria:{label:'Cafeteria e padaria',categories:[['Cafés',['Café tradicional','Café especial']],['Salgados',['Salgado da casa']],['Doces',['Doce da casa']],['Bebidas geladas',['Bebida gelada']]]},
+  restaurante:{label:'Restaurante',categories:[['Pratos principais',['Prato da casa','Prato executivo']],['Combos',['Combo completo']],['Acompanhamentos',['Acompanhamento']],['Bebidas',['Bebida']]]}
+}
+
+function menuProfileForStore(store) {
+  const text=normalize(`${store.category||''} ${store.name||''} ${store.description||''}`)
+  const key=/hamburg|burger|lanche/.test(text)?'hamburgueria':/pizza/.test(text)?'pizzaria':/sushi|japones|temaki/.test(text)?'japonesa':/acai|sorvet|doceria|confeitaria/.test(text)?'acai':/cafe|padaria|coffee/.test(text)?'cafeteria':'restaurante'
+  const profile=MENU_PROFILES[key]
+  return {key,label:profile.label,source:store.category||'Cadastro da loja',categories:profile.categories.map(([name,items])=>({name,items:items.map(item=>({name:item,description:'Personalize nome, descrição e preço antes de publicar.',price:null}))}))}
+}
+
+function cleanMenuProduct(item) {
+  const name=auth.sanitize(item?.name).slice(0,100),category=auth.sanitize(item?.category||'Geral').slice(0,60),description=auth.sanitize(item?.description||'').slice(0,500)
+  const rawPrice=item?.price===null||item?.price===''?0:Number(item?.price)
+  if(name.length<2||!Number.isFinite(rawPrice)||rawPrice<0||rawPrice>100000)return null
+  return {name,category:category||'Geral',description,price:+rawPrice.toFixed(2),stock:Math.max(0,Math.min(99999,Number(item?.stock)||0))}
+}
+
+async function analyzeMenuImage(store,image) {
+  if(!process.env.OPENAI_API_KEY){const error=new Error('A leitura por IA ainda não foi ativada neste ambiente. Configure OPENAI_API_KEY no Railway.');error.code='AI_NOT_CONFIGURED';throw error}
+  if(!safeUploadedImage(image)){const error=new Error('Envie uma foto JPG, PNG ou WebP com até 850 KB.');error.code='INVALID_IMAGE';throw error}
+  const schema={type:'object',additionalProperties:false,required:['establishmentType','products','warnings'],properties:{establishmentType:{type:'string'},products:{type:'array',maxItems:100,items:{type:'object',additionalProperties:false,required:['name','description','category','price'],properties:{name:{type:'string'},description:{type:'string'},category:{type:'string'},price:{type:['number','null']}}}},warnings:{type:'array',items:{type:'string'}}}}
+  const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.OPENAI_VISION_MODEL||'gpt-4o-mini',store:false,input:[{role:'user',content:[{type:'input_text',text:`Leia este cardápio físico da loja ${store.name}, cadastrada como ${store.category||'restaurante'}. Extraia somente produtos visíveis. Preserve nomes, descrições, categorias e preços em reais. Não invente itens nem preços; use null quando o preço não estiver legível. Responda em português.`},{type:'input_image',image_url:image,detail:'high'}]}],text:{format:{type:'json_schema',name:'menu_extraction',strict:true,schema}}})})
+  const payload=await response.json().catch(()=>({}))
+  if(!response.ok)throw new Error(payload.error?.message||'A IA não conseguiu analisar esta foto agora.')
+  const outputText=payload.output?.flatMap(item=>item.content||[]).find(item=>item.type==='output_text')?.text
+  if(!outputText)throw new Error('A foto foi processada, mas nenhum produto legível foi encontrado.')
+  return JSON.parse(outputText)
+}
+
 const PIX_KEY = '3ddfdfec-13f0-4a48-8350-1f6d37ba892a'
 function pixField(id, value) {
   const text = String(value)
@@ -479,12 +514,25 @@ Object.assign(api, {
     platform.audit(ctx.user,'order.status','order',order.id,body.status);return {order}
   },
   'GET /api/partner-catalog': (params,query,body,ctx) => {
-    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros'); const store=platform.storeForUser(ctx.user); return {storeId:store.id,products:store.products}
+    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros'); const store=platform.storeForUser(ctx.user); return {store:{id:store.id,name:store.name,category:store.category,logo:store.logo,cover:store.cover},profile:menuProfileForStore(store),products:store.products}
   },
   'POST /api/partner-product': (params,query,body,ctx) => {
     if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros'); const store=platform.storeForUser(ctx.user)
     let product=store.products.find(item=>item.id===body.id); if(product) Object.assign(product,{name:body.name,category:body.category,price:Number(body.price),stock:Number(body.stock),active:Boolean(body.active)}); else {product={id:db.uid('product'),name:String(body.name||'Novo produto'),category:String(body.category||'Geral'),price:Number(body.price||0),stock:Number(body.stock||0),active:true,sold:0};store.products.push(product)}
     platform.audit(ctx.user,body.id?'product.update':'product.create','product',product.id);return {product}
+  },
+  'POST /api/partner-menu-analyze': async (params,query,body,ctx) => {
+    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user)
+    try{const analysis=await analyzeMenuImage(store,body.image);const products=analysis.products.map(cleanMenuProduct).filter(Boolean);if(!products.length)return {status:422,body:{error:'Não encontramos produtos legíveis. Tente uma foto mais nítida e bem iluminada.'}};return {analysis:{establishmentType:auth.sanitize(analysis.establishmentType).slice(0,80),warnings:(analysis.warnings||[]).map(item=>auth.sanitize(item).slice(0,180)).slice(0,10),products}}}
+    catch(error){return {status:error.code==='AI_NOT_CONFIGURED'?503:400,body:{error:error.message,code:error.code||'MENU_ANALYSIS_FAILED'}}}
+  },
+  'POST /api/partner-menu-import': (params,query,body,ctx) => {
+    if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user),items=Array.isArray(body.products)?body.products.slice(0,100):[]
+    const cleaned=items.map(cleanMenuProduct).filter(Boolean);if(!cleaned.length)return {status:400,body:{error:'Revise e selecione ao menos um produto para importar.'}}
+    const existing=new Set(store.products.map(item=>normalize(`${item.category}|${item.name}`))),imported=[]
+    for(const item of cleaned){const signature=normalize(`${item.category}|${item.name}`);if(existing.has(signature))continue;const product={id:db.uid('product'),...item,active:false,sold:0,createdAt:platform.now(),updatedAt:platform.now()};store.products.push(product);existing.add(signature);imported.push(product)}
+    if(!imported.length)return {status:409,body:{error:'Todos os produtos selecionados já existem no cardápio.'}}
+    platform.audit(ctx.user,'menu.import','store',store.id,`${imported.length} produtos em rascunho`);return {products:imported,count:imported.length}
   },
   'POST /api/partner-store': (params,query,body,ctx) => {
     const store=platform.storeForUser(ctx.user);if(!store)return {status:404,body:{error:'Estabelecimento não encontrado.'}}
