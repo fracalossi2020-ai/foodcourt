@@ -102,7 +102,7 @@ async function navigate() {
       }
     }
 
-    const mod = await import(`./pages/${route.page}.js?v=20260822-portal-reports-1`)
+    const mod = await import(`./pages/${route.page}.js?v=20260822-location-1`)
     currentPage = mod
     window.scrollTo(0, 0)
 
@@ -192,21 +192,21 @@ function renderLocDrawer() {
   drawer.classList.add('location-popover')
   drawer.innerHTML = `
     <div class="drawer-head location-popover-head">
-      <h3><span>⌖</span> Entregar em</h3>
+      <h3><span class="location-pin" aria-hidden="true">●</span><span><small>LOCAL DE ENTREGA</small>Entregar em</span></h3>
       <button class="icon-btn" data-close aria-label="Fechar">✕</button>
     </div>
     <div class="drawer-body location-popover-body">
       ${store.addresses.map(a => `
         <button class="location-option ${a.id === store.address.id ? 'selected' : ''}" data-addr="${a.id}">
-          <span class="location-option-icon">${a.id==='home'?'⌂':a.id==='work'?'▣':'⌖'}</span>
+          <span class="location-option-icon" aria-hidden="true">${esc(a.emoji||'📍')}</span>
           <span class="sc-main">
-            <span class="sc-title">${esc(a.label)}</span>
+            <span class="sc-title">${esc(a.label)}</span><span class="sc-sub">${esc(a.street||a.city||'Endereço salvo')}</span>
           </span>
-          <span class="location-check">✓</span>
+          <span class="location-check" aria-label="Endereço selecionado">✓</span>
         </button>`).join('')}
       <button class="location-option" data-newaddr>
-        <span class="location-option-icon">●</span>
-        <span class="sc-main"><span class="sc-title">Outro endereço</span></span>
+        <span class="location-option-icon location-add-icon" aria-hidden="true">+</span>
+        <span class="sc-main"><span class="sc-title">Adicionar outro endereço</span><span class="sc-sub">Cadastre um novo local de entrega</span></span>
       </button>
     </div>
     <a class="location-manage" href="#/perfil?secao=enderecos">Gerenciar endereços <span>›</span></a>`
