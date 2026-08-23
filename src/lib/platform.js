@@ -48,11 +48,25 @@ function seed() {
 }
 
 function storeForUser(user) {
-  if (user.role === 'admin') return db.state.stores[0] || null
+  if (user.role === 'admin') return applyStoreSchedule(db.state.stores[0] || null)
   const ownedStore = db.state.stores.find(store => store.ownerId === user.id)
-  if (ownedStore) return ownedStore
+  if (ownedStore) return applyStoreSchedule(ownedStore)
   const membership = db.state.storeMembers.find(member => member.active && member.email.toLowerCase() === user.email.toLowerCase())
-  return membership ? db.state.stores.find(store => store.id === membership.storeId) || null : null
+  return membership ? applyStoreSchedule(db.state.stores.find(store => store.id === membership.storeId) || null) : null
+}
+
+function brazilClock(date=new Date()) {
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]))
+  return {day:{Sun:'sun',Mon:'mon',Tue:'tue',Wed:'wed',Thu:'thu',Fri:'fri',Sat:'sat'}[parts.weekday],minutes:Number(parts.hour)*60+Number(parts.minute)}
+}
+function applyStoreSchedule(store,date=new Date()) {
+  if(!store||!store.autoSchedule)return store
+  const clock=brazilClock(date),days=['sun','mon','tue','wed','thu','fri','sat'],range=store.hours?.[clock.day],toMinutes=value=>{const [hour,minute]=String(value).split(':').map(Number);return hour*60+minute}
+  let open=false
+  if(Array.isArray(range)&&range[0]&&range[1]){const start=toMinutes(range[0]),end=toMinutes(range[1]);open=start===end?true:end>start?clock.minutes>=start&&clock.minutes<end:clock.minutes>=start}
+  if(!open){const previousDay=days[(days.indexOf(clock.day)+6)%7],previous=store.hours?.[previousDay];if(Array.isArray(previous)&&previous[0]&&previous[1]){const start=toMinutes(previous[0]),end=toMinutes(previous[1]);if(end<start&&clock.minutes<end)open=true}}
+  store.open=open
+  return store
 }
 function audit(user, action, entityType, entityId, detail='') { db.state.auditLog.unshift({ id:uid('audit'), userId:user.id, role:user.role, action, entityType, entityId, detail, at:now() }); db.save() }
 function dashboard(storeId) {
@@ -62,7 +76,7 @@ function dashboard(storeId) {
   const delivered=orders.filter(order=>order.status==='delivered')
   return { metrics:{ pending:orders.filter(o=>['pending','accepted','preparing','ready'].includes(o.status)).length, todayOrders:todayOrders.length, revenue:delivered.reduce((sum,o)=>sum+o.total,0), averageTicket:delivered.length?delivered.reduce((sum,o)=>sum+o.total,0)/delivered.length:0, rating:storeForId(storeId)?.rating||0 }, recentOrders:orders.slice(0,8), lowStock:(storeForId(storeId)?.products||[]).filter(p=>p.stock<=10) }
 }
-function storeForId(id){return db.state.stores.find(store=>store.id===id)}
+function storeForId(id){return applyStoreSchedule(db.state.stores.find(store=>store.id===id))}
 function finance(storeId){const orders=db.state.platformOrders.filter(o=>o.storeId===storeId&&o.status==='delivered');const gross=orders.reduce((s,o)=>s+o.total,0);const rate=storeForId(storeId)?.commissionRate||12;return { gross,commission:gross*rate/100,net:gross*(1-rate/100),orders:orders.length,nextPayout:new Date(Date.now()+7*86400000).toISOString() }}
 
-module.exports={ seed, storeForUser, storeForId, dashboard, finance, audit, now }
+module.exports={ seed, storeForUser, storeForId, dashboard, finance, audit, now, applyStoreSchedule }

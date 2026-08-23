@@ -558,11 +558,13 @@ Object.assign(api, {
   },
   'POST /api/partner-store': (params,query,body,ctx) => {
     const store=platform.storeForUser(ctx.user);if(!store)return {status:404,body:{error:'Estabelecimento não encontrado.'}}
-    if(typeof body.open==='boolean')store.open=body.open
+    if(typeof body.open==='boolean'){store.open=body.open;store.autoSchedule=false}
     for(const field of ['name','description','phone','email','category'])if(body[field]!==undefined)store[field]=auth.sanitize(body[field]).slice(0,field==='description'?500:120)
     if(body.preparationMinutes!==undefined)store.preparationMinutes=Math.max(5,Math.min(180,Number(body.preparationMinutes)||30))
     if(body.minimumOrder!==undefined)store.minimumOrder=Math.max(0,Number(body.minimumOrder)||0)
     if(body.hours&&typeof body.hours==='object')store.hours=body.hours
+    if(typeof body.autoSchedule==='boolean')store.autoSchedule=body.autoSchedule
+    platform.applyStoreSchedule(store)
     if(typeof body.orderNotifications==='boolean')store.orderNotifications=body.orderNotifications
     store.updatedAt=platform.now();platform.audit(ctx.user,'store.update','store',store.id);return {store}
   },
