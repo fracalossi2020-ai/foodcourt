@@ -102,7 +102,7 @@ async function navigate() {
       }
     }
 
-    const mod = await import(`./pages/${route.page}.js?v=20260822-auto-hours-1`)
+    const mod = await import(`./pages/${route.page}.js?v=20260823-finance-exports-1`)
     currentPage = mod
     window.scrollTo(0, 0)
 
