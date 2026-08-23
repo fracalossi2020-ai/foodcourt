@@ -386,6 +386,28 @@ function safeUploadedImage(value) {
   return image
 }
 
+function pdfText(value) {
+  return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,' ').replace(/([\\()])/g,'\\$1')
+}
+
+function createSimplePdf(title,subtitle,sections) {
+  const pages=[];let commands=[],y=790
+  const newPage=()=>{if(commands.length)pages.push(commands.join('\n'));commands=[];y=790;commands.push('0.03 0.42 0.20 rg','0 806 595 36 re f','1 1 1 rg','BT /F1 16 Tf 34 817 Td (FOODCOURT | PORTAL DO PARCEIRO) Tj ET','0.08 0.12 0.10 rg',`BT /F1 20 Tf 34 ${y} Td (${pdfText(title)}) Tj ET`);y-=25;commands.push(`BT /F1 9 Tf 34 ${y} Td (${pdfText(subtitle)}) Tj ET`);y-=28}
+  const line=(text,size=10,bold=false)=>{if(y<58)newPage();commands.push(`BT /F${bold?2:1} ${size} Tf 34 ${y} Td (${pdfText(text).slice(0,105)}) Tj ET`);y-=size+7}
+  newPage();for(const section of sections){line(section.title.toUpperCase(),11,true);for(const row of section.rows)line(row,9,false);y-=8}line(`Gerado em ${new Date().toLocaleString('pt-BR')}`,8,false);pages.push(commands.join('\n'))
+  const objects=[null,'<< /Type /Catalog /Pages 2 0 R >>',null,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>'];const pageIds=[],contentIds=[]
+  for(const stream of pages){const pageId=objects.length,contentId=pageId+1;pageIds.push(pageId);contentIds.push(contentId);objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentId} 0 R >>`);objects.push(`<< /Length ${Buffer.byteLength(stream,'latin1')} >>\nstream\n${stream}\nendstream`)}objects[2]=`<< /Type /Pages /Kids [${pageIds.map(id=>`${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`
+  let pdf='%PDF-1.4\n',offsets=[0];for(let id=1;id<objects.length;id++){offsets[id]=Buffer.byteLength(pdf,'latin1');pdf+=`${id} 0 obj\n${objects[id]}\nendobj\n`}const xref=Buffer.byteLength(pdf,'latin1');pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;for(let id=1;id<objects.length;id++)pdf+=`${String(offsets[id]).padStart(10,'0')} 00000 n \n`;pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;return Buffer.from(pdf,'latin1')
+}
+
+function partnerReport(store,type) {
+  const orders=db.state.platformOrders.filter(order=>order.storeId===store.id),promotions=db.state.promotions.filter(item=>item.storeId===store.id),finance=platform.finance(store.id),date=new Date().toLocaleDateString('pt-BR')
+  if(type==='financeiro')return createSimplePdf('Relatorio financeiro',`${store.name} | Posicao em ${date}`,[{title:'Resumo',rows:[`Vendas brutas: R$ ${finance.gross.toFixed(2)}`,`Comissao: R$ ${finance.commission.toFixed(2)}`,`Valor liquido: R$ ${finance.net.toFixed(2)}`,`Pedidos concluidos: ${finance.orders}`,`Proximo repasse: ${new Date(finance.nextPayout).toLocaleDateString('pt-BR')}`]},{title:'Pedidos entregues',rows:orders.filter(o=>o.status==='delivered').map(o=>`${o.id} | ${o.customerName} | R$ ${Number(o.total).toFixed(2)} | ${new Date(o.createdAt).toLocaleDateString('pt-BR')}`).slice(0,250).concat(orders.some(o=>o.status==='delivered')?[]:['Nenhum pedido entregue no periodo.'])}])
+  if(type==='pedidos')return createSimplePdf('Relatorio de pedidos',`${store.name} | ${orders.length} registros`,[{title:'Pedidos',rows:orders.map(o=>`${o.id} | ${o.customerName} | ${o.status} | R$ ${Number(o.total).toFixed(2)} | ${new Date(o.createdAt).toLocaleString('pt-BR')}`).slice(0,300).concat(orders.length?[]:['Nenhum pedido registrado.'])}])
+  if(type==='promocoes')return createSimplePdf('Relatorio de promocoes',`${store.name} | ${promotions.length} campanhas`,[{title:'Campanhas',rows:promotions.map(p=>`${p.name} | ${p.type==='fixed'?'R$ '+Number(p.value).toFixed(2):p.value+'%'} | ${p.active?'Ativa':'Pausada'} | ${p.uses||0} usos`).concat(promotions.length?[]:['Nenhuma promocao cadastrada.'])}])
+  return createSimplePdf('Visao geral da operacao',`${store.name} | ${date}`,[{title:'Indicadores',rows:[`Loja: ${store.open?'Aberta':'Pausada'}`,`Pedidos totais: ${orders.length}`,`Pedidos pendentes: ${orders.filter(o=>o.status==='pending').length}`,`Receita entregue: R$ ${finance.gross.toFixed(2)}`,`Produtos cadastrados: ${store.products.length}`,`Promocoes ativas: ${promotions.filter(p=>p.active).length}`]}])
+}
+
 const MENU_PROFILES = {
   hamburgueria:{label:'Hamburgueria',categories:[['Hambúrgueres',['Hambúrguer da casa','Hambúrguer especial']],['Combos',['Combo individual','Combo para compartilhar']],['Porções',['Porção da casa']],['Bebidas',['Refrigerante','Suco']]]},
   pizzaria:{label:'Pizzaria',categories:[['Pizzas tradicionais',['Pizza tradicional']],['Pizzas especiais',['Pizza especial da casa']],['Bebidas',['Refrigerante']],['Sobremesas',['Sobremesa da casa']]]},
@@ -552,6 +574,7 @@ Object.assign(api, {
   'GET /api/partner-reviews': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user);return {reviews:db.state.reviews.filter(r=>r.storeId===store.id)} },
   'POST /api/partner-review-reply': (params,query,body,ctx) => {const store=platform.storeForUser(ctx.user),review=db.state.reviews.find(r=>r.id===body.reviewId&&r.storeId===store.id),reply=auth.sanitize(body.reply).slice(0,500);if(!review)return {status:404,body:{error:'Avaliação não encontrada.'}};if(reply.length<2)return {status:400,body:{error:'Escreva uma resposta antes de enviar.'}};review.reply=reply;review.replied=true;review.repliedAt=platform.now();platform.audit(ctx.user,'review.reply','review',review.id);return {review}},
   'GET /api/partner-support': (params,query,body,ctx) => { if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros');const store=platform.storeForUser(ctx.user);return {tickets:db.state.supportTickets.filter(t=>t.storeId===store.id)} },
+  'GET /api/partner-report/:id': (params,query,body,ctx) => {const store=platform.storeForUser(ctx.user),type=['geral','pedidos','promocoes','financeiro'].includes(params.id)?params.id:'geral',pdf=partnerReport(store,type),filename=`foodcourt-${type}-${new Date().toISOString().slice(0,10)}.pdf`;ctx.res.writeHead(200,{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="${filename}"`,'Content-Length':pdf.length,'Cache-Control':'no-store'});ctx.res.end(pdf);return {handled:true}},
   'POST /api/partner-support-ticket': (params,query,body,ctx) => {const store=platform.storeForUser(ctx.user);let ticket=db.state.supportTickets.find(t=>t.id===body.id&&t.storeId===store.id);if(ticket){if(body.action==='resolve'){ticket.status='resolved'}else{const text=auth.sanitize(body.message).slice(0,1000);if(!text)return {status:400,body:{error:'Escreva uma mensagem.'}};ticket.messages.push({from:'partner',text,at:platform.now()});ticket.status='open'}ticket.updatedAt=platform.now();platform.audit(ctx.user,'support.update','ticket',ticket.id);return {ticket}}const subject=auth.sanitize(body.subject).slice(0,100),message=auth.sanitize(body.message).slice(0,1000);if(!subject||!message)return {status:400,body:{error:'Informe o assunto e descreva o problema.'}};ticket={id:db.uid('ticket'),customerId:null,storeId:store.id,subject,status:'open',priority:'normal',messages:[{from:'partner',text:message,at:platform.now()}],createdAt:platform.now(),updatedAt:platform.now()};db.state.supportTickets.unshift(ticket);platform.audit(ctx.user,'support.create','ticket',ticket.id);return {ticket}},
   'GET /api/admin-dashboard': (params,query,body,ctx) => { if(ctx.user.role!=='admin') return forbidden('administradores');return {metrics:{users:db.state.users.length,stores:db.state.stores.length,orders:db.state.platformOrders.length,gross:db.state.platformOrders.reduce((sum,o)=>sum+o.total,0),openTickets:db.state.supportTickets.filter(t=>t.status==='open').length},stores:db.state.stores,users:db.state.users.map(auth.publicUser),audit:db.state.auditLog.slice(0,30)} },
   'GET /api/orders': (params,query,body,ctx) => ({orders:db.state.platformOrders.filter(order=>order.customerId===ctx.user.id)}),
@@ -653,6 +676,7 @@ const server = http.createServer(async (req, res) => {
       let body = {}
       if (req.method === 'POST') body = await readBody(req)
       const result = await handler({ id: sub }, url.searchParams, body, ctx)
+      if (result?.handled) return
       if (result && result.status) sendJson(res, result.status, result.body)
       else sendJson(res, 200, result)
     } catch (e) {
