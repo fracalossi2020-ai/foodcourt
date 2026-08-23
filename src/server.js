@@ -185,8 +185,11 @@ function isTrustedOrigin(req) {
   const origin = req.headers.origin
   if (!origin) return true
   try {
-    const expected = process.env.APP_URL ? new URL(process.env.APP_URL).origin : `http://${req.headers.host}`
-    return new URL(origin).origin === expected
+    const protocol=String(req.headers['x-forwarded-proto']||'http').split(',')[0].trim(),host=String(req.headers['x-forwarded-host']||req.headers.host||'').split(',')[0].trim()
+    const allowed=new Set([`${protocol}://${host}`])
+    if(process.env.APP_URL)allowed.add(new URL(process.env.APP_URL).origin)
+    for(const item of String(process.env.ALLOWED_ORIGINS||'').split(',').filter(Boolean))allowed.add(new URL(item.trim()).origin)
+    return allowed.has(new URL(origin).origin)
   } catch {
     return false
   }
