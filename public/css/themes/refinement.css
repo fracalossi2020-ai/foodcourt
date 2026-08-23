@@ -46,6 +46,7 @@ html[data-theme=dark]{--fc-bg:#0d1210;--fc-surface:#151b18;--fc-text:#f3f6f4;--f
 /* Inputs dentro de caixas compostas usam a borda do contêiner. */
 :where(.input-wrap,.fcv2-login form>label)>input:not([type=checkbox]):not([type=radio]){min-height:0;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:0;padding-inline:12px}
 :where(.input-wrap,.fcv2-login form>label)>input:not([type=checkbox]):not([type=radio]):hover,:where(.input-wrap,.fcv2-login form>label)>input:not([type=checkbox]):not([type=radio]):focus{border:0!important;background:transparent!important;box-shadow:none!important}
+:where(.input-wrap,.fcv2-login form>label)>input:-webkit-autofill,:where(.input-wrap,.fcv2-login form>label)>input:-webkit-autofill:hover,:where(.input-wrap,.fcv2-login form>label)>input:-webkit-autofill:focus{-webkit-text-fill-color:currentColor!important;-webkit-background-clip:text!important;background-clip:text!important;box-shadow:0 0 0 1000px transparent inset!important;transition:background-color 9999s ease-out 0s}
 
 /* Responsive audit breakpoints */
 @media(max-width:1280px){body.app-mode .header-inner{padding-inline:24px!important}.desktop-links{gap:18px!important}body.app-mode .main{padding-inline:24px!important}.partner-shell{gap:20px!important}}
