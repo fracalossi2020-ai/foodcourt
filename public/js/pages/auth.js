@@ -379,9 +379,9 @@ function completeAuth(user) {
   window.dispatchEvent(new CustomEvent('fc:auth', { detail: user }))
 }
 
-function goAfterLogin() {
-    const roleTarget = res.user.role === 'merchant' ? '/parceiro' : res.user.role === 'admin' ? '/admin' : '/inicio'
-    const target = redirectAfter && redirectAfter !== '/' ? redirectAfter : roleTarget
+function goAfterLogin(user) {
+  const roleTarget = user?.role === 'merchant' ? '/parceiro' : user?.role === 'admin' ? '/admin' : '/inicio'
+  const target = redirectAfter && redirectAfter !== '/' ? redirectAfter : roleTarget
   location.hash = '#' + target
 }
 
@@ -459,7 +459,7 @@ async function submitLogin(view) {
   try {
     const res = await api.login({ email, password })
     completeAuth(res.user)
-    goAfterLogin()
+    goAfterLogin(res.user)
   } catch (e) {
     setFormError(view, e.message)
   }

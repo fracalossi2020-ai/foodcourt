@@ -1,5 +1,7 @@
 require('./lib/env').loadEnv()
 
+require('./lib/env').loadEnv()
+
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
@@ -92,6 +94,15 @@ function sendJson(res, status, data, headers = {}) {
   res.end(body)
 }
 
+function applySecurityHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; media-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://viacep.com.br; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let raw = ''
@@ -102,7 +113,7 @@ function readBody(req) {
       raw += c
     })
     req.on('end', () => {
-      try { resolve(raw ? JSON.parse(raw) : {}) } catch { resolve({}) }
+      try { resolve(raw ? JSON.parse(raw) : {}) } catch { reject(new Error('invalid-json')) }
     })
   })
 }
@@ -168,7 +179,18 @@ function searchProducts(q) {
   return out.slice(0, 20)
 }
 
-const clientIp = (req) => req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown'
+const clientIp = (req) => (process.env.TRUST_PROXY === '1' && req.headers['x-forwarded-for']?.split(',')[0]?.trim()) || req.socket.remoteAddress || 'unknown'
+
+function isTrustedOrigin(req) {
+  const origin = req.headers.origin
+  if (!origin) return true
+  try {
+    const expected = process.env.APP_URL ? new URL(process.env.APP_URL).origin : `http://${req.headers.host}`
+    return new URL(origin).origin === expected
+  } catch {
+    return false
+  }
+}
 
 /* ============ API DE AUTENTICAÇÃO ============ */
 
@@ -443,7 +465,7 @@ async function analyzeMenuImage(store,image) {
   return JSON.parse(outputText)
 }
 
-const PIX_KEY = '3ddfdfec-13f0-4a48-8350-1f6d37ba892a'
+const PIX_KEY = process.env.PIX_KEY || '3ddfdfec-13f0-4a48-8350-1f6d37ba892a'
 function pixField(id, value) {
   const text = String(value)
   return `${id}${String(Buffer.byteLength(text, 'utf8')).padStart(2, '0')}${text}`
@@ -627,11 +649,25 @@ function serveStatic(req, res, pathname) {
 /* ============ SERVIDOR ============ */
 
 const server = http.createServer(async (req, res) => {
+  applySecurityHeaders(res)
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
   const pathname = decodeURIComponent(url.pathname)
 
   if (pathname.startsWith('/api/')) {
-    await new Promise(r => setTimeout(r, 250 + Math.random() * 350))
+    if (pathname === '/api/health' && req.method === 'GET') {
+      sendJson(res, 200, { status: 'ok', uptime: Math.round(process.uptime()), timestamp: new Date().toISOString() })
+      return
+    }
+
+    const generalLimit = auth.rateLimit(`api:${clientIp(req)}`, 240, 60 * 1000)
+    if (!generalLimit.allowed) {
+      sendJson(res, 429, { error: 'Muitas requisições. Tente novamente em instantes.' }, { 'Retry-After': generalLimit.retryInSec })
+      return
+    }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isTrustedOrigin(req)) {
+      sendJson(res, 403, { error: 'Origem da requisição não autorizada.' })
+      return
+    }
 
     const cookies = parseCookies(req)
     const sess = auth.resolveSession(cookies.fc_session)
@@ -683,6 +719,7 @@ const server = http.createServer(async (req, res) => {
       else sendJson(res, 200, result)
     } catch (e) {
       if (e.message === 'payload-too-large') { sendJson(res, 413, { error: 'Requisição muito grande.' }); return }
+      if (e.message === 'invalid-json') { sendJson(res, 400, { error: 'JSON inválido.' }); return }
       console.error('[api]', e)
       sendJson(res, 500, { error: 'Não conseguimos concluir sua solicitação agora. Tente novamente.' })
     }
@@ -693,7 +730,8 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res, pathname)
 })
 
-server.listen(PORT, () => {
+function start(port = PORT) {
+server.listen(port, () => {
   console.log('')
   console.log('  ███████╗ ██████╗ ██████╗  ██████╗    ██████╗ ██████╗ ███████╗')
   console.log('  ██╔════╝██╔═══██╗██╔══██╗██╔═══██╗   ██╔══██╗██╔══██╗██╔════╝')
@@ -702,7 +740,13 @@ server.listen(PORT, () => {
   console.log('  ██║     ╚██████╔╝██║  ██║╚██████╔╝██╗██████╔╝██║     ███████╗')
   console.log('  ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝╚═════╝ ╚═╝     ╚══════╝')
   console.log('')
-  console.log(`  Food Court rodando em http://localhost:${PORT}`)
+  console.log(`  Food Court rodando em http://localhost:${server.address().port}`)
   console.log(`  Conta demo: joao@foodcourt.com / foodcourt123`)
   console.log('')
 })
+  return server
+}
+
+if (require.main === module) start()
+
+module.exports = { server, start, applySecurityHeaders, isTrustedOrigin }

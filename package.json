@@ -5,7 +5,11 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node src/server.js"
+    "dev": "node --watch src/server.js",
+    "test": "node --test --test-concurrency=1",
+    "lint": "eslint src public/js scripts test eslint.config.js",
+    "format:check": "prettier --check package.json README.md docs .github test",
+    "check": "npm run lint && npm test && npm run format:check"
   },
   "engines": {
     "node": ">=18"
@@ -14,5 +18,11 @@
   "private": true,
   "dependencies": {
     "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.0",
+    "globals": "^17.11.0",
+    "prettier": "^3.9.6"
   }
 }

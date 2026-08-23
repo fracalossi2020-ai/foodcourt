@@ -14,6 +14,28 @@ npm start
 
 A aplicação ficará disponível em `http://localhost:3000`.
 
+## Qualidade
+
+```bash
+npm test
+npm run lint
+npm run check
+```
+
+`npm run check` executa lint, testes de integração e verificação de formatação. O
+mesmo fluxo roda automaticamente no GitHub Actions a cada push e pull request.
+
+## Docker
+
+```bash
+docker build -t foodcourt .
+docker run --rm -p 3000:3000 -v foodcourt-data:/data \
+  -e SESSION_SECRET="uma-chave-longa-e-aleatoria" foodcourt
+```
+
+O contêiner roda sem privilégios, persiste os dados em `/data` e possui health
+check em `GET /api/health`.
+
 ## Estrutura
 
 ```text
@@ -110,3 +132,11 @@ ações de auditoria. As APIs verificam o papel da conta no servidor.
 > Esta fase usa persistência local e pagamentos simulados. A modelagem separa
 > cliente, parceiro e administrador para permitir a futura migração para
 > PostgreSQL e integrações reais sem transformar o produto em uma praça física.
+
+## Estado de produção
+
+A aplicação já possui cookies protegidos, hash de senha com `scrypt`, limitação
+de requisições, verificação de origem, headers de segurança e limite de payload.
+Antes de processar pedidos reais ainda é necessário configurar SMTP, substituir
+o PIX simulado por um provedor com webhooks e migrar o arquivo JSON para
+PostgreSQL. Credenciais e segredos nunca devem ser enviados ao repositório.

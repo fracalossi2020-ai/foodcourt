@@ -2,6 +2,7 @@
 
 ```text
 FOODCOURT/
+├── .github/workflows/           # Integração contínua
 ├── .vscode/                     # Organização do Explorer e busca do VS Code
 ├── data/
 │   ├── runtime/                 # Banco JSON utilizado em desenvolvimento
@@ -27,6 +28,8 @@ FOODCOURT/
 │   ├── data/                    # Catálogo e dados iniciais
 │   ├── lib/                     # Autenticação, banco, e-mail e plataforma
 │   └── server.js                # Servidor HTTP e rotas da API
+├── test/                        # Testes de integração com Node Test Runner
+├── Dockerfile                   # Imagem de produção sem privilégios
 ├── .env                         # Configuração local (não versionada)
 ├── .env.example                 # Modelo das variáveis de ambiente
 ├── package.json                 # Scripts e dependências
