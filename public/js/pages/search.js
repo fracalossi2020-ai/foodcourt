@@ -30,7 +30,7 @@ function filterIcon(name) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`
 }
 
-export async function render(view, boot, params = {}, query = new URLSearchParams()) {
+export async function render(view, boot, _params = {}, query = new URLSearchParams()) {
   const initialQ = query.get?.('q') || query.q || ''
   const allData = await api.search('').catch(() => ({ restaurants: [] }))
   window.__restByTag = (tag) => allData.restaurants.find(r => (r.tags || []).includes(tag))

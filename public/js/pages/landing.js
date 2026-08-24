@@ -3,7 +3,7 @@ import { toast } from '../core/ui.js'
 
 const FAQ_ITEMS=[['O que é o FoodCourt?','Uma plataforma para descobrir estabelecimentos, escolher produtos e fazer seus pedidos.'],['Como faço para criar uma conta?','Clique em “Criar conta”, informe seus dados e siga as etapas.'],['Como encontro estabelecimentos perto de mim?','Após entrar, informe sua localização para visualizar opções na sua região.'],['Posso acompanhar meu pedido?','Sim. A área interna mostra o andamento do pedido até a entrega.'],['Como funcionam os pagamentos?','As formas disponíveis são apresentadas durante a finalização do pedido.'],['Tenho um estabelecimento. Como posso vender no FoodCourt?','Acesse o cadastro e selecione a opção destinada a estabelecimentos.'],['Existe aplicativo para celular?','Os aplicativos serão divulgados quando estiverem disponíveis.'],['Como entro em contato com o suporte?','Utilize a Central de Ajuda disponível no seu perfil.']]
 
-export async function render(view,boot,params={},query=new URLSearchParams()) {
+export async function render(view,boot,_params={},query=new URLSearchParams()) {
   const partnerLogin=query.get('portal')==='parceiro'
   view.innerHTML = `<div class="fc-landing-v2">
     <div class="landing-scroll-progress" aria-hidden="true"><i></i></div>

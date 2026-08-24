@@ -2,7 +2,7 @@ import { api } from '../core/api.js'
 import { store } from '../core/store.js'
 import { restaurantCard, productCard, emptyState, bindGotos } from '../core/ui.js'
 
-export async function render(view, boot) {
+export async function render(view, _boot) {
   view.innerHTML = `<div class="page"><div class="skel" style="height:300px;border-radius:24px"></div></div>`
   const all = await api.search('').catch(() => ({ restaurants: [] }))
   const products = await Promise.all(

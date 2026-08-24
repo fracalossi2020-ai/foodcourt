@@ -10,7 +10,7 @@ const sections = {
   configuracoes: { icon: '⚙️', title: 'Configurações', subtitle: 'Privacidade, aparência e preferências' }
 }
 
-export async function render(view, boot, params = {}, query = new URLSearchParams()) {
+export async function render(view, boot, _params = {}, query = new URLSearchParams()) {
   const sectionId = query.get('secao')
   if (sections[sectionId]) {
     renderSection(view, boot, sectionId)

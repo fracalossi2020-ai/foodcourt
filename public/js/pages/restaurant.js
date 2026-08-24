@@ -1,6 +1,6 @@
 import { api } from '../core/api.js'
 import { store } from '../core/store.js'
-import { el, esc, money, toast, bindGotos, skeletonCards, errorState, ratingPill } from '../core/ui.js'
+import { esc, money, toast, skeletonCards, errorState, ratingPill } from '../core/ui.js'
 import { openProduct } from '../core/product.js'
 import { setFeeContext, renderCartUI } from '../core/cart.js'
 

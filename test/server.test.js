@@ -16,6 +16,21 @@ const { server, start } = require("../src/server");
 
 let baseUrl;
 
+async function loginDemo() {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "joao@foodcourt.com",
+      password: "foodcourt123",
+    }),
+  });
+  return {
+    response,
+    cookie: response.headers.get("set-cookie")?.split(";")[0],
+  };
+}
+
 test.before(async () => {
   start(0);
   await new Promise((resolve) => server.once("listening", resolve));
@@ -44,16 +59,8 @@ test("private API rejects anonymous requests", async () => {
 });
 
 test("demo account can log in and access bootstrap", async () => {
-  const login = await fetch(`${baseUrl}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: "joao@foodcourt.com",
-      password: "foodcourt123",
-    }),
-  });
+  const { response: login, cookie } = await loginDemo();
   assert.equal(login.status, 200);
-  const cookie = login.headers.get("set-cookie").split(";")[0];
   const payload = await login.json();
   assert.equal(payload.user.role, "merchant");
 
@@ -81,4 +88,46 @@ test("invalid JSON and untrusted origins are rejected", async () => {
     body: "{}",
   });
   assert.equal(origin.status, 403);
+});
+
+test("login rejects invalid credentials without creating a session", async () => {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "joao@foodcourt.com",
+      password: "senha-incorreta",
+    }),
+  });
+
+  assert.equal(response.status, 401);
+  assert.equal(response.headers.get("set-cookie"), null);
+  assert.match((await response.json()).error, /incorretos/i);
+});
+
+test("logout revokes the active session", async () => {
+  const { response: login, cookie } = await loginDemo();
+  assert.equal(login.status, 200);
+  assert.ok(cookie);
+
+  const logout = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(logout.status, 200);
+
+  const afterLogout = await fetch(`${baseUrl}/api/auth/me`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(afterLogout.status, 401);
+});
+
+test("authenticated users cannot access another order", async () => {
+  const { cookie } = await loginDemo();
+  const response = await fetch(`${baseUrl}/api/order/does-not-exist`, {
+    headers: { Cookie: cookie },
+  });
+
+  assert.equal(response.status, 404);
+  assert.match((await response.json()).error, /não encontrado/i);
 });

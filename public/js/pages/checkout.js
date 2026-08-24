@@ -256,7 +256,6 @@ export async function render(view, boot) {
 
   async function placeOrder() {
     const t = store.cartTotals(fee, freeMin)
-    const grand = +(t.total + prioExtra()).toFixed(2)
     const addr = savedAddresses().find(a => a.id === state.addressId)
     const pm = boot.paymentMethods.find(p => p.id === state.payment)
     const placeButton = view.querySelector('[data-place]')

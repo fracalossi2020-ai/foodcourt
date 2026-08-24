@@ -307,7 +307,7 @@ const authApi = {
     return generic
   },
 
-  'POST /api/auth/reset-password': (params, query, body, ctx) => {
+  'POST /api/auth/reset-password': (params, query, body, _ctx) => {
     if (!body.token) return { status: 400, body: { error: 'Link de redefinição inválido.' } }
     const pw = auth.validPassword(body.password)
     if (!pw.ok) return { status: 400, body: { error: pw.error, fields: { password: pw.error } } }
@@ -525,7 +525,7 @@ Object.assign(api, {
     const cep=String(params.id||'').replace(/\D/g,'')
     if(!/^\d{8}$/.test(cep))return {status:400,body:{error:'Informe um CEP com 8 dígitos.'}}
     if(cepCache.has(cep))return {address:cepCache.get(cep)}
-    try{const response=await fetch(`https://viacep.com.br/ws/${cep}/json/`,{signal:AbortSignal.timeout(5000),headers:{Accept:'application/json'}});if(!response.ok)throw new Error('Serviço de CEP indisponível.');const payload=await response.json();if(payload.erro)return {status:404,body:{error:'CEP não encontrado.'}};const address={cep:payload.cep,street:payload.logradouro||'',neighborhood:payload.bairro||'',city:payload.localidade||'',state:payload.uf||'',ibge:payload.ibge||''};cepCache.set(cep,address);return {address}}catch(error){return {status:503,body:{error:'Não foi possível consultar o CEP agora. Preencha o endereço manualmente.'}}}
+    try{const response=await fetch(`https://viacep.com.br/ws/${cep}/json/`,{signal:AbortSignal.timeout(5000),headers:{Accept:'application/json'}});if(!response.ok)throw new Error('Serviço de CEP indisponível.');const payload=await response.json();if(payload.erro)return {status:404,body:{error:'CEP não encontrado.'}};const address={cep:payload.cep,street:payload.logradouro||'',neighborhood:payload.bairro||'',city:payload.localidade||'',state:payload.uf||'',ibge:payload.ibge||''};cepCache.set(cep,address);return {address}}catch{return {status:503,body:{error:'Não foi possível consultar o CEP agora. Preencha o endereço manualmente.'}}}
   },
 
   'POST /api/auth/partner-register': (params, query, body, ctx) => {

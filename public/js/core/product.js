@@ -1,5 +1,5 @@
 import { store } from './store.js'
-import { el, esc, money, toast } from './ui.js'
+import { esc, money, toast } from './ui.js'
 import { show, hide, renderCartUI, flyPlus } from './cart.js'
 
 let drawer
@@ -116,7 +116,7 @@ export function openProduct(restaurant, product) {
     const { extra, names } = currentExtra()
     const unitPrice = +(basePrice(product) + extra).toFixed(2)
     const uid = [product.id, ...names].join('|') + '|' + note()
-    const res = store.cartAdd(restaurant.id, restaurant.name, {
+    store.cartAdd(restaurant.id, restaurant.name, {
       uid, id: product.id, name: product.name, emoji: product.emoji,
       optionNames: names, note: note(), qty, unitPrice
     })

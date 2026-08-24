@@ -53,7 +53,7 @@ export function abbr(n) {
   return String(n)
 }
 
-export function restaurantCard(r, { horizontal = true } = {}) {
+export function restaurantCard(r) {
   const free = r.deliveryFee === 0
   const disc = r.promo ? `<span class="badge badge-brand">${icon('tag')} ${esc(r.promo)}</span>` : ''
   const badge = r.badge ? `<span class="badge badge-green">${esc(r.badge)}</span>` : ''

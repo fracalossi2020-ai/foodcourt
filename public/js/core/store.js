@@ -115,7 +115,7 @@ export const store = {
     return { subtotal, fee: Math.max(0, fee), discount, total, coupon }
   },
 
-  appliedCoupon(subtotal, fee) {
+  appliedCoupon(subtotal, _fee) {
     const codes = persisted.coupons
     if (!codes.length) return null
     const code = codes[codes.length - 1]

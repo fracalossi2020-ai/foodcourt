@@ -3,7 +3,7 @@ import { esc, money, emptyState, bindGotos, toast } from '../core/ui.js'
 import { renderCartUI } from '../core/cart.js'
 import { api } from '../core/api.js'
 
-export async function render(view, boot) {
+export async function render(view, _boot) {
   const TABS = { active: '📦 Em andamento', past: '🕘 Anteriores' }
   let tab = 'active'
   const serverPayload = await api.orders().catch(() => ({ orders: [] }))

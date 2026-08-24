@@ -1,6 +1,6 @@
 import { api } from './core/api.js'
 import { store, hydrateBootstrap, setAuthUser } from './core/store.js'
-import { el, esc, toast } from './core/ui.js'
+import { esc, toast } from './core/ui.js'
 import { openCart, closeAllDrawers, hide, renderCartUI } from './core/cart.js'
 
 window.FC = { store }
