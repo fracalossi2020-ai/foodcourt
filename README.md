@@ -84,6 +84,18 @@ foodcourt/
 - E-mail: `joao@foodcourt.com`
 - Senha: `foodcourt123`
 
+## Login com Google e Apple
+
+Copie as variáveis OAuth de `.env.example` para `.env` e preencha as credenciais
+criadas nos consoles do Google e da Apple. Use `APP_URL` com a URL pública HTTPS
+da aplicação e cadastre exatamente estas URLs de retorno:
+
+- `APP_URL/api/auth/oauth/google/callback`
+- `APP_URL/api/auth/oauth/apple/callback`
+
+No Apple Developer, o `APPLE_CLIENT_ID` é o Services ID. A chave privada `.p8`
+deve ser colocada em `APPLE_PRIVATE_KEY` usando `\n` no lugar das quebras de linha.
+
 ## Publicação no Railway
 
 Os usuários cadastrados no localhost ficam apenas no banco local e não são enviados ao GitHub. Depois do primeiro deploy, cadastre novamente as contas no endereço público.

@@ -58,6 +58,16 @@ test("private API rejects anonymous requests", async () => {
   assert.equal(response.status, 401);
 });
 
+test("social login routes fail safely when provider credentials are absent", async () => {
+  const google = await fetch(`${baseUrl}/api/auth/oauth/google`, { redirect: "manual" });
+  assert.equal(google.status, 302);
+  assert.match(google.headers.get("location"), /#\/login\?oauth_error=/);
+
+  const apple = await fetch(`${baseUrl}/api/auth/oauth/apple`, { redirect: "manual" });
+  assert.equal(apple.status, 302);
+  assert.match(apple.headers.get("location"), /#\/login\?oauth_error=/);
+});
+
 test("demo account can log in and access bootstrap", async () => {
   const { response: login, cookie } = await loginDemo();
   assert.equal(login.status, 200);

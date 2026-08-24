@@ -115,6 +115,8 @@ function loginForm() {
         <span class="btn-arrow">${ICONS.arrowRight}</span>
       </button>
       <div class="auth-divider"><span>ou</span></div>
+      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="google">${ICONS.google}<span>Continuar com Google</span></button>
+      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="apple">${ICONS.apple}<span>Continuar com Apple</span></button>
       <a href="#/cadastro" class="btn btn-ghost btn-lg btn-block auth-alt-btn">
         <span class="btn-icon">${ICONS.user}</span>
         <span>Cadastrar-se <em>grátis</em></span>
@@ -141,8 +143,8 @@ function registerForm() {
       ${formError()}
       <button type="submit" class="btn btn-primary btn-lg btn-block auth-submit" data-loading="Criando conta...">Criar conta grátis</button>
       <div class="auth-divider"><span>ou</span></div>
-      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="Google">${ICONS.google}<span>Continuar com Google</span></button>
-      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="Apple">${ICONS.apple}<span>Continuar com Apple</span></button>
+      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="google">${ICONS.google}<span>Continuar com Google</span></button>
+      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="apple">${ICONS.apple}<span>Continuar com Apple</span></button>
       <p class="signup-login">Já tem uma conta? <a href="#/login">Entrar</a></p>
     </form>
   </div>`
@@ -414,8 +416,12 @@ function bind(view, query) {
   }))
 
   view.querySelectorAll('[data-social]').forEach(button => button.addEventListener('click', () => {
-    toast(`Cadastro com ${button.dataset.social} estará disponível em breve.`, 'info')
+    const redirect = encodeURIComponent(redirectAfter || '/inicio')
+    window.location.assign(`/api/auth/oauth/${button.dataset.social}?redirect=${redirect}`)
   }))
+
+  const oauthError = query.get('oauth_error')
+  if (oauthError) setFormError(view, oauthError)
 
   view.querySelectorAll('input[id^="f-password"]').forEach(input => input.addEventListener('input', () => {
     updateStrength(view, input.id.replace('f-', ''))

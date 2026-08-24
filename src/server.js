@@ -8,6 +8,7 @@ const path = require('path')
 const data = require('./data/catalog')
 const db = require('./lib/db')
 const auth = require('./lib/auth')
+const oauth = require('./lib/oauth')
 const mailer = require('./lib/mailer')
 const platform = require('./lib/platform')
 const QRCode = require('qrcode')
@@ -142,6 +143,37 @@ function clearSessionCookie(res) {
   res.setHeader('Set-Cookie', 'fc_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0')
 }
 
+function redirect(res, location) {
+  res.writeHead(302, { Location: location, 'Cache-Control': 'no-store' })
+  res.end()
+}
+
+function oauthFailure(res, message) {
+  redirect(res, `/#/login?oauth_error=${encodeURIComponent(message)}`)
+  return { handled: true }
+}
+
+function socialUser(profile, provider) {
+  let user = db.findByEmail(profile.email)
+  const now = new Date().toISOString()
+  if (!user) {
+    const fullName = String(profile.fullName || profile.email.split('@')[0]).trim()
+    user = db.addUser({
+      id: db.uid('user'), fullName, email: profile.email, phone: '', passwordHash: '', status: 'active',
+      avatarEmoji: '👤', memberSince: String(new Date().getFullYear()), points: 100, level: 'Bronze',
+      cashback: 2, role: 'customer', createdAt: now, updatedAt: now, lastLogin: now,
+      oauthProviders: { [provider]: profile.subject }
+    })
+  } else {
+    if (user.status !== 'active') return null
+    user.oauthProviders = { ...(user.oauthProviders || {}), [provider]: profile.subject }
+    user.lastLogin = now
+    user.updatedAt = now
+    db.saveUser()
+  }
+  return user
+}
+
 /* ============ HELPERS DE CONTEÚDO ============ */
 
 function normalize(s) {
@@ -198,6 +230,52 @@ function isTrustedOrigin(req) {
 /* ============ API DE AUTENTICAÇÃO ============ */
 
 const authApi = {
+  'GET /api/auth/oauth/google': (_params, query, _body, ctx) => {
+    if (!oauth.isConfigured('google')) return oauthFailure(ctx.res, 'Login com Google ainda não foi configurado neste ambiente.')
+    redirect(ctx.res, oauth.authorizationUrl('google', ctx.req, query.get('redirect')))
+    return { handled: true }
+  },
+
+  'GET /api/auth/oauth/apple': (_params, query, _body, ctx) => {
+    if (!oauth.isConfigured('apple')) return oauthFailure(ctx.res, 'Login com Apple ainda não foi configurado neste ambiente.')
+    redirect(ctx.res, oauth.authorizationUrl('apple', ctx.req, query.get('redirect')))
+    return { handled: true }
+  },
+
+  'GET /api/auth/oauth/google/callback': async (_params, query, _body, ctx) => {
+    if (query.get('error')) return oauthFailure(ctx.res, 'O acesso com Google foi cancelado.')
+    try {
+      const state = oauth.readState(query.get('state'), 'google')
+      const profile = await oauth.googleProfile(query.get('code'), ctx.req)
+      const user = socialUser(profile, 'google')
+      if (!user) return oauthFailure(ctx.res, 'Sua conta está inativa. Fale com o suporte.')
+      const token = auth.createSession(user.id)
+      sessionCookie(ctx.req, ctx.res, token, auth.SESSION_TTL / 1000)
+      redirect(ctx.res, `/#${oauth.safeRedirect(state.redirect)}`)
+      return { handled: true }
+    } catch (error) {
+      console.error('[oauth:google]', error.message)
+      return oauthFailure(ctx.res, 'Não foi possível entrar com Google. Tente novamente.')
+    }
+  },
+
+  'POST /api/auth/oauth/apple/callback': async (_params, _query, body, ctx) => {
+    if (body.error) return oauthFailure(ctx.res, 'O acesso com Apple foi cancelado.')
+    try {
+      const state = oauth.readState(body.state, 'apple')
+      const profile = await oauth.appleProfile(body.code, ctx.req, body.user)
+      const user = socialUser(profile, 'apple')
+      if (!user) return oauthFailure(ctx.res, 'Sua conta está inativa. Fale com o suporte.')
+      const token = auth.createSession(user.id)
+      sessionCookie(ctx.req, ctx.res, token, auth.SESSION_TTL / 1000)
+      redirect(ctx.res, `/#${oauth.safeRedirect(state.redirect)}`)
+      return { handled: true }
+    } catch (error) {
+      console.error('[oauth:apple]', error.message)
+      return oauthFailure(ctx.res, 'Não foi possível entrar com Apple. Tente novamente.')
+    }
+  },
+
   'POST /api/auth/register': (params, query, body, ctx) => {
     const fields = {}
     const name = auth.validName(body.fullName)
@@ -673,7 +751,8 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 429, { error: 'Muitas requisições. Tente novamente em instantes.' }, { 'Retry-After': generalLimit.retryInSec })
       return
     }
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isTrustedOrigin(req)) {
+    const isAppleCallback = pathname === '/api/auth/oauth/apple/callback'
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isAppleCallback && !isTrustedOrigin(req)) {
       sendJson(res, 403, { error: 'Origem da requisição não autorizada.' })
       return
     }
@@ -721,7 +800,18 @@ const server = http.createServer(async (req, res) => {
 
     try {
       let body = {}
-      if (req.method === 'POST') body = await readBody(req)
+      if (req.method === 'POST') {
+        if (isAppleCallback) {
+          const chunks = []
+          let size = 0
+          for await (const chunk of req) {
+            size += chunk.length
+            if (size > 64 * 1024) throw new Error('payload-too-large')
+            chunks.push(chunk)
+          }
+          body = Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString('utf8')))
+        } else body = await readBody(req)
+      }
       const result = await handler({ id: sub }, url.searchParams, body, ctx)
       if (result?.handled) return
       if (result && result.status) sendJson(res, result.status, result.body)
