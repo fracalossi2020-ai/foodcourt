@@ -72,13 +72,26 @@ test("demo account can log in and access bootstrap", async () => {
   const { response: login, cookie } = await loginDemo();
   assert.equal(login.status, 200);
   const payload = await login.json();
-  assert.equal(payload.user.role, "merchant");
+  assert.equal(payload.user.role, "customer");
 
   const bootstrap = await fetch(`${baseUrl}/api/bootstrap`, {
     headers: { Cookie: cookie },
   });
   assert.equal(bootstrap.status, 200);
   assert.ok(Array.isArray((await bootstrap.json()).categories));
+});
+
+test("partner demo account has merchant role", async () => {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "dono@foodcourt.com",
+      password: "foodcourt123",
+    }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).user.role, "merchant");
 });
 
 test("invalid JSON and untrusted origins are rejected", async () => {

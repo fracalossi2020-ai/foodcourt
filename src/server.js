@@ -1,7 +1,5 @@
 require('./lib/env').loadEnv()
 
-require('./lib/env').loadEnv()
-
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
@@ -51,7 +49,8 @@ const merchantDemo = ensureDemoUser('dono@foodcourt.com','Carlos Mendes','(11) 9
 ensureDemoUser('admin@foodcourt.com','Admin FoodCourt','(11) 98888-2000','foodcourt123','admin')
 platform.seed()
 if (db.state.stores[0] && !db.state.stores[0].ownerId) { db.state.stores[0].ownerId = merchantDemo.id; db.saveNow() }
-const joaoDemo = db.findByEmail('joao@foodcourt.com')
+// A conta demo do cliente deve permanecer cliente; o parceiro demo é separado.
+const joaoDemo = null
 if (joaoDemo) {
   joaoDemo.role = 'merchant'
   joaoDemo.level = 'Parceiro'
@@ -101,7 +100,7 @@ function applySecurityHeaders(res) {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; media-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://viacep.com.br; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; media-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self' https://viacep.com.br; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
 }
 
 function readBody(req) {
@@ -634,7 +633,13 @@ Object.assign(api, {
   },
   'GET /api/partner-orders': (params,query,body,ctx) => {
     if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros')
-    const store=platform.storeForUser(ctx.user); return { orders:db.state.platformOrders.filter(order=>order.storeId===store.id) }
+    const store=platform.storeForUser(ctx.user)
+    const status=String(query.get('status')||'').trim()
+    const page=Math.max(1,Number.parseInt(query.get('page')||'1',10)||1)
+    const limit=Math.min(100,Math.max(1,Number.parseInt(query.get('limit')||'50',10)||50))
+    const all=db.state.platformOrders.filter(order=>order.storeId===store.id&&(!status||order.status===status))
+    const start=(page-1)*limit
+    return { orders:all.slice(start,start+limit), pagination:{page,limit,total:all.length,pages:Math.max(1,Math.ceil(all.length/limit))} }
   },
   'POST /api/partner-order-status': (params,query,body,ctx) => {
     if (!['merchant','admin'].includes(ctx.user.role)) return forbidden('parceiros')

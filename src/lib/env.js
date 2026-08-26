@@ -17,6 +17,9 @@ function loadEnv() {
     }
   }
   if (!process.env.SESSION_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SESSION_SECRET Ã© obrigatÃ³rio em produÃ§Ã£o.')
+    }
     const secret = crypto.randomBytes(32).toString('hex')
     try {
       fs.appendFileSync(ENV_PATH, `\n# SESSION_SECRET gerado automaticamente em ${new Date().toISOString()}\nSESSION_SECRET=${secret}\n`, 'utf8')
