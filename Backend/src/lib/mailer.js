@@ -15,6 +15,7 @@ function transport() {
       host: process.env.SMTP_HOST,
       port,
       secure: port === 465,
+      family: 4,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
