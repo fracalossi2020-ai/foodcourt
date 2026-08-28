@@ -1,9 +1,11 @@
 node_modules/
+Backend/node_modules/
 .env
-data/runtime/*.json
-data/runtime/*.tmp
+Backend/.env
+banco de dados/runtime/*.json
+banco de dados/runtime/*.tmp
 server-output.log
 server-error.log
 logs/
-public/*-*-*-*-*.png
+frontend/*-*-*-*-*.png
 .tmp-*

@@ -4,12 +4,12 @@
 FOODCOURT/
 ├── .github/workflows/           # Integração contínua
 ├── .vscode/                     # Organização do Explorer e busca do VS Code
-├── data/
+├── banco de dados/
 │   ├── runtime/                 # Banco JSON utilizado em desenvolvimento
 │   └── legacy/                  # Cópias antigas preservadas
 ├── docs/                        # Documentação técnica
 ├── logs/                        # Saídas locais do servidor
-├── public/                      # Frontend servido ao navegador
+├── frontend/                    # Frontend servido ao navegador
 │   ├── assets/
 │   │   ├── audio/               # Arquivos de áudio
 │   │   └── images/
@@ -24,15 +24,14 @@ FOODCOURT/
 │   │   ├── data/                # Dados auxiliares do frontend
 │   │   └── pages/               # Um módulo por página/rota
 │   └── index.html               # Documento principal
-├── src/                         # Backend Node.js
-│   ├── data/                    # Catálogo e dados iniciais
-│   ├── lib/                     # Autenticação, banco, e-mail e plataforma
-│   └── server.js                # Servidor HTTP e rotas da API
-├── test/                        # Testes de integração com Node Test Runner
+├── Backend/                     # Backend Node.js
+│   ├── src/                     # Servidor, bibliotecas e catálogo
+│   ├── test/                    # Testes de integração
+│   ├── scripts/                 # Scripts de apoio
+│   ├── .env.example             # Modelo das variáveis de ambiente
+│   └── package.json             # Scripts e dependências
 ├── Dockerfile                   # Imagem de produção sem privilégios
 ├── .env                         # Configuração local (não versionada)
-├── .env.example                 # Modelo das variáveis de ambiente
-├── package.json                 # Scripts e dependências
 └── README.md                    # Visão geral e instruções
 ```
 

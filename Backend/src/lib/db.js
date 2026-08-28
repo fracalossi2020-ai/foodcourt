@@ -5,7 +5,7 @@ const crypto = require('crypto')
 
 const DB_PATH = process.env.FC_DB_PATH || (process.env.RAILWAY_VOLUME_MOUNT_PATH
   ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'foodcourt-db.json')
-  : path.join(__dirname, '..', '..', 'data', 'runtime', 'foodcourt-db.json'))
+  : path.join(__dirname, '..', '..', '..', 'banco de dados', 'runtime', 'foodcourt-db.json'))
 
 function ensureDbDirectory() {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })

@@ -77,6 +77,7 @@ export const api = {
   cep: (cep) => get(`/api/cep/${String(cep).replace(/\D/g, '')}`),
 
   me: () => get('/api/auth/me'),
+  turnstileConfig: () => get('/api/auth/turnstile-config', { ttl: 300000 }),
   login: (credentials) => post('/api/auth/login', credentials),
   register: (data) => post('/api/auth/register', data),
   registerPartner: (data) => post('/api/auth/partner-register', data),

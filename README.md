@@ -12,6 +12,8 @@ Requer Node.js 18 ou superior.
 npm start
 ```
 
+Execute os comandos Node.js a partir da pasta `Backend` (`cd Backend`).
+
 A aplicação ficará disponível em `http://localhost:3000`.
 
 ## Qualidade
@@ -40,33 +42,20 @@ check em `GET /api/health`.
 
 ```text
 foodcourt/
-├── src/                         # Backend Node.js
-│   ├── server.js                # Servidor HTTP e rotas da API
-│   ├── data/
-│   │   ├── catalog.js           # Catálogo, restaurantes e produtos
-│   │   └── foodcourt-db.json    # Banco local gerado em runtime
-│   └── lib/
-│       ├── auth.js              # Autenticação e segurança
-│       ├── db.js                # Persistência local
-│       ├── env.js               # Variáveis de ambiente
-│       └── mailer.js            # Serviço de e-mail
-├── public/                      # Frontend servido ao navegador
-│   ├── index.html               # Documento principal
-│   ├── assets/images/           # Imagens da aplicação
+├── Backend/                     # API e regras de negócio em Node.js
+│   ├── src/                     # Servidor, bibliotecas e catálogo
+│   ├── test/                    # Testes de integração
+│   ├── scripts/                 # Scripts de apoio
+│   ├── .env.example             # Exemplo de configuração
+│   └── package.json             # Scripts e dependências
+├── frontend/                    # Interface servida ao navegador
+│   ├── index.html
+│   ├── assets/
 │   ├── css/
-│   │   ├── base.css             # Design system e área interna
-│   │   ├── auth.css             # Telas de autenticação
-│   │   └── landing/             # Estilos específicos da landing
-│   │       ├── hero.css
-│   │       ├── sections.css
-│   │       └── icons.css
 │   └── js/
-│       ├── app.js               # Inicialização e roteamento
-│       ├── core/                # API, estado e UI compartilhada
-│       └── pages/               # Módulos de cada página/rota
-├── logs/                        # Logs locais do servidor
-├── .env.example                 # Exemplo de configuração
-└── package.json                 # Scripts e metadados
+└── banco de dados/              # Persistência JSON
+    ├── runtime/                 # Banco local gerado em execução
+    └── legacy/                  # Cópias antigas preservadas
 ```
 
 ## Rotas principais
@@ -86,7 +75,7 @@ foodcourt/
 
 ## Login com Google e Apple
 
-Copie as variáveis OAuth de `.env.example` para `.env` e preencha as credenciais
+Copie as variáveis OAuth de `Backend/.env.example` para `Backend/.env` e preencha as credenciais
 criadas nos consoles do Google e da Apple. Use `APP_URL` com a URL pública HTTPS
 da aplicação e cadastre exatamente estas URLs de retorno:
 
@@ -95,6 +84,19 @@ da aplicação e cadastre exatamente estas URLs de retorno:
 
 No Apple Developer, o `APPLE_CLIENT_ID` é o Services ID. A chave privada `.p8`
 deve ser colocada em `APPLE_PRIVATE_KEY` usando `\n` no lugar das quebras de linha.
+
+## Cloudflare Turnstile no login
+
+Crie um widget Turnstile no painel da Cloudflare e configure no `Backend/.env`:
+
+```env
+TURNSTILE_SITE_KEY=sua-chave-publica
+TURNSTILE_SECRET_KEY=sua-chave-secreta
+TURNSTILE_HOSTNAME=seu-dominio.com.br
+```
+
+O widget é exibido e validado no servidor somente quando as duas chaves estão
+preenchidas. Em desenvolvimento, deixe-as vazias para manter o Turnstile desativado.
 
 ## Publicação no Railway
 
@@ -106,7 +108,7 @@ Para impedir que contas, lojas e sessões sejam perdidas a cada deploy:
 2. Defina o mount path como `/data`.
 3. Faça um novo deploy. O servidor detecta `RAILWAY_VOLUME_MOUNT_PATH` e grava o banco em `/data/foodcourt-db.json`.
 
-Sem um Volume, o sistema de arquivos do deploy é temporário. Não envie `data/runtime/foodcourt-db.json` ao GitHub, pois ele contém dados privados e hashes de senha.
+Sem um Volume, o sistema de arquivos do deploy é temporário. Não envie `banco de dados/runtime/foodcourt-db.json` ao GitHub, pois ele contém dados privados e hashes de senha.
 
 ## Portais funcionais locais
 

@@ -130,8 +130,9 @@ async function appleProfile(code, req, postedUser) {
   })
   const claims = await verifyAppleToken(token.id_token)
   if (!claims.email || claims.email_verified === false || claims.email_verified === 'false') throw new Error('OAUTH_EMAIL')
-  let supplied = {}
-  try { supplied = typeof postedUser === 'string' ? JSON.parse(postedUser) : postedUser || {} } catch { supplied = {} }
+  const supplied = (() => {
+    try { return typeof postedUser === 'string' ? JSON.parse(postedUser) : postedUser || {} } catch { return {} }
+  })()
   const name = [supplied.name?.firstName, supplied.name?.lastName].filter(Boolean).join(' ')
   return { subject: claims.sub, email: claims.email.toLowerCase(), fullName: name || claims.email.split('@')[0] }
 }

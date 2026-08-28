@@ -7,12 +7,13 @@ const data = require('./data/catalog')
 const db = require('./lib/db')
 const auth = require('./lib/auth')
 const oauth = require('./lib/oauth')
+const turnstile = require('./lib/turnstile')
 const mailer = require('./lib/mailer')
 const platform = require('./lib/platform')
 const QRCode = require('qrcode')
 
 const PORT = process.env.PORT || 3000
-const PUBLIC_DIR = path.join(__dirname, '..', 'public')
+const PUBLIC_DIR = path.join(__dirname, '..', '..', 'frontend')
 
 /* ============ BANCO + CONTAS INICIAIS ============ */
 
@@ -100,7 +101,7 @@ function applySecurityHeaders(res) {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; media-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self' https://viacep.com.br; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; media-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://viacep.com.br https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
 }
 
 function readBody(req) {
@@ -229,6 +230,7 @@ function isTrustedOrigin(req) {
 /* ============ API DE AUTENTICAÇÃO ============ */
 
 const authApi = {
+  'GET /api/auth/turnstile-config': () => turnstile.publicConfig(),
   'GET /api/auth/oauth/google': (_params, query, _body, ctx) => {
     if (!oauth.isConfigured('google')) return oauthFailure(ctx.res, 'Login com Google ainda não foi configurado neste ambiente.')
     redirect(ctx.res, oauth.authorizationUrl('google', ctx.req, query.get('redirect')))
@@ -318,13 +320,18 @@ const authApi = {
     return { status: 201, body: { user: auth.publicUser(user) } }
   },
 
-  'POST /api/auth/login': (params, query, body, ctx) => {
+  'POST /api/auth/login': async (params, query, body, ctx) => {
     const fields = {}
     const email = auth.validEmail(body.email)
     if (!email.ok) fields.email = email.error
     if (!body.password) fields.password = 'Informe sua senha.'
     if (Object.keys(fields).length) {
       return { status: 400, body: { error: 'Verifique os campos informados.', fields } }
+    }
+
+    const challenge = await turnstile.verify(body.turnstileToken, clientIp(ctx.req))
+    if (!challenge.success) {
+      return { status: 400, body: { code: 'TURNSTILE_FAILED', error: 'Confirme que você não é um robô e tente novamente.' } }
     }
 
     const rlKey = `login:${clientIp(ctx.req)}:${email.value}`

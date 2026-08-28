@@ -7,8 +7,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test --test-concurrency=1",
-    "lint": "eslint src public/js scripts test eslint.config.js",
-    "format:check": "prettier --check package.json README.md docs .github test",
+    "lint": "cd .. && node Backend/node_modules/eslint/bin/eslint.js --config eslint.config.js Backend/src frontend/js Backend/scripts Backend/test eslint.config.js",
+    "format:check": "prettier --check package.json test",
     "check": "npm run lint && npm test && npm run format:check"
   },
   "engines": {

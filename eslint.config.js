@@ -1,14 +1,14 @@
-const js = require("@eslint/js");
-const globals = require("globals");
+const js = require("./Backend/node_modules/@eslint/js");
+const globals = require("./Backend/node_modules/globals");
 
 module.exports = [
-  { ignores: ["node_modules/**", "data/runtime/**"] },
+  { ignores: ["node_modules/**", "../banco de dados/runtime/**"] },
   js.configs.recommended,
   {
     files: [
-      "src/**/*.js",
-      "scripts/**/*.js",
-      "test/**/*.js",
+      "Backend/src/**/*.js",
+      "Backend/scripts/**/*.js",
+      "Backend/test/**/*.js",
       "eslint.config.js",
     ],
     languageOptions: {
@@ -23,7 +23,7 @@ module.exports = [
     },
   },
   {
-    files: ["public/js/**/*.js"],
+    files: ["frontend/js/**/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",

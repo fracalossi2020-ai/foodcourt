@@ -279,6 +279,9 @@ body.auth-mode [data-theme] {
   font-size: 1.06rem;
   letter-spacing: 0.01em;
 }
+
+.auth-turnstile { min-height: 65px; margin: 4px 0 12px; display: flex; justify-content: center; }
+.auth-turnstile:empty { display: none; min-height: 0; margin: 0; }
 .auth-submit > span:first-of-type { flex: 1; text-align: center; }
 .auth-submit .btn-arrow,
 .auth-alt-btn .btn-arrow {

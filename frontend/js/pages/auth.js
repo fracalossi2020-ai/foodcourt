@@ -10,16 +10,60 @@ import { esc, toast } from '../core/ui.js'
 
 let mode = 'login'
 let redirectAfter = '/inicio'
+let turnstileConfig = { enabled: false, siteKey: '' }
+let turnstileToken = ''
+let turnstileWidgetId = null
+let turnstileScriptPromise = null
 
 export async function render(view, boot, params, query) {
   mode = params.mode || 'login'
   redirectAfter = query.get('redirect') || '/inicio'
+  turnstileConfig = mode === 'login'
+    ? await api.turnstileConfig().catch(() => ({ enabled: false, siteKey: '' }))
+    : { enabled: false, siteKey: '' }
   draw(view, query)
 }
 
 function draw(view, query = new URLSearchParams()) {
+  turnstileToken = ''
+  turnstileWidgetId = null
   view.innerHTML = layout(mode, query)
   bind(view, query)
+  if (mode === 'login' && turnstileConfig.enabled) renderTurnstile(view)
+}
+
+function loadTurnstileScript() {
+  if (window.turnstile) return Promise.resolve(window.turnstile)
+  if (turnstileScriptPromise) return turnstileScriptPromise
+  turnstileScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+    script.async = true
+    script.defer = true
+    script.onload = () => resolve(window.turnstile)
+    script.onerror = () => reject(new Error('Não foi possível carregar a verificação de segurança.'))
+    document.head.appendChild(script)
+  })
+  return turnstileScriptPromise
+}
+
+async function renderTurnstile(view) {
+  const container = view.querySelector('#turnstileWidget')
+  if (!container) return
+  try {
+    const widget = await loadTurnstileScript()
+    if (!container.isConnected || !widget) return
+    turnstileWidgetId = widget.render(container, {
+      sitekey: turnstileConfig.siteKey,
+      action: 'login',
+      theme: 'light',
+      callback: (token) => { turnstileToken = token; setFormError(view, '') },
+      'expired-callback': () => { turnstileToken = '' },
+      'error-callback': () => { turnstileToken = ''; setFormError(view, 'Não foi possível concluir a verificação de segurança.') }
+    })
+  } catch (error) {
+    setFormError(view, error.message)
+  }
 }
 
 /* ============ LAYOUT ============ */
@@ -109,6 +153,7 @@ function loginForm() {
         <label class="auth-check"><input type="checkbox" id="remember" checked> Manter conectado</label>
         <a href="#/esqueci-senha" class="auth-link">Esqueceu sua senha?</a>
       </div>
+      ${turnstileConfig.enabled ? '<div class="auth-turnstile" id="turnstileWidget" aria-label="Verificação de segurança"></div>' : ''}
       ${formError()}
       <button type="submit" class="btn btn-primary btn-lg btn-block auth-submit" data-loading="Entrando...">
         <span>Entrar</span>
@@ -461,13 +506,21 @@ async function submitLogin(view) {
   const okEmail = setFieldError(view, 'email', V.email(email))
   const okPw = setFieldError(view, 'password', V.required(password, 'sua senha'))
   if (!okEmail || !okPw) return
+  if (turnstileConfig.enabled && !turnstileToken) {
+    setFormError(view, 'Confirme que você não é um robô para continuar.')
+    return
+  }
 
   try {
-    const res = await api.login({ email, password })
+    const res = await api.login({ email, password, turnstileToken })
     completeAuth(res.user)
     goAfterLogin(res.user)
   } catch (e) {
     setFormError(view, e.message)
+    if (turnstileConfig.enabled && window.turnstile && turnstileWidgetId !== null) {
+      turnstileToken = ''
+      window.turnstile.reset(turnstileWidgetId)
+    }
   }
 }
 
