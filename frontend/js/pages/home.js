@@ -78,13 +78,13 @@ function discoveryContent(data, categoryId) {
   if (categoryId !== 'all' && !restaurants.length && !products.length && !offers.length) return emptyCategoryState()
 
   return `<div class="category-results-inner">
-    ${sectionHeader(titles.offers,'Promoções demonstrativas selecionadas para esta categoria.')}
+    ${sectionHeader(titles.offers,'Promoções selecionadas para esta categoria.')}
     <section class="offer-strip no-scrollbar">${limitedOffers.length ? offerCards(limitedOffers) : emptyInline('Nenhuma oferta encontrada nesta categoria.')}</section>
 
-    ${sectionHeader(titles.restaurants,'Estabelecimentos fictícios para validar a experiência de descoberta.','#/buscar','Explorar')}
+    ${sectionHeader(titles.restaurants,'Estabelecimentos disponíveis para receber pedidos.','#/buscar','Explorar')}
     <section class="restaurant-row no-scrollbar">${limitedRestaurants.length ? limitedRestaurants.map(restaurant => restaurantCard(restaurant)).join('') : emptyInline('Nenhum estabelecimento encontrado nesta categoria.')}</section>
 
-    ${sectionHeader(titles.products,'Produtos de demonstração relacionados à sua escolha.')}
+    ${sectionHeader(titles.products,'Produtos relacionados à sua escolha.')}
     <section class="product-row no-scrollbar">${limitedProducts.length ? limitedProducts.map(product => productCard(product, product.restaurantId, product.restaurantName)).join('') : emptyInline('Nenhum produto encontrado nesta categoria.')}</section>
   </div>`
 }
@@ -92,7 +92,7 @@ function discoveryContent(data, categoryId) {
 function offerCards(offers) {
   return offers.map((offer, index) => `<article class="offer-card tone-${index % 2 ? 'green' : 'orange'}">
     <i>${icon(offer.type === 'shipping' ? 'bike' : offer.type === 'combo' ? 'tag' : 'percent')}</i>
-    <div><b>${esc(offer.title)}</b><span>${esc(offer.description)}</span><em>Oferta demonstrativa</em></div>
+    <div><b>${esc(offer.title)}</b><span>${esc(offer.description)}</span><em>Oferta disponível</em></div>
   </article>`).join('')
 }
 

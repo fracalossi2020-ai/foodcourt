@@ -365,24 +365,33 @@ const authApi = {
     return { ok: true }
   },
 
-  'POST /api/auth/forgot-password': (params, query, body, ctx) => {
+  'POST /api/auth/forgot-password': async (params, query, body, ctx) => {
     const generic = { message: 'Se existir uma conta associada a este e-mail, enviaremos as instruções para redefinir sua senha.' }
     const email = auth.validEmail(body.email)
     if (!email.ok) return { status: 400, body: { error: email.error, fields: { email: email.error } } }
 
     const rl = auth.rateLimit(`forgot:${clientIp(ctx.req)}`, 5, 15 * 60 * 1000)
     if (!rl.allowed) return { status: 429, body: { error: 'Muitas solicitações. Aguarde alguns minutos.' } }
+    if (!mailer.isConfigured()) {
+      return { status: 503, body: { error: 'A recuperação por e-mail está temporariamente indisponível. Fale com o suporte.' } }
+    }
 
     const user = db.findByEmail(email.value)
     if (user) {
       const token = auth.createResetToken(user.id)
       const base = process.env.APP_URL || `http://${ctx.req.headers.host || 'localhost:' + PORT}`
       const link = `${base}/#/redefinir-senha?token=${token}`
-      mailer.sendMail({
+      try {
+        await mailer.sendMail({
         to: user.email,
         subject: 'Food Court — Redefinição de senha',
-        text: `Olá, ${user.fullName}!\n\nRecebemos uma solicitação para redefinir sua senha.\nUse o link abaixo (válido por 1 hora, uso único):\n\n${link}\n\nSe não foi você, ignore este e-mail.`
-      })
+        text: `Olá, ${user.fullName}!\n\nRecebemos uma solicitação para redefinir sua senha.\nUse o link abaixo (válido por 1 hora, uso único):\n\n${link}\n\nSe não foi você, ignore este e-mail.`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#17211b"><h1 style="color:#087a3e">Redefinir sua senha</h1><p>Olá, ${user.fullName}!</p><p>Recebemos uma solicitação para redefinir sua senha no FoodCourt.</p><p><a href="${link}" style="display:inline-block;padding:14px 22px;background:#087a3e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Criar nova senha</a></p><p>Este link é válido por 1 hora e pode ser usado uma única vez.</p><p>Se não foi você, ignore este e-mail.</p></div>`
+        })
+      } catch (error) {
+        console.error('[mail] Falha no envio de recuperação:', error.message)
+        return { status: 503, body: { error: 'Não foi possível enviar o e-mail agora. Tente novamente em alguns minutos.' } }
+      }
       if (process.env.DEV_EXPOSE_RESET_LINK === '1') {
         console.log(`[auth:dev] Link de redefinição para ${user.email}: ${link}`)
         return { ...generic, devResetLink: link }

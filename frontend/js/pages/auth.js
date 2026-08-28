@@ -168,7 +168,6 @@ function loginForm() {
         <span class="btn-arrow">${ICONS.arrowRight}</span>
       </a>
     </form>
-    <button class="auth-demo" id="demoFill" type="button">🧪 Usar conta demo (joao@foodcourt.com)</button>
     ${termsFooter()}
   </div>`
 }
@@ -471,14 +470,6 @@ function bind(view, query) {
   view.querySelectorAll('input[id^="f-password"]').forEach(input => input.addEventListener('input', () => {
     updateStrength(view, input.id.replace('f-', ''))
   }))
-
-  const demoFill = view.querySelector('#demoFill')
-  if (demoFill) demoFill.addEventListener('click', () => {
-    document.getElementById('f-email').value = 'joao@foodcourt.com'
-    document.getElementById('f-password').value = 'foodcourt123'
-    setFormError(view, '')
-    view.querySelector('#f-email').focus()
-  })
 
   const goApp = view.querySelector('#goApp')
   if (goApp) goApp.addEventListener('click', goAfterLogin)

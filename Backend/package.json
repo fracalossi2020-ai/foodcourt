@@ -17,6 +17,7 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "nodemailer": "^9.0.6",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

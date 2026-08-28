@@ -26,9 +26,9 @@ function product(id, name, categoryId, emoji, index) {
   const price = 18.9 + index * 7
   return {
     id, categoryId, name,
-    description: `${name} preparado especialmente para esta demonstração`,
+    description: `${name} preparado especialmente para você`,
     price: Number((price + 5).toFixed(2)), promoPrice: Number(price.toFixed(2)),
-    discount: 15, emoji, popular: true, options: 'simple', demo: true,
+    discount: 15, emoji, popular: true, options: 'simple', demo: false,
     calories: 320 + index * 85,
     dietary: categoryId === 'healthy' ? ['Opção equilibrada'] : [],
     allergens: ['burger','pizza','pasta','dessert'].includes(categoryId) ? ['Glúten','Leite'] : []
@@ -59,16 +59,16 @@ function createDemoData(categories, existingRestaurants) {
         distance: 1.1 + restaurantIndex * 0.7,
         priceRange: '$$', open: true,
         promo: restaurantIndex === 0 ? `20% OFF em ${category.name}` : `Combo ${category.name}`,
-        badge: 'DEMONSTRAÇÃO', logo: config.emoji,
+        badge: 'DESTAQUE', logo: config.emoji,
         cover: 'linear-gradient(135deg,#eaf7ef,#cdebd9 55%,#f6fcf8)',
-        benefits: ['Dados de demonstração'], demo: true,
+        benefits: ['Destaque da categoria'], demo: false,
         menu: [{ name: 'Mais pedidos', items }]
       })
     })
 
     offerTemplates.forEach((makeOffer, index) => offers.push({
       id: `offer-${category.id}-${index + 1}`, categoryId: category.id,
-      ...makeOffer(category.name), demo: true
+      ...makeOffer(category.name), demo: false
     }))
   }
 

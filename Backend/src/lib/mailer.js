@@ -1,26 +1,34 @@
 'use strict'
 
-/**
- * Serviço de e-mail do Food Court.
- *
- * Enquanto não houver transporte SMTP configurado (.env), os e-mails NÃO são
- * enviados de verdade — o link é apenas registrado no console do servidor.
- *
- * Para integrar um envio real:
- *   1. npm install nodemailer
- *   2. Preencha SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS e MAIL_FROM no .env
- *   3. Substitua o corpo de sendMail() por:
- *        const transporter = nodemailer.createTransport({ host, port, auth })
- *        return transporter.sendMail({ from, to, subject, html })
- */
-function sendMail({ to, subject, text }) {
-  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-    console.log(`[mail] Transporte SMTP detectado, mas o transporte real não está ativado neste ambiente. Destinatário: ${to}`)
-    return { delivered: false, reason: 'smtp-not-implemented' }
-  }
-  console.log(`[mail:dev] SMTP não configurado — e-mail NÃO enviado. Para: ${to} | Assunto: ${subject}`)
-  if (text) console.log('[mail:dev] ' + text.split('\n').map(l => '    ' + l).join('\n'))
-  return { delivered: false, reason: 'smtp-not-configured' }
+const nodemailer = require('nodemailer')
+
+let transporter = null
+
+function isConfigured() {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.MAIL_FROM)
 }
 
-module.exports = { sendMail }
+function transport() {
+  if (!transporter) {
+    const port = Number(process.env.SMTP_PORT || 587)
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port,
+      secure: port === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000
+    })
+  }
+  return transporter
+}
+
+async function sendMail({ to, subject, text, html }) {
+  if (!isConfigured()) throw new Error('SMTP_NOT_CONFIGURED')
+  const info = await transport().sendMail({ from: process.env.MAIL_FROM, to, subject, text, html })
+  console.log(`[mail] E-mail enviado: ${info.messageId}`)
+  return { delivered: true, messageId: info.messageId }
+}
+
+module.exports = { isConfigured, sendMail }

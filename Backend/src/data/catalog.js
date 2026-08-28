@@ -442,10 +442,10 @@ const restaurants = [
 
 restaurants.forEach(restaurant => {
   restaurant.categoryId = restaurant.categoryId || categoryIdByName[restaurant.category]
-  restaurant.demo = true
+  restaurant.demo = false
   restaurant.menu.forEach(section => section.items.forEach(item => {
     item.categoryId = item.categoryId || restaurant.categoryId
-    item.demo = true
+    item.demo = false
     item.dietary = item.dietary || (restaurant.categoryId === 'healthy' ? ['Opção equilibrada'] : restaurant.categoryId === 'dessert' ? ['Vegetariano'] : [])
     item.allergens = item.allergens || (['pizza','pasta','burger'].includes(restaurant.categoryId) ? ['Glúten','Leite'] : restaurant.categoryId === 'japanese' ? ['Peixe','Soja'] : [])
     item.calories = item.calories || 280 + (item.id.length % 6) * 70

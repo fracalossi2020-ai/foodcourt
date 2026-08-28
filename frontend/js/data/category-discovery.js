@@ -18,7 +18,7 @@ export function filterByCategory(items, categoryId) {
 }
 
 export function discoveryTitles(categoryId) {
-  return copy[categoryId] || { offers: 'Ofertas para você', restaurants: 'Recomendados para você', products: 'Mais pedidos na demonstração' }
+  return copy[categoryId] || { offers: 'Ofertas para você', restaurants: 'Recomendados para você', products: 'Mais pedidos' }
 }
 
 export function validCategory(categoryId, categories) {
