@@ -1,9 +1,39 @@
 import { api } from '../core/api.js'
 
+let turnstileToken=''
+let turnstileWidgetId=null
+let turnstileScriptPromise=null
+
+function loadTurnstileScript(){
+  if(window.turnstile)return Promise.resolve(window.turnstile)
+  if(turnstileScriptPromise)return turnstileScriptPromise
+  turnstileScriptPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script')
+    script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+    script.async=true;script.defer=true
+    script.onload=()=>resolve(window.turnstile)
+    script.onerror=()=>reject(new Error('Não foi possível carregar a verificação de segurança.'))
+    document.head.appendChild(script)
+  })
+  return turnstileScriptPromise
+}
+
+async function renderTurnstile(view,config){
+  const container=view.querySelector('#landingTurnstile'),error=view.querySelector('.fcv2-error')
+  if(!container||!config.enabled)return
+  try{
+    const widget=await loadTurnstileScript()
+    if(!container.isConnected||!widget)return
+    turnstileWidgetId=widget.render(container,{sitekey:config.siteKey,action:'login',theme:'light',size:'flexible',language:'pt-BR',callback:token=>{turnstileToken=token;error.hidden=true},'expired-callback':()=>{turnstileToken=''},'error-callback':()=>{turnstileToken='';error.textContent='Não foi possível concluir a verificação de segurança.';error.hidden=false}})
+  }catch(err){error.textContent=err.message;error.hidden=false}
+}
+
 const FAQ_ITEMS=[['O que é o FoodCourt?','Uma plataforma para descobrir estabelecimentos, escolher produtos e fazer seus pedidos.'],['Como faço para criar uma conta?','Clique em “Criar conta”, informe seus dados e siga as etapas.'],['Como encontro estabelecimentos perto de mim?','Após entrar, informe sua localização para visualizar opções na sua região.'],['Posso acompanhar meu pedido?','Sim. A área interna mostra o andamento do pedido até a entrega.'],['Como funcionam os pagamentos?','As formas disponíveis são apresentadas durante a finalização do pedido.'],['Tenho um estabelecimento. Como posso vender no FoodCourt?','Acesse o cadastro e selecione a opção destinada a estabelecimentos.'],['Existe aplicativo para celular?','Os aplicativos serão divulgados quando estiverem disponíveis.'],['Como entro em contato com o suporte?','Utilize a Central de Ajuda disponível no seu perfil.']]
 
 export async function render(view,boot,_params={},query=new URLSearchParams()) {
   const partnerLogin=query.get('portal')==='parceiro'
+  const turnstileConfig=await api.turnstileConfig().catch(()=>({enabled:false,siteKey:''}))
+  turnstileToken='';turnstileWidgetId=null
   view.innerHTML = `<div class="fc-landing-v2">
     <div class="landing-scroll-progress" aria-hidden="true"><i></i></div>
     <header class="fcv2-nav">
@@ -36,6 +66,7 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
         <form id="landingLogin" novalidate>
           <label><span>${uiIcon('mail')}</span><input name="email" type="email" autocomplete="email" placeholder="E-mail" aria-label="E-mail"></label>
           <label><span>${uiIcon('lock')}</span><input name="password" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha"><button type="button" data-eye aria-label="Mostrar senha">${uiIcon('eye')}</button></label>
+          ${turnstileConfig.enabled?'<div class="fcv2-turnstile" id="landingTurnstile" aria-label="Verificação de segurança"></div>':''}
           <div class="fcv2-error" role="alert" hidden></div>
           <button class="fcv2-submit" type="submit">${partnerLogin?'Entrar no Portal':'Entrar'}</button>
           <div class="fcv2-loginrow"><label><input type="checkbox"> Lembrar de mim</label><a href="#/esqueci-senha">Esqueci minha senha</a></div>
@@ -52,7 +83,8 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
     </section>
     ${introduction()}${howItWorks()}${variety()}${whyFoodCourt()}${promotion()}${mobileExperience()}${trust()}${testimonials()}${partnerSection()}${faq()}${finalCta()}${landingFooter()}${helpWidget()}
   </div>`
-  bind(view,partnerLogin,query)
+  bind(view,partnerLogin,query,turnstileConfig)
+  if(turnstileConfig.enabled)renderTurnstile(view,turnstileConfig)
   if (location.hash.replace(/^#/, '').split('?')[0] === '/login') {
     requestAnimationFrame(() => {
       const login = view.querySelector('.fcv2-login')
@@ -82,7 +114,7 @@ function helpWidget(){return `<div class="fcv2-help"><button class="fcv2-help-bu
 function finalCta(){return `<section class="fcv2-section final-signup reveal"><span class="food-edge left">◔</span><div><span class="section-kicker light">O PRÓXIMO SABOR ESPERA POR VOCÊ</span><h2>Pronto para descobrir<br>seu próximo favorito?</h2><p>Crie sua conta e tenha o FoodCourt sempre por perto.</p><a href="#/cadastro">CRIAR MINHA CONTA</a><small>É rápido, simples e gratuito.</small></div><span class="food-edge right">◉</span></section>`}
 function landingFooter(){const cols=[['FOODCOURT',['Sobre nós','Como funciona','Vantagens','Contato']],['DESCUBRA',['Categorias','Ofertas','Novidades']],['PARA ESTABELECIMENTOS',['Cadastre seu negócio','Como funciona','Central do parceiro']],['SUPORTE',['Central de ajuda','Fale conosco','Dúvidas frequentes']],['LEGAL',['Termos de uso','Política de privacidade','Cookies']]];return `<footer class="fcv2-footer" id="contato"><div class="footer-main"><div class="footer-about"><a class="footer-brand-logo" href="#/" aria-label="Food Court - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a><p>Seu pedido, do seu jeito.</p><nav aria-label="Redes sociais"><a href="#" aria-label="Instagram">${socialIcon('instagram')}</a><a href="#" aria-label="Facebook">${socialIcon('facebook')}</a><a href="#" aria-label="TikTok">${socialIcon('tiktok')}</a><a href="#" aria-label="WhatsApp">${socialIcon('whatsapp')}</a></nav></div>${cols.map(c=>`<div><h3>${c[0]}</h3>${c[1].map(x=>`<button data-footer-scroll="${x}">${x}</button>`).join('')}</div>`).join('')}</div><div class="footer-bottom">© ${new Date().getFullYear()} FoodCourt. Todos os direitos reservados.</div></footer>`}
 function socialIcon(name){const paths={instagram:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>',facebook:'<path d="M14 8h4V3h-4c-4 0-6 2.4-6 6v3H4v5h4v5h5v-5h4l1-5h-5V9c0-.7.3-1 1-1Z"/>',tiktok:'<path d="M14 3v11.5a4.5 4.5 0 1 1-4-4.5M14 3c.5 3 2 4.5 5 5"/>',whatsapp:'<path d="M20 11.6a8 8 0 0 1-11.8 7L4 20l1.4-4.1A8 8 0 1 1 20 11.6Z"/><path d="M9 8c.5 3 2 4.5 5 6l2-1"/>',search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>'};return `<svg class="social-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`}
-function bind(view,partnerLogin=false,query=new URLSearchParams()){
+function bind(view,partnerLogin=false,query=new URLSearchParams(),turnstileConfig={enabled:false}){
   const partnerLink = view.querySelector('.fcv2-partner a[href="#/cadastro"]')
   partnerLink?.setAttribute('href', '#/para-estabelecimentos')
   view.querySelectorAll('a[href="#/login"],a[href="#/cadastro"]').forEach(link=>link.addEventListener('click',event=>{
@@ -119,7 +151,8 @@ function bind(view,partnerLogin=false,query=new URLSearchParams()){
     e.preventDefault();const form=e.currentTarget;const error=form.querySelector('.fcv2-error');const submit=form.querySelector('.fcv2-submit');error.hidden=true
     const email=form.email.value.trim(),password=form.password.value
     if(!email||!password){error.textContent='Informe seu e-mail e sua senha.';error.hidden=false;return}
+    if(turnstileConfig.enabled&&!turnstileToken){error.textContent='Confirme que você não é um robô para continuar.';error.hidden=false;return}
     submit.disabled=true;submit.textContent='Entrando...'
-    try{const res=await api.login({email,password});if(partnerLogin&&res.user.role!=='merchant'){await api.logout();throw new Error('Esta conta não pertence a um estabelecimento. Entre com a conta do vendedor.')}window.dispatchEvent(new CustomEvent('fc:auth',{detail:res.user}));location.hash=res.user.role==='merchant'?'#/parceiro':res.user.role==='admin'?'#/admin':'#/inicio'}catch(err){error.textContent=err.message;error.hidden=false;submit.disabled=false;submit.textContent=partnerLogin?'Entrar no Portal':'Entrar'}
+    try{const res=await api.login({email,password,turnstileToken});if(partnerLogin&&res.user.role!=='merchant'){await api.logout();throw new Error('Esta conta não pertence a um estabelecimento. Entre com a conta do vendedor.')}window.dispatchEvent(new CustomEvent('fc:auth',{detail:res.user}));location.hash=res.user.role==='merchant'?'#/parceiro':res.user.role==='admin'?'#/admin':'#/inicio'}catch(err){error.textContent=err.message;error.hidden=false;submit.disabled=false;submit.textContent=partnerLogin?'Entrar no Portal':'Entrar';if(turnstileConfig.enabled&&window.turnstile&&turnstileWidgetId!==null){turnstileToken='';window.turnstile.reset(turnstileWidgetId)}}
   })
 }

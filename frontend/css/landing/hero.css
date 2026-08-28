@@ -32,6 +32,7 @@ body.landing-mode{background:#f7f9f7}body.landing-mode>.app>.header,body.landing
   .hero-delivery{left:52%;top:17%}
   .hero-offer{left:55%;bottom:29%}
 }
+.fcv2-turnstile{width:100%;min-height:65px;margin:2px 0 10px;display:flex;justify-content:center}
 .fcv2-copy>*{animation:heroItemIn .48s ease-out both}.fcv2-copy>.fcv2-pill{animation-delay:.05s}.fcv2-copy>h1{animation-delay:.12s}.fcv2-copy>p{animation-delay:.2s}.fcv2-copy>.fcv2-actions{animation-delay:.27s}.fcv2-copy>.fcv2-proof{animation-delay:.34s}.fcv2-login{animation:heroLoginIn .58s .16s ease-out both}.hero-delivery{animation-name:heroCardIn,heroCardFloat;animation-duration:.5s,5.8s;animation-delay:.36s,.9s;animation-timing-function:ease-out,ease-in-out;animation-iteration-count:1,infinite;animation-fill-mode:both}.hero-offer{animation-name:heroCardIn,heroCardFloatAlt;animation-duration:.5s,6.4s;animation-delay:.46s,.2s;animation-timing-function:ease-out,ease-in-out;animation-iteration-count:1,infinite;animation-fill-mode:both}
 @keyframes heroItemIn{from{opacity:0;transform:translateY(11px)}to{opacity:1;transform:none}}@keyframes heroLoginIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}@keyframes heroCardIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}@keyframes heroCardFloatAlt{0%,100%{transform:translateY(-7px)}50%{transform:translateY(1px)}}
 @media(prefers-reduced-motion:reduce){.fcv2-copy>*,.fcv2-login,.hero-delivery,.hero-offer{animation:none!important}}
