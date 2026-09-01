@@ -59,7 +59,7 @@ export function restaurantCard(r) {
   const badge = r.badge ? `<span class="badge badge-green">${esc(r.badge)}</span>` : ''
   return `
   <article class="card clickable rcard ${r.open ? '' : 'closed'}" data-goto="#/restaurante/${r.id}" role="link" tabindex="0" aria-label="${esc(r.name)}, ${r.category}">
-    <div class="rcard-cover restaurant-photo rest-${esc(r.id)}">
+    <div class="rcard-cover restaurant-photo rest-${esc(r.id)}" style="background:${r.cover}">
       <div class="rcard-badges">${badge}${disc}</div>
       <button class="fav-btn ${isFav(r.id) ? 'on' : ''}" data-fav="${r.id}" aria-label="Favoritar ${esc(r.name)}">${icon('heart')}</button>
     </div>

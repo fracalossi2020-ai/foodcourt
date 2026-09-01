@@ -13,6 +13,7 @@ process.env.APP_URL = "http://127.0.0.1";
 process.env.DEV_EXPOSE_RESET_LINK = "0";
 
 const { server, start } = require("../src/server");
+const db = require("../src/lib/db");
 
 let baseUrl;
 
@@ -97,6 +98,29 @@ test("partner demo account has merchant role", async () => {
   });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).user.role, "merchant");
+});
+
+test("registered establishments automatically appear in the customer marketplace", async () => {
+  const { cookie } = await loginDemo();
+  const store = {
+    id: "store_real_test", ownerId: "owner_real_test", name: "Loja Real Teste", slug: "loja-real-teste",
+    category: "Restaurante", description: "Cadastro real", status: "pending", open: true,
+    rating: 0, preparationMinutes: 20, minimumOrder: 0, products: [
+      { id: "product_real_test", name: "Prato real", category: "Pratos", description: "Produto cadastrado", price: 25, stock: 5, active: true },
+    ],
+  };
+  db.state.stores.push(store);
+  db.saveNow();
+
+  const home = await fetch(`${baseUrl}/api/home`, { headers: { Cookie: cookie } });
+  assert.equal(home.status, 200);
+  const homePayload = await home.json();
+  assert.ok(homePayload.restaurants.some((item) => item.id === store.id));
+  assert.ok(homePayload.products.some((item) => item.id === "product_real_test"));
+
+  const restaurant = await fetch(`${baseUrl}/api/restaurants/${store.id}`, { headers: { Cookie: cookie } });
+  assert.equal(restaurant.status, 200);
+  assert.equal((await restaurant.json()).restaurant.name, store.name);
 });
 
 test("invalid JSON and untrusted origins are rejected", async () => {

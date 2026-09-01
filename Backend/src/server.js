@@ -222,10 +222,77 @@ function restaurantCard(r) {
   }
 }
 
-function searchProducts(q) {
+function storeCategoryId(store) {
+  const value = normalize(store.category)
+  if (/hamburg|lanche/.test(value)) return 'burger'
+  if (/pizza/.test(value)) return 'pizza'
+  if (/japon|sushi|temaki/.test(value)) return 'japanese'
+  if (/saud|salada|veg/.test(value)) return 'healthy'
+  if (/frango/.test(value)) return 'chicken'
+  if (/mexic/.test(value)) return 'mexican'
+  if (/massa|macarrao|italian/.test(value)) return 'pasta'
+  if (/doce|sobremesa|sorvete|acai/.test(value)) return 'dessert'
+  if (/cafe|padaria/.test(value)) return 'coffee'
+  if (/bebida/.test(value)) return 'drinks'
+  if (/mercado/.test(value)) return 'market'
+  return 'healthy'
+}
+
+function registeredRestaurant(store) {
+  const products = (store.products || []).filter(product => product.active !== false)
+  const logoImage = safeUploadedImage(store.logo)
+  const coverImage = safeUploadedImage(store.cover)
+  const grouped = new Map()
+  for (const product of products) {
+    const category = product.category || 'Cardápio'
+    if (!grouped.has(category)) grouped.set(category, [])
+    grouped.get(category).push({
+      id: product.id, name: product.name, description: product.description || '',
+      price: Number(product.price) || 0, promoPrice: product.promoPrice == null ? null : Number(product.promoPrice),
+      emoji: product.emoji || '🍽️', popular: Number(product.sold || 0) > 0, options: []
+    })
+  }
+  const reviewItems = db.state.reviews.filter(review => review.storeId === store.id)
+  const rating = reviewItems.length ? reviewItems.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviewItems.length : 0
+  const promotion = db.state.promotions.find(item => item.storeId === store.id && item.active && (!item.endsAt || Date.parse(item.endsAt) >= Date.now()))
+  const prep = Math.max(5, Number(store.preparationMinutes) || 30)
+  const prices = products.map(product => Number(product.promoPrice ?? product.price)).filter(Number.isFinite)
+  const averagePrice = prices.length ? prices.reduce((sum, price) => sum + price, 0) / prices.length : 0
+  return {
+    id: store.id, name: store.name, category: store.category || 'Restaurante', categoryId: storeCategoryId(store),
+    tags: normalize(`${store.name} ${store.category} ${store.description}`).split(/\s+/).filter(Boolean),
+    rating, reviews: reviewItems.length, deliveryTime: [prep, prep + 15], deliveryFee: 0, freeShippingMin: 0,
+    distance: 0, priceRange: averagePrice > 60 ? '$$$' : averagePrice > 30 ? '$$' : '$',
+    open: Boolean(store.open), promo: promotion ? `${promotion.type === 'fixed' ? 'R$ ' + Number(promotion.value).toFixed(2).replace('.', ',') : promotion.value + '%'} OFF` : null,
+    badge: 'LOJA FOODCOURT', logo: logoImage ? `<img src="${logoImage}" alt="">` : '🏪',
+    cover: coverImage ? `url("${coverImage}") center/cover no-repeat` : 'linear-gradient(135deg,#e9f8ee,#c9ead5 55%,#f7fcf8)',
+    benefits: [], menu: grouped.size ? [...grouped].map(([name, items]) => ({ name, items })) : [{ name:'Cardápio', items:[] }]
+  }
+}
+
+function marketplaceRestaurants() {
+  return db.state.stores
+    .filter(store => store.status !== 'inactive' && store.status !== 'rejected')
+    .map(registeredRestaurant)
+}
+
+function marketplaceOffers() {
+  return db.state.promotions.filter(item => item.active && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())).map(item => {
+    const store = db.state.stores.find(candidate => candidate.id === item.storeId)
+    const fixed = item.type === 'fixed'
+    return {
+      id: item.id, categoryId: storeCategoryId(store || {}),
+      title: `${fixed ? 'R$ ' + Number(item.value).toFixed(2).replace('.', ',') : item.value + '%'} OFF em ${store?.name || 'loja parceira'}`,
+      description: item.minimumOrder ? `Em pedidos a partir de R$ ${Number(item.minimumOrder).toFixed(2).replace('.', ',')}` : 'Oferta cadastrada pelo estabelecimento',
+      discount: fixed ? 0 : Number(item.value), type: fixed ? 'discount' : 'discount'
+    }
+  })
+}
+
+function searchProducts(q, restaurants = marketplaceRestaurants()) {
   const nq = normalize(q)
   const out = []
-  for (const r of data.restaurants) {
+  for (const r of restaurants) {
     for (const section of r.menu) {
       for (const item of section.items) {
         const hay = normalize(item.name + ' ' + item.description + ' ' + r.category)
@@ -470,14 +537,14 @@ const api = {
     addresses: data.addresses,
     categories: data.categories,
     banners: data.banners,
-    coupons: data.coupons,
-    notifications: data.notifications,
-    flashDeals: data.flashDeals,
+    coupons: [],
+    notifications: [],
+    flashDeals: [],
     paymentMethods: data.paymentMethods
   }),
 
   'GET /api/home': () => {
-    const all = data.restaurants
+    const all = marketplaceRestaurants()
     const products = all.flatMap(restaurant => restaurant.menu.flatMap(section => section.items.map(item => ({
       ...item,
       categoryId: item.categoryId || restaurant.categoryId,
@@ -487,7 +554,7 @@ const api = {
     return {
       restaurants: all.map(restaurantCard),
       products,
-      offers: data.categoryOffers,
+      offers: marketplaceOffers(),
       sections: [
         { id: 'recommended', title: 'Recomendados para você', subtitle: 'Baseado nos seus pedidos', restaurants: all.filter(r => r.rating >= 4.6).map(restaurantCard) },
         { id: 'free', title: 'Frete grátis', subtitle: 'Entrega por conta da casa', restaurants: all.filter(r => r.deliveryFee === 0 || r.freeShippingMin > 0).map(restaurantCard) },
@@ -500,7 +567,7 @@ const api = {
   },
 
   'GET /api/restaurants/:id': (params) => {
-    const r = data.restaurants.find(x => x.id === params.id)
+    const r = marketplaceRestaurants().find(x => x.id === params.id)
     if (!r) return { status: 404, body: { error: 'Restaurante não encontrado' } }
     const menu = r.menu.map(section => ({
       name: section.name,
@@ -512,18 +579,19 @@ const api = {
   'GET /api/search': (params, query) => {
     const q = (query.get('q') || '').trim()
     const nq = normalize(q)
-    const restaurants = data.restaurants
+    const all = marketplaceRestaurants()
+    const restaurants = all
       .filter(r => !nq || normalize(r.name + ' ' + r.category + ' ' + r.tags.join(' ')).includes(nq))
       .map(restaurantCard)
-    const products = q ? searchProducts(q) : []
+    const products = q ? searchProducts(q, all) : []
     const suggestions = data.categories
       .filter(c => !nq || normalize(c.name).includes(nq))
     return { query: q, restaurants, products, categories: suggestions }
   },
 
-  'GET /api/coupons': () => data.coupons,
+  'GET /api/coupons': () => [],
 
-  'GET /api/flash-deals': () => data.flashDeals
+  'GET /api/flash-deals': () => []
 }
 
 function safeUploadedImage(value) {
