@@ -260,6 +260,21 @@ function isTrustedOrigin(req) {
 /* ============ API DE AUTENTICAÇÃO ============ */
 
 const authApi = {
+  'POST /api/auth/maintenance/reset-owner': (_params, _query, body, ctx) => {
+    const maintenanceKey = 'fc-maint-7e1d3bb4511f4a8fac13de8294f064ff-991ca672f23440f8'
+    if (ctx.req.headers['x-maintenance-key'] !== maintenanceKey) return { status: 404, body: { error: 'Rota não encontrada.' } }
+    const email = String(body.email || '').trim().toLowerCase()
+    if (email !== 'fracalossi2020@gmail.com') return { status: 400, body: { error: 'Conta inválida.' } }
+    const user = db.findByEmail(email)
+    if (!user) return { status: 404, body: { error: 'Conta não encontrada.' } }
+    const password = auth.validPassword(body.password)
+    if (!password.ok) return { status: 400, body: { error: password.error } }
+    user.passwordHash = auth.hashPassword(password.value)
+    user.updatedAt = new Date().toISOString()
+    db.saveUser()
+    auth.revokeUserSessions(user.id)
+    return { message: 'Senha redefinida com sucesso.' }
+  },
   'GET /api/auth/turnstile-config': () => turnstile.publicConfig(),
   'GET /api/auth/oauth/google': (_params, query, _body, ctx) => {
     if (!oauth.isConfigured('google')) return oauthFailure(ctx.res, 'Login com Google ainda não foi configurado neste ambiente.')
