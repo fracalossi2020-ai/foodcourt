@@ -9,7 +9,10 @@ COPY frontend ./frontend
 COPY Backend/src ./Backend/src
 
 RUN mkdir -p /data && chown -R node:node /app /data
-USER node
+
+# Railway Volumes are mounted as root at runtime. Running with UID 0 keeps the
+# mounted /data directory writable so accounts and sessions survive deploys.
+USER root
 
 ENV PORT=3000 FC_DB_PATH=/data/foodcourt-db.json
 EXPOSE 3000
