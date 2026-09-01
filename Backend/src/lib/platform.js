@@ -6,44 +6,27 @@ const uid = prefix => db.uid(prefix)
 
 function seed() {
   const state = db.state
-  if (!state.stores.length) state.stores.push({
-    id: 'store_burger_neon', ownerId: null, name: 'Burger Neon', slug: 'burger-neon', category: 'Hambúrguer',
-    status: 'active', open: true, rating: 4.8, commissionRate: 12, preparationMinutes: 28, description:'Hambúrgueres artesanais e combos.',
-    categories:['Hambúrguer','Combos','Porções'], deliveryModes:['delivery'], minimumOrder:20,
-    hours:{mon:['08:00','22:00'],tue:['08:00','22:00'],wed:['08:00','22:00'],thu:['08:00','22:00'],fri:['08:00','23:00'],sat:['10:00','23:00'],sun:['10:00','21:00']}, onboardingProgress:100,
-    address: 'Av. Central, 100', phone: '(11) 4000-2026', createdAt: now(),
-    products: [
-      { id:'prod_neon_duplo', name:'Neon Duplo', category:'Hambúrguer', price:42.9, promoPrice:34.9, stock:42, active:true, sold:186 },
-      { id:'prod_combo_neon', name:'Combo Neon', category:'Combos', price:58.9, promoPrice:46.9, stock:28, active:true, sold:143 },
-      { id:'prod_smash', name:'Smash Trufado', category:'Hambúrguer', price:38.9, stock:18, active:true, sold:97 },
-      { id:'prod_fritas', name:'Fritas Cheddar Bacon', category:'Porções', price:26.9, stock:8, active:true, sold:82 }
-    ]
-  })
-  if (!state.promotions.length) state.promotions.push(
-    { id:'promo_neon20', storeId:'store_burger_neon', name:'Neon 20%', type:'percent', value:20, active:true, uses:64, startsAt:now(), endsAt:'2027-12-31T23:59:59.000Z' },
-    { id:'promo_combo', storeId:'store_burger_neon', name:'Combo do almoço', type:'combo', value:12, active:true, uses:31, startsAt:now(), endsAt:'2027-12-31T23:59:59.000Z' }
-  )
-  if (!state.platformOrders.length) {
-    const statuses = ['pending','accepted','preparing','ready','delivered','delivered']
-    state.platformOrders.push(...statuses.map((status,index) => ({
-      id:`FC-DEMO-${1001+index}`, customerId:null, storeId:'store_burger_neon', status,
-      customerName:['Ana Martins','Rafael Lima','Camila Souza','João Silva','Marina Alves','Lucas Costa'][index],
-      items:[{ productId:index%2?'prod_combo_neon':'prod_neon_duplo', name:index%2?'Combo Neon':'Neon Duplo', quantity:index%3+1, unitPrice:index%2?46.9:34.9 }],
-      subtotal:Number(((index%3+1)*(index%2?46.9:34.9)).toFixed(2)), deliveryFee:index%2?4.99:0,
-      discount:index%2?5:0, total:Number((((index%3+1)*(index%2?46.9:34.9))+(index%2?-.01:0)).toFixed(2)),
-      paymentMethod:index%2?'Pix':'Cartão', address:'Rua Demonstração, '+(120+index), createdAt:new Date(Date.now()-index*86400000).toISOString(), updatedAt:now()
-    })))
+  const demoProductIds = new Set(['prod_neon_duplo','prod_combo_neon','prod_smash','prod_fritas'])
+  state.platformOrders = state.platformOrders.filter(order => !String(order.id).startsWith('FC-DEMO-'))
+  state.promotions = state.promotions.filter(item => !['promo_neon20','promo_combo'].includes(item.id))
+  state.storeMembers = state.storeMembers.filter(item => !['member_1','member_2'].includes(item.id))
+  state.reviews = state.reviews.filter(item => !['review_1','review_2'].includes(item.id))
+  state.supportTickets = state.supportTickets.filter(item => item.id !== 'ticket_1')
+  state.subscriptions = state.subscriptions.filter(item => item.id !== 'sub_demo')
+
+  const legacyStore = state.stores.find(store => store.id === 'store_burger_neon')
+  if (legacyStore) {
+    legacyStore.products = (legacyStore.products || []).filter(product => !demoProductIds.has(product.id))
+    if (legacyStore.name === 'Burger Neon') {
+      Object.assign(legacyStore, {
+        name: 'Meu estabelecimento', slug: 'meu-estabelecimento', category: 'Restaurante',
+        description: '', status: 'active', open: false, rating: 0, commissionRate: 0,
+        preparationMinutes: 30, minimumOrder: 0, categories: [], hours: {},
+        address: { street:'', number:'', complement:'', neighborhood:'', city:'', state:'', cep:'' },
+        phone: '', onboardingProgress: 10, updatedAt: now()
+      })
+    }
   }
-  if (!state.storeMembers.length) state.storeMembers.push(
-    { id:'member_1', storeId:'store_burger_neon', name:'Marcos Oliveira', email:'marcos@burgerneon.com', role:'manager', active:true },
-    { id:'member_2', storeId:'store_burger_neon', name:'Paula Santos', email:'paula@burgerneon.com', role:'kitchen', active:true }
-  )
-  if (!state.reviews.length) state.reviews.push(
-    { id:'review_1', storeId:'store_burger_neon', customerName:'Ana Martins', rating:5, comment:'Pedido muito bem preparado.', replied:false, createdAt:now() },
-    { id:'review_2', storeId:'store_burger_neon', customerName:'Rafael Lima', rating:4, comment:'Gostei, mas poderia chegar mais quente.', replied:false, createdAt:now() }
-  )
-  if (!state.supportTickets.length) state.supportTickets.push({ id:'ticket_1', customerId:null, storeId:'store_burger_neon', subject:'Dúvida sobre item', status:'open', priority:'normal', messages:[{ from:'customer', text:'O lanche pode ser preparado sem cebola?', at:now() }], createdAt:now() })
-  if (!state.subscriptions.some(item=>item.storeId==='store_burger_neon')) state.subscriptions.push({id:'sub_demo',storeId:'store_burger_neon',planId:'foodcourt_partner',planName:'FoodCourt Parceiro',price:119.90,currency:'BRL',interval:'month',status:'ACTIVE',provider:null,nextBillingAt:null,createdAt:now(),updatedAt:now()})
   db.saveNow()
 }
 
