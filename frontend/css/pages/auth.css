@@ -283,6 +283,24 @@ body.auth-mode [data-theme] {
 .auth-turnstile { min-height: 65px; margin: 4px 0 12px; display: flex; justify-content: center; }
 .auth-turnstile:empty { display: none; min-height: 0; margin: 0; }
 .partner-login-turnstile { width: 100%; min-height: 65px; margin: 4px 0 12px; display: flex; justify-content: center; }
+.partner-login-card input {
+  color: #12251a !important;
+  caret-color: #008f48;
+  -webkit-text-fill-color: #12251a !important;
+  opacity: 1;
+}
+.partner-login-card input::placeholder {
+  color: #78857d !important;
+  -webkit-text-fill-color: #78857d !important;
+  opacity: 1;
+}
+.partner-login-card input:-webkit-autofill,
+.partner-login-card input:-webkit-autofill:hover,
+.partner-login-card input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #12251a !important;
+  caret-color: #008f48;
+  box-shadow: 0 0 0 1000px #fbfdfc inset !important;
+}
 .auth-submit > span:first-of-type { flex: 1; text-align: center; }
 .auth-submit .btn-arrow,
 .auth-alt-btn .btn-arrow {
