@@ -24,7 +24,7 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
       <div class="home-hero-dots" aria-hidden="true"><i class="active"></i><i></i><i></i></div>
     </header>
 
-    ${sectionHeader('Categorias','Escolha uma categoria para filtrar toda a experiência.','','', true)}
+    ${sectionHeader('Categorias','Escolha uma categoria para filtrar toda a experiência.','#/buscar','Ver todas')}
     <section class="modern-categories no-scrollbar" aria-label="Categorias de descoberta">
       ${boot.categories.map(category => categoryButton(category, selectedCategory)).join('')}
     </section>
