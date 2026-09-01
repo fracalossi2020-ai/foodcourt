@@ -402,7 +402,8 @@ const authApi = {
 
     const rl = auth.rateLimit(`forgot:${clientIp(ctx.req)}`, 5, 15 * 60 * 1000)
     if (!rl.allowed) return { status: 429, body: { error: 'Muitas solicitações. Aguarde alguns minutos.' } }
-    if (!mailer.isConfigured()) {
+    const exposeResetLink = process.env.DEV_EXPOSE_RESET_LINK === '1'
+    if (!mailer.isConfigured() && !exposeResetLink) {
       return { status: 503, body: { error: 'A recuperação por e-mail está temporariamente indisponível. Fale com o suporte.' } }
     }
 
@@ -411,7 +412,7 @@ const authApi = {
       const token = auth.createResetToken(user.id)
       const base = process.env.APP_URL || `http://${ctx.req.headers.host || 'localhost:' + PORT}`
       const link = `${base}/#/redefinir-senha?token=${token}`
-      try {
+      if (mailer.isConfigured()) try {
         await mailer.sendMail({
         to: user.email,
         subject: 'Food Court — Redefinição de senha',
@@ -422,7 +423,7 @@ const authApi = {
         console.error('[mail] Falha no envio de recuperação:', error.message)
         return { status: 503, body: { error: 'Não foi possível enviar o e-mail agora. Tente novamente em alguns minutos.' } }
       }
-      if (process.env.DEV_EXPOSE_RESET_LINK === '1') {
+      if (exposeResetLink) {
         console.log(`[auth:dev] Link de redefinição para ${user.email}: ${link}`)
         return { ...generic, devResetLink: link }
       }
