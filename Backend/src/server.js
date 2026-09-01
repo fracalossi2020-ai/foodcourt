@@ -793,7 +793,12 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname.startsWith('/api/')) {
     if (pathname === '/api/health' && req.method === 'GET') {
-      sendJson(res, 200, { status: 'ok', uptime: Math.round(process.uptime()), timestamp: new Date().toISOString() })
+      sendJson(res, 200, {
+        status: 'ok',
+        uptime: Math.round(process.uptime()),
+        persistentStorage: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH),
+        timestamp: new Date().toISOString()
+      })
       return
     }
 
