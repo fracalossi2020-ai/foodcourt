@@ -75,6 +75,7 @@ test("social login routes fail safely when provider credentials are absent", asy
 test("demo account can log in and access bootstrap", async () => {
   const { response: login, cookie } = await loginDemo();
   assert.equal(login.status, 200);
+  assert.match(login.headers.get("set-cookie"), /Max-Age=3600/);
   const payload = await login.json();
   assert.equal(payload.user.role, "customer");
 

@@ -2,9 +2,9 @@
 const crypto = require('crypto')
 const db = require('./db')
 
-// Sessões do FoodCourt permanecem válidas por 2 horas de inatividade.
+// Sessões do FoodCourt permanecem válidas por 1 hora de inatividade.
 // O prazo é renovado pelo servidor enquanto o usuário continua usando o portal.
-const SESSION_HOURS = 2
+const SESSION_HOURS = 1
 const SESSION_TTL = 1000 * 60 * 60 * SESSION_HOURS
 const SESSION_REFRESH = 1000 * 60 * 15
 const RESET_TTL = 1000 * 60 * 60
