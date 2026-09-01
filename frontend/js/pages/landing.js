@@ -61,7 +61,6 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
       <aside class="fcv2-login" aria-label="Acessar sua conta">
         <h2>${partnerLogin?'Portal do Parceiro':'Que bom te ver por aqui!'}</h2><p>${partnerLogin?'Entre com a conta do seu estabelecimento.':'Entre ou crie sua conta para continuar.'}</p>
         <button class="social" data-social="google"><b class="google">${uiIcon('google')}</b>Continuar com Google</button>
-        <button class="social" data-social="apple"><b class="apple">${uiIcon('apple')}</b>Continuar com Apple</button>
         <div class="fcv2-or"><span>ou</span></div>
         <form id="landingLogin" novalidate>
           <label><span>${uiIcon('mail')}</span><input name="email" type="email" autocomplete="email" placeholder="E-mail" aria-label="E-mail"></label>

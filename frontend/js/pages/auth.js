@@ -161,7 +161,6 @@ function loginForm() {
       </button>
       <div class="auth-divider"><span>ou</span></div>
       <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="google">${ICONS.google}<span>Continuar com Google</span></button>
-      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="apple">${ICONS.apple}<span>Continuar com Apple</span></button>
       <a href="#/cadastro" class="btn btn-ghost btn-lg btn-block auth-alt-btn">
         <span class="btn-icon">${ICONS.user}</span>
         <span>Cadastrar-se <em>grátis</em></span>
@@ -188,7 +187,6 @@ function registerForm() {
       <button type="submit" class="btn btn-primary btn-lg btn-block auth-submit" data-loading="Criando conta...">Criar conta grátis</button>
       <div class="auth-divider"><span>ou</span></div>
       <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="google">${ICONS.google}<span>Continuar com Google</span></button>
-      <button type="button" class="btn btn-ghost btn-lg btn-block auth-alt-btn signup-social" data-social="apple">${ICONS.apple}<span>Continuar com Apple</span></button>
       <p class="signup-login">Já tem uma conta? <a href="#/login">Entrar</a></p>
     </form>
   </div>`
