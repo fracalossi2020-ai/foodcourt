@@ -36,6 +36,7 @@ async function post(path, payload) {
   const body = await res.json().catch(() => ({}))
   if (res.status === 401) { unauthorized(); throw new ApiError(body.error || 'Não autenticado.', 401, body) }
   if (!res.ok) throw new ApiError(body.error || 'Não conseguimos concluir sua solicitação agora. Tente novamente.', res.status, body)
+  cache.clear()
   return body
 }
 
