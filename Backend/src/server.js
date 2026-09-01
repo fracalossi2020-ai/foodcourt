@@ -272,7 +272,7 @@ function registeredRestaurant(store) {
 
 function marketplaceRestaurants() {
   return db.state.stores
-    .filter(store => store.status !== 'inactive' && store.status !== 'rejected')
+    .filter(store => store.status !== 'inactive' && store.status !== 'rejected' && normalize(store.name) !== 'meu estabelecimento')
     .map(registeredRestaurant)
 }
 
@@ -787,7 +787,8 @@ Object.assign(api, {
   'POST /api/partner-store': (params,query,body,ctx) => {
     const store=platform.storeForUser(ctx.user);if(!store)return {status:404,body:{error:'Estabelecimento não encontrado.'}}
     if(typeof body.open==='boolean'){store.open=body.open;store.autoSchedule=false}
-    for(const field of ['name','description','phone','email','category'])if(body[field]!==undefined)store[field]=auth.sanitize(body[field]).slice(0,field==='description'?500:120)
+    if(body.name!==undefined){const name=auth.sanitize(body.name).slice(0,100);if(name.length<2||normalize(name)==='meu estabelecimento')return {status:400,body:{error:'Informe o nome verdadeiro do estabelecimento.'}};store.name=name;store.slug=`${normalize(name).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${store.id.slice(-8)}`}
+    for(const field of ['description','phone','email','category'])if(body[field]!==undefined)store[field]=auth.sanitize(body[field]).slice(0,field==='description'?500:120)
     if(body.preparationMinutes!==undefined)store.preparationMinutes=Math.max(5,Math.min(180,Number(body.preparationMinutes)||30))
     if(body.minimumOrder!==undefined)store.minimumOrder=Math.max(0,Number(body.minimumOrder)||0)
     if(body.hours&&typeof body.hours==='object')store.hours=body.hours

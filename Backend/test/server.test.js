@@ -110,12 +110,14 @@ test("registered establishments automatically appear in the customer marketplace
     ],
   };
   db.state.stores.push(store);
+  db.state.stores.push({ id:"store_placeholder_test", ownerId:"owner_placeholder", name:"Meu estabelecimento", category:"Restaurante", status:"active", open:false, products:[] });
   db.saveNow();
 
   const home = await fetch(`${baseUrl}/api/home`, { headers: { Cookie: cookie } });
   assert.equal(home.status, 200);
   const homePayload = await home.json();
   assert.ok(homePayload.restaurants.some((item) => item.id === store.id));
+  assert.ok(!homePayload.restaurants.some((item) => item.id === "store_placeholder_test"));
   assert.ok(homePayload.products.some((item) => item.id === "product_real_test"));
 
   const restaurant = await fetch(`${baseUrl}/api/restaurants/${store.id}`, { headers: { Cookie: cookie } });
