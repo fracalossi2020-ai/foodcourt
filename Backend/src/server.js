@@ -532,6 +532,17 @@ const authApi = {
 /* ============ API DE CONTEÚDO (PROTEGIDA) ============ */
 
 const api = {
+  'GET /api/public/restaurants': () => ({
+    restaurants: db.state.stores.map(store => ({
+      id: store.id,
+      name: store.name,
+      category: store.category,
+      status: store.status,
+      open: Boolean(store.open),
+      activeProducts: (store.products || []).filter(product => product.active !== false).length,
+      published: store.status !== 'inactive' && store.status !== 'rejected' && normalize(store.name) !== 'meu estabelecimento'
+    }))
+  }),
   'GET /api/bootstrap': (params, query, body, ctx) => ({
     user: auth.publicUser(ctx.user),
     addresses: data.addresses,
@@ -894,8 +905,8 @@ const server = http.createServer(async (req, res) => {
 
     const isAuthEndpoint = pathname.startsWith('/api/auth/')
     const clean = pathname.replace(/\/+$/, '')
-    const isPublicCepLookup = req.method === 'GET' && /^\/api\/cep\/\d{8}$/.test(clean)
-    const requiresAuth = (!isAuthEndpoint && !isPublicCepLookup) || clean === '/api/auth/me'
+    const isPublicEndpoint = req.method === 'GET' && (clean === '/api/public/restaurants' || /^\/api\/cep\/\d{8}$/.test(clean))
+    const requiresAuth = (!isAuthEndpoint && !isPublicEndpoint) || clean === '/api/auth/me'
     if (requiresAuth && !ctxUser) {
       sendJson(res, 401, { error: 'Não autenticado.' })
       return
