@@ -35,9 +35,48 @@ function register(view){
     <div class="partner-register-actions"><button type="button" data-prev disabled>Voltar</button><button type="button" data-next>Continuar</button><button type="submit" data-submit hidden>Continuar para o Pix</button></div><p class="partner-register-error" role="alert" hidden></p>
   </form></main></div>`
   bindRegister(view)
+  bindCepLookup(view)
   bindImageUploads(view)
 }
 function step(number,title,content){return `<section class="partner-form-step ${number===1?'active':''}" data-form-step="${number}"><span>ETAPA ${number} DE 4</span><h2>${title}</h2><div>${content}</div></section>`}
+
+function bindCepLookup(view){
+  const form=view.querySelector('#partnerRegisterForm'),cepInput=form?.elements.cep
+  if(!form||!cepInput)return
+  const label=cepInput.closest('label'),status=document.createElement('small')
+  status.className='partner-cep-status'
+  status.setAttribute('aria-live','polite')
+  label.appendChild(status)
+  let timer=null,lastCep='',requestId=0
+  const fill=async()=>{
+    const cep=cepInput.value.replace(/\D/g,'').slice(0,8)
+    cepInput.value=cep.length>5?`${cep.slice(0,5)}-${cep.slice(5)}`:cep
+    if(cep.length!==8){status.textContent='';status.className='partner-cep-status';return}
+    if(cep===lastCep)return
+    lastCep=cep
+    const current=++requestId
+    status.textContent='Buscando endereço...'
+    status.className='partner-cep-status loading'
+    try{
+      const result=await api.cep(cep)
+      if(current!==requestId)return
+      const address=result.address||{}
+      for(const [name,value] of Object.entries({street:address.street,neighborhood:address.neighborhood,city:address.city,state:address.state})){
+        if(form.elements[name]&&value){form.elements[name].value=value;form.elements[name].dispatchEvent(new Event('change',{bubbles:true}))}
+      }
+      status.textContent='Endereço preenchido automaticamente.'
+      status.className='partner-cep-status success'
+      form.elements.number?.focus()
+    }catch(error){
+      if(current!==requestId)return
+      lastCep=''
+      status.textContent=error.message||'CEP não encontrado. Preencha o endereço manualmente.'
+      status.className='partner-cep-status error'
+    }
+  }
+  cepInput.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(fill,350)})
+  cepInput.addEventListener('blur',()=>{clearTimeout(timer);fill()})
+}
 
 function bindImageUploads(view){const images={logo:'',cover:''};view.querySelectorAll('[data-image-input]').forEach(input=>input.addEventListener('change',async()=>{const file=input.files?.[0];if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)){toast('Escolha uma imagem PNG, JPEG ou WebP.','error');input.value='';return}const preview=view.querySelector(`[data-image-preview="${input.dataset.imageInput}"]`);preview.classList.add('loading');try{const kind=input.dataset.imageInput;images[kind]=await optimizeImage(file,kind==='logo'?500:1200,kind==='logo'?500:650);preview.style.backgroundImage=`url(${images[kind]})`;preview.classList.add('has-image');preview.innerHTML=`<b>Trocar ${kind==='logo'?'logo':'imagem de capa'}</b><small>${esc(file.name)}</small>`}catch{toast('Não foi possível processar esta imagem.','error')}finally{preview.classList.remove('loading')}}));const form=view.querySelector('#partnerRegisterForm'),submit=form.onsubmit;form.onsubmit=event=>{for(const [name,value] of Object.entries(images)){let hidden=form.querySelector(`input[type="hidden"][name="${name}"]`);if(!hidden){hidden=document.createElement('input');hidden.type='hidden';hidden.name=name;form.appendChild(hidden)}hidden.value=value}return submit.call(form,event)}}
 function optimizeImage(file,maxWidth,maxHeight){return new Promise((resolve,reject)=>{const image=new Image(),url=URL.createObjectURL(file);image.onload=()=>{const scale=Math.min(1,maxWidth/image.width,maxHeight/image.height),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);URL.revokeObjectURL(url);resolve(canvas.toDataURL('image/webp',.78))};image.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('invalid-image'))};image.src=url})}

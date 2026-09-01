@@ -301,6 +301,10 @@ body.auth-mode [data-theme] {
   caret-color: #008f48;
   box-shadow: 0 0 0 1000px #fbfdfc inset !important;
 }
+.partner-cep-status { display: block; min-height: 16px; margin-top: 5px; color: #68766e; font-size: .68rem; font-weight: 600; }
+.partner-cep-status.loading { color: #52655a; }
+.partner-cep-status.success { color: #07883f; }
+.partner-cep-status.error { color: #b42318; }
 .auth-submit > span:first-of-type { flex: 1; text-align: center; }
 .auth-submit .btn-arrow,
 .auth-alt-btn .btn-arrow {
