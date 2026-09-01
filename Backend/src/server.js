@@ -40,16 +40,46 @@ if (db.state.users.length === 0) {
   console.log('[db] Conta demo criada: joao@foodcourt.com / foodcourt123')
 }
 
-function ensureDemoUser(email, fullName, phone, password, role) {
+function ensureSystemUser(email, fullName, phone, password, role) {
   let user = db.findByEmail(email)
   if (!user) user = db.addUser({ id:db.uid('user'), fullName, email, phone, passwordHash:auth.hashPassword(password), status:'active', avatarEmoji:role==='merchant'?'👨‍🍳':'🛡️', memberSince:'2026', points:0, level:role==='merchant'?'Parceiro':'Administrador', cashback:0, role, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), lastLogin:null })
   else if (!user.role) { user.role = role; db.saveUser() }
   return user
 }
-const merchantDemo = ensureDemoUser('dono@foodcourt.com','Carlos Mendes','(11) 98888-1000','foodcourt123','merchant')
-ensureDemoUser('admin@foodcourt.com','Admin FoodCourt','(11) 98888-2000','foodcourt123','admin')
+const sellerAccount = ensureSystemUser('dono@foodcourt.com','Carlos Mendes','(11) 98888-1000','foodcourt123','merchant')
+ensureSystemUser('admin@foodcourt.com','Admin FoodCourt','(11) 98888-2000','foodcourt123','admin')
 platform.seed()
-if (db.state.stores[0] && !db.state.stores[0].ownerId) { db.state.stores[0].ownerId = merchantDemo.id; db.saveNow() }
+if (db.state.stores[0] && !db.state.stores[0].ownerId) { db.state.stores[0].ownerId = sellerAccount.id; db.saveNow() }
+
+// A conta principal informada pelo proprietario assume a loja existente.
+// O vendedor padrao continua vinculado como gerente da mesma operacao.
+const ownerEmail = String(process.env.OWNER_EMAIL || 'fracalossi2020@gmail.com').trim().toLowerCase()
+const ownerAccount = db.findByEmail(ownerEmail)
+if (ownerAccount && db.state.stores[0]) {
+  const store = db.state.stores[0]
+  ownerAccount.role = 'merchant'
+  ownerAccount.level = 'Proprietario'
+  ownerAccount.status = 'active'
+  ownerAccount.updatedAt = platform.now()
+  store.ownerId = ownerAccount.id
+
+  let sellerMember = db.state.storeMembers.find(member => member.storeId === store.id && member.email.toLowerCase() === sellerAccount.email.toLowerCase())
+  if (!sellerMember) {
+    sellerMember = { id:db.uid('member'), storeId:store.id, name:sellerAccount.fullName, email:sellerAccount.email, role:'manager', active:true }
+    db.state.storeMembers.push(sellerMember)
+  } else {
+    Object.assign(sellerMember, { role:'manager', active:true })
+  }
+
+  let ownerSubscription = db.state.subscriptions.find(subscription => subscription.storeId === store.id)
+  if (!ownerSubscription) {
+    ownerSubscription = { id:db.uid('subscription'), storeId:store.id, planId:'owner_access', planName:'FoodCourt Proprietario', currency:'BRL', interval:'unlimited', createdAt:platform.now() }
+    db.state.subscriptions.push(ownerSubscription)
+  }
+  Object.assign(ownerSubscription, { status:'ACTIVE', price:0, provider:'OWNER_ACCESS', nextBillingAt:null, complimentary:true, complimentaryReason:'Conta proprietaria', updatedAt:platform.now() })
+  delete ownerSubscription.pendingCharge
+  db.saveNow()
+}
 // A conta demo do cliente deve permanecer cliente; o parceiro demo é separado.
 const joaoDemo = null
 if (joaoDemo) {
