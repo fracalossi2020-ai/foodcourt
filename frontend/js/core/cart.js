@@ -57,7 +57,7 @@ function render() {
           <div class="state-emoji">🛒</div>
           <h3>Carrinho vazio</h3>
           <p>Explore restaurantes e adicione algo gostoso.</p>
-          <button class="btn btn-primary" data-goto="#/">Ver restaurantes</button>
+          <button class="btn btn-primary" data-goto="#/buscar">Ver restaurantes</button>
         </div>` : `
         ${freeShipBar(t.subtotal)}
         ${restaurantNames.map(name => `<section class="cart-store-group"><header>🏪 ${esc(name)}</header>${cart.items.filter(item=>item.restaurantName===name).map(i=>itemRow(i)).join('')}</section>`).join('')}

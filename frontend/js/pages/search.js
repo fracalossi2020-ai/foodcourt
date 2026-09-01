@@ -32,6 +32,7 @@ function filterIcon(name) {
 
 export async function render(view, boot, _params = {}, query = new URLSearchParams()) {
   const initialQ = query.get?.('q') || query.q || ''
+  const initialFilter = query.get?.('filtro') === 'frete-gratis' ? 'free' : 'all'
   const allData = await api.search('').catch(() => ({ restaurants: [] }))
   window.__restByTag = (tag) => allData.restaurants.find(r => (r.tags || []).includes(tag))
   view.innerHTML = `
@@ -44,23 +45,23 @@ export async function render(view, boot, _params = {}, query = new URLSearchPara
     </div>
 
     <div class="tabs" id="filterTabs" style="margin-top:18px">
-      <button class="chip active" data-filter="all">${filterIcon('all')}<span>Tudo</span></button>
+      <button class="chip ${initialFilter === 'all' ? 'active' : ''}" data-filter="all">${filterIcon('all')}<span>Tudo</span></button>
       <button class="chip" data-filter="open">${filterIcon('open')}<span>Abertos</span></button>
-      <button class="chip" data-filter="free">${filterIcon('free')}<span>Entrega grátis</span></button>
+      <button class="chip ${initialFilter === 'free' ? 'active' : ''}" data-filter="free">${filterIcon('free')}<span>Entrega grátis</span></button>
       <button class="chip" data-filter="promo">${filterIcon('promo')}<span>Com promoção</span></button>
       <button class="chip" data-filter="fast">${filterIcon('fast')}<span>Até 35 min</span></button>
       <button class="chip" data-filter="rating">${filterIcon('rating')}<span>Nota 4,7+</span></button>
       <button class="chip" data-filter="budget">${filterIcon('budget')}<span>Econômicos</span></button>
     </div>
 
-    <div id="searchBody">${initialQ ? '' : idleView(boot)}</div>
+    <div id="searchBody">${initialQ || initialFilter !== 'all' ? '' : idleView(boot)}</div>
   </div>`
 
   const input = document.getElementById('searchInput')
   const body = document.getElementById('searchBody')
   const clearBtn = document.getElementById('clearSearch')
 
-  if (initialQ) await runSearch(initialQ)
+  if (initialQ || initialFilter !== 'all') await runSearch(initialQ, initialFilter)
 
   input.addEventListener('input', () => {
     clearBtn.hidden = !input.value
@@ -118,7 +119,7 @@ export async function render(view, boot, _params = {}, query = new URLSearchPara
     if (filter === 'budget') rests = rests.filter(r => r.priceRange === '$')
 
     const relatedCats = data.categories.slice(0, 5)
-    const products = data.products.slice(0, 8)
+    const products = (filter === 'all' ? data.products : []).slice(0, 8)
 
     if (!rests.length && !products.length) {
       body.innerHTML = emptyState({ emoji: '🔍', title: `Nada encontrado para “${q}”`, sub: 'Verifique a escrita ou tente um termo mais geral, como “pizza” ou “combo”.', action: '#/buscar', actionLabel: 'Ver sugestões' })
@@ -172,7 +173,7 @@ export async function render(view, boot, _params = {}, query = new URLSearchPara
     document.querySelectorAll('#filterTabs .chip').forEach(x => x.classList.remove('active'))
     c.classList.add('active')
     const q = input.value.trim()
-    if (q) runSearch(q, c.dataset.filter)
+    runSearch(q, c.dataset.filter)
   }))
 
   bindSug(body)
