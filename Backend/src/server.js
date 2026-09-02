@@ -87,6 +87,13 @@ if (!seedDemoData) {
     console.log(`[db] ${demoUsers.length} conta(s) de demonstração removida(s).`)
   }
 }
+const burguerBeStore = db.state.stores.find(store => normalize(store.name) === 'burguer be')
+if (burguerBeStore && !burguerBeStore.coverCleanup24hApplied) {
+  burguerBeStore.cover = '/assets/images/burguer-be-cover-clean.png'
+  burguerBeStore.coverCleanup24hApplied = true
+  burguerBeStore.updatedAt = platform.now()
+  db.saveNow()
+}
 if (seedDemoData && db.state.stores[0] && !db.state.stores[0].ownerId && sellerAccount) {
   db.state.stores[0].ownerId = sellerAccount.id
   db.saveNow()
@@ -938,6 +945,7 @@ const api = {
 function safeUploadedImage(value) {
   if (!value) return null
   const image = String(value)
+  if (/^\/assets\/images\/[a-zA-Z0-9._-]+$/.test(image)) return image
   if (!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) return null
   if (Buffer.byteLength(image, 'utf8') > 850 * 1024) return null
   return image
