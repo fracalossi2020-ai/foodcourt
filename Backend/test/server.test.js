@@ -389,13 +389,38 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
     (await messages.json()).messages[0].text,
     "Por favor, sem guardanapos.",
   );
-  const cancellation = await fetch(`${baseUrl}/api/order-cancel`, {
-    method: "POST",
-    headers: { Cookie: cookie, "Content-Type": "application/json" },
-    body: JSON.stringify({ orderId: order.id, reason: "Teste de estorno" }),
-  });
+  const payment = db.state.paymentEvents.find((item) => item.id === pix.id);
+  payment.provider = "mercado-pago";
+  payment.providerPaymentId = "provider-payment-test";
+  payment.status = "paid";
+  order.paymentStatus = "paid";
+  process.env.MERCADO_PAGO_ACCESS_TOKEN = "test-access-token";
+  const originalFetch = global.fetch;
+  let refundIdempotencyKey;
+  global.fetch = async (input, options) => {
+    if (String(input).startsWith("https://api.mercadopago.com/")) {
+      refundIdempotencyKey = options.headers["X-Idempotency-Key"];
+      return new Response(
+        JSON.stringify({ id: "refund-test", amount: 52, status: "approved" }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return originalFetch(input, options);
+  };
+  let cancellation;
+  try {
+    cancellation = await fetch(`${baseUrl}/api/order-cancel`, {
+      method: "POST",
+      headers: { Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: order.id, reason: "Teste de estorno" }),
+    });
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  }
   assert.equal(cancellation.status, 200);
-  assert.equal((await cancellation.json()).order.paymentStatus, "cancelled");
+  assert.equal((await cancellation.json()).order.paymentStatus, "refunded");
+  assert.equal(refundIdempotencyKey, `refund-${order.id}`);
   assert.equal(
     store.products.find((item) => item.id === "product_real_test").stock,
     5,

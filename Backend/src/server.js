@@ -587,11 +587,13 @@ function cancelOrderState(order, reason) {
   }
   const payment = order.paymentIntentId ? db.state.paymentEvents.find(item => item.id === order.paymentIntentId) : null
   if (payment) {
+    const wasPaid = order.paymentStatus === 'paid' || payment.status === 'paid'
     payment.reservedAmount = Math.max(0, Number(payment.reservedAmount || 0) - Number(order.total || 0))
     payment.orderIds = (payment.orderIds || []).filter(id => id !== order.id)
-    payment.status = order.paymentStatus === 'paid' ? 'refund_pending' : payment.orderIds.length ? 'pending' : 'cancelled'
+    payment.cancelledOrderIds = [...new Set([...(payment.cancelledOrderIds || []), order.id])]
+    payment.status = wasPaid ? 'refund_pending' : payment.orderIds.length ? 'pending' : 'cancelled'
     payment.updatedAt = timestamp
-    order.paymentStatus = order.paymentStatus === 'paid' ? 'refund_pending' : 'cancelled'
+    order.paymentStatus = wasPaid ? 'refund_pending' : 'cancelled'
   }
   const delivery = db.state.deliveries.find(item => item.orderId === order.id)
   if (delivery && !['delivered', 'cancelled'].includes(delivery.status)) {
@@ -1366,6 +1368,40 @@ async function analyzeMenuImage(store, image) {
 
 const PIX_KEY = process.env.PIX_KEY || '3ddfdfec-13f0-4a48-8350-1f6d37ba892a'
 const MERCADO_PAGO_API = 'https://api.mercadopago.com'
+
+async function refundOrderPayment(order, payment = null) {
+  payment ||= order.paymentIntentId ? db.state.paymentEvents.find(item => item.id === order.paymentIntentId) : null
+  if (!payment || order.paymentStatus !== 'refund_pending') return false
+  const previous = (payment.refunds || []).find(refund => refund.orderId === order.id && refund.status === 'approved')
+  if (previous) {
+    order.paymentStatus = 'refunded'
+    return true
+  }
+  const accessToken = String(process.env.MERCADO_PAGO_ACCESS_TOKEN || '').trim()
+  if (payment.provider !== 'mercado-pago' || !payment.providerPaymentId || !accessToken) return false
+  const response = await fetch(`${MERCADO_PAGO_API}/v1/payments/${encodeURIComponent(payment.providerPaymentId)}/refunds`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': `refund-${order.id}`.slice(0, 64) },
+    body: JSON.stringify({ amount: Number(order.total) }),
+  })
+  const providerRefund = await response.json().catch(() => ({}))
+  payment.refunds ||= []
+  if (!response.ok) {
+    payment.refunds.push({ orderId: order.id, status: 'failed', error: providerRefund.message || 'Falha ao solicitar estorno.', at: platform.now() })
+    payment.refundError = providerRefund.message || 'Falha ao solicitar estorno.'
+    payment.updatedAt = platform.now()
+    db.saveNow()
+    return false
+  }
+  payment.refunds.push({ orderId: order.id, providerRefundId: String(providerRefund.id), amount: Number(providerRefund.amount || order.total), status: providerRefund.status || 'approved', at: platform.now() })
+  payment.cancelledOrderIds = (payment.cancelledOrderIds || []).filter(id => id !== order.id)
+  order.paymentStatus = providerRefund.status === 'approved' ? 'refunded' : 'refund_pending'
+  payment.status = payment.orderIds?.length ? 'paid' : order.paymentStatus
+  payment.updatedAt = platform.now()
+  pushNotification(order.customerId, 'payment', order.paymentStatus === 'refunded' ? 'Estorno confirmado' : 'Estorno em processamento', `Pedido ${order.id}: ${order.paymentStatus === 'refunded' ? 'o valor foi devolvido pelo provedor.' : 'acompanhe a atualização por aqui.'}`, order.id)
+  db.saveNow()
+  return order.paymentStatus === 'refunded'
+}
 function pixField(id, value) {
   const text = String(value)
   return `${id}${String(Buffer.byteLength(text, 'utf8')).padStart(2, '0')}${text}`
@@ -1480,6 +1516,14 @@ async function mercadoPagoWebhook(req, res, url) {
       const store = db.state.stores.find(item => item.id === order.storeId)
       if (store?.ownerId) pushNotification(store.ownerId, 'payment', 'Pagamento confirmado', `O pedido ${order.id} já pode ser aceito.`, order.id)
       pushNotification(order.customerId, 'payment', 'Pagamento aprovado', `Recebemos o pagamento do pedido ${order.id}.`, order.id)
+    }
+  }
+  if (payment.status === 'paid') {
+    for (const orderId of [...(payment.cancelledOrderIds || [])]) {
+      const order = db.state.platformOrders.find(item => item.id === orderId && item.status === 'cancelled')
+      if (!order) continue
+      order.paymentStatus = 'refund_pending'
+      await refundOrderPayment(order, payment)
     }
   }
   db.saveNow()
@@ -1817,7 +1861,7 @@ Object.assign(api, {
       },
     }
   },
-  'POST /api/partner-order-status': (params, query, body, ctx) => {
+  'POST /api/partner-order-status': async (params, query, body, ctx) => {
     if (!['merchant', 'admin'].includes(ctx.user.role)) return forbidden('parceiros')
     const store = platform.storeForUser(ctx.user)
     const order = db.state.platformOrders.find((item) => item.id === body.orderId && item.storeId === store.id)
@@ -1825,6 +1869,7 @@ Object.assign(api, {
     if (body.status === 'cancelled') {
       if (!['pending', 'accepted', 'preparing', 'ready'].includes(order.status)) return { status: 409, body: { error: 'Este pedido não pode mais ser cancelado pela loja.' } }
       cancelOrderState(order, body.reason || 'Cancelado pelo estabelecimento')
+      await refundOrderPayment(order)
       pushNotification(order.customerId, 'order', `Pedido ${order.id} cancelado`, order.cancelReason, order.id)
       platform.audit(ctx.user, 'order.cancel', 'order', order.id, order.cancelReason)
       db.saveNow()
@@ -2447,7 +2492,7 @@ Object.assign(api, {
       return { status: 400, body: { error: error.message } }
     }
   },
-  'POST /api/order-cancel': (params, query, body, ctx) => {
+  'POST /api/order-cancel': async (params, query, body, ctx) => {
     const order = db.state.platformOrders.find((item) => item.id === body.orderId && item.customerId === ctx.user.id)
     if (!order) return { status: 404, body: { error: 'Pedido não encontrado.' } }
     if (!['pending', 'accepted'].includes(order.status))
@@ -2458,6 +2503,7 @@ Object.assign(api, {
         },
       }
     cancelOrderState(order, body.reason || 'Cancelado pelo cliente')
+    await refundOrderPayment(order)
     const store = db.state.stores.find(item => item.id === order.storeId)
     if (store?.ownerId) pushNotification(store.ownerId, 'order', `Pedido ${order.id} cancelado`, order.cancelReason, order.id)
     platform.audit(ctx.user, 'order.cancel', 'order', order.id, order.cancelReason)
