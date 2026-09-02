@@ -1636,6 +1636,10 @@ Object.assign(api, {
     order.statusHistory = order.statusHistory || []
     order.statusHistory.push({ status: body.status, at: platform.now() })
     order.updatedAt = platform.now()
+    if (body.status === 'ready' && !db.state.deliveries.some(delivery => delivery.orderId === order.id)) {
+      const timestamp = platform.now()
+      db.state.deliveries.push({ id: db.uid('delivery'), orderId: order.id, storeId: order.storeId, customerId: order.customerId, courierId: null, status: 'searching', pickupAddress: store.address || {}, dropoffAddress: order.address, fee: Number(order.deliveryFee || 0), courierPayout: 6.5, createdAt: timestamp, updatedAt: timestamp, statusHistory: [{ status: 'searching', at: timestamp }] })
+    }
     if (body.status === 'delivered' && order.customerId && !order.loyaltyGranted) {
       const customer = db.state.users.find((user) => user.id === order.customerId)
       if (customer) {
@@ -2006,6 +2010,51 @@ Object.assign(api, {
     platform.audit(ctx.user, 'support.create', 'ticket', ticket.id)
     return { ticket }
   },
+  'GET /api/courier-dashboard': (params, query, body, ctx) => {
+    if (!['courier', 'admin'].includes(ctx.user.role)) return forbidden('entregadores')
+    const assigned = db.state.deliveries.filter(delivery => delivery.courierId === ctx.user.id)
+    const available = ctx.user.courierAvailable ? db.state.deliveries.filter(delivery => delivery.status === 'searching' && !delivery.courierId) : []
+    return {
+      profile: { name: ctx.user.fullName, available: Boolean(ctx.user.courierAvailable), vehicle: ctx.user.courierVehicle || 'Moto', rating: Number(ctx.user.courierRating || 5) },
+      current: assigned.find(delivery => ['accepted', 'picked_up', 'out_for_delivery'].includes(delivery.status)) || null,
+      available,
+      history: assigned.filter(delivery => ['delivered', 'cancelled'].includes(delivery.status)).slice(0, 30),
+      earnings: assigned.filter(delivery => delivery.status === 'delivered').reduce((sum, delivery) => sum + Number(delivery.courierPayout || 0), 0),
+    }
+  },
+  'POST /api/courier-availability': (params, query, body, ctx) => {
+    if (!['courier', 'admin'].includes(ctx.user.role)) return forbidden('entregadores')
+    ctx.user.courierAvailable = Boolean(body.available)
+    ctx.user.updatedAt = platform.now()
+    db.saveNow()
+    return { available: ctx.user.courierAvailable }
+  },
+  'POST /api/courier-delivery': (params, query, body, ctx) => {
+    if (!['courier', 'admin'].includes(ctx.user.role)) return forbidden('entregadores')
+    const delivery = db.state.deliveries.find(item => item.id === body.deliveryId)
+    if (!delivery) return { status: 404, body: { error: 'Entrega não encontrada.' } }
+    const action = String(body.action || '')
+    const transitions = { accept: ['searching', 'accepted'], pickup: ['accepted', 'picked_up'], start: ['picked_up', 'out_for_delivery'], deliver: ['out_for_delivery', 'delivered'] }
+    const transition = transitions[action]
+    if (!transition || delivery.status !== transition[0]) return { status: 409, body: { error: 'Esta ação não está disponível para a entrega.' } }
+    if (action === 'accept') {
+      if (db.state.deliveries.some(item => item.courierId === ctx.user.id && ['accepted', 'picked_up', 'out_for_delivery'].includes(item.status))) return { status: 409, body: { error: 'Conclua sua entrega atual antes de aceitar outra.' } }
+      delivery.courierId = ctx.user.id
+    } else if (delivery.courierId !== ctx.user.id && ctx.user.role !== 'admin') return { status: 403, body: { error: 'Esta entrega pertence a outro entregador.' } }
+    delivery.status = transition[1]
+    delivery.updatedAt = platform.now()
+    delivery.statusHistory.push({ status: delivery.status, at: delivery.updatedAt })
+    const order = db.state.platformOrders.find(item => item.id === delivery.orderId)
+    if (order && action === 'start') order.status = 'out_for_delivery'
+    if (order && action === 'deliver') order.status = 'delivered'
+    if (order && ['start', 'deliver'].includes(action)) {
+      order.updatedAt = delivery.updatedAt
+      order.statusHistory.push({ status: order.status, at: delivery.updatedAt })
+    }
+    platform.audit(ctx.user, `delivery.${action}`, 'delivery', delivery.id)
+    db.saveNow()
+    return { delivery, order }
+  },
   'GET /api/admin-dashboard': (params, query, body, ctx) => {
     if (ctx.user.role !== 'admin') return forbidden('administradores')
     return {
@@ -2026,7 +2075,7 @@ Object.assign(api, {
   }),
   'GET /api/order/:id': (params, query, body, ctx) => {
     const order = db.state.platformOrders.find((item) => item.id === params.id && item.customerId === ctx.user.id)
-    return order ? { order } : { status: 404, body: { error: 'Pedido não encontrado.' } }
+    return order ? { order: { ...order, delivery: db.state.deliveries.find(delivery => delivery.orderId === order.id) || null } } : { status: 404, body: { error: 'Pedido não encontrado.' } }
   },
   'POST /api/orders': (params, query, body, ctx) => {
     const catalogRestaurant = data.restaurants.find((item) => item.id === body.storeId)

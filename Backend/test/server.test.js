@@ -193,6 +193,59 @@ test("customer addresses are persisted and isolated by user", async () => {
   assert.ok((await list.json()).addresses.some((item) => item.id === saved.id));
 });
 
+test("courier can become available and complete an assigned delivery", async () => {
+  const courier = db.addUser({
+    id: "courier_test",
+    fullName: "Entregador Teste",
+    email: "entregador@foodcourt.test",
+    phone: "(11) 99999-9999",
+    passwordHash: require("../src/lib/auth").hashPassword("entrega123"),
+    status: "active",
+    role: "courier",
+    createdAt: new Date().toISOString(),
+  });
+  const delivery = {
+    id: "delivery_test",
+    orderId: "order_delivery_test",
+    storeId: "store_real_test",
+    customerId: "customer_test",
+    courierId: null,
+    status: "searching",
+    pickupAddress: { street: "Rua da Loja", number: "1" },
+    dropoffAddress: "Casa — Rua do Cliente, 10",
+    courierPayout: 7,
+    statusHistory: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  db.state.deliveries.push(delivery);
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: courier.email, password: "entrega123" }),
+  });
+  const cookie = login.headers.get("set-cookie").split(";")[0];
+  const availability = await fetch(`${baseUrl}/api/courier-availability`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ available: true }),
+  });
+  assert.equal(availability.status, 200);
+  const dashboard = await fetch(`${baseUrl}/api/courier-dashboard`, {
+    headers: { Cookie: cookie },
+  });
+  assert.ok(
+    (await dashboard.json()).available.some((item) => item.id === delivery.id),
+  );
+  const accept = await fetch(`${baseUrl}/api/courier-delivery`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ deliveryId: delivery.id, action: "accept" }),
+  });
+  assert.equal(accept.status, 200);
+  assert.equal((await accept.json()).delivery.courierId, courier.id);
+});
+
 test("invalid JSON and untrusted origins are rejected", async () => {
   const invalid = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",

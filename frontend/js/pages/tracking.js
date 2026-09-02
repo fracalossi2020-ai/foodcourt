@@ -2,7 +2,7 @@ import { api } from '../core/api.js'
 import { store } from '../core/store.js'
 import { esc, money, emptyState, toast } from '../core/ui.js'
 
-const stages=[['pending','Pedido recebido','A loja recebeu seu pedido.'],['accepted','Pedido aceito','A cozinha confirmou o pedido.'],['preparing','Em preparação','Seu pedido está sendo preparado.'],['ready','Pedido pronto','Tudo pronto para a próxima etapa.'],['delivered','Entregue','Bom apetite!']]
+const stages=[['pending','Pedido recebido','A loja recebeu seu pedido.'],['accepted','Pedido aceito','A cozinha confirmou o pedido.'],['preparing','Em preparação','Seu pedido está sendo preparado.'],['ready','Pedido pronto','Aguardando a coleta do entregador.'],['out_for_delivery','Saiu para entrega','Seu pedido está a caminho.'],['delivered','Entregue','Bom apetite!']]
 export async function render(view,boot,params){
   let order
   try{order=(await api.order(params.id)).order}catch{order=store.getOrder(params.id)}

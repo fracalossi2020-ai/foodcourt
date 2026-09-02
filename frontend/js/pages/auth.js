@@ -424,7 +424,7 @@ function completeAuth(user) {
 }
 
 function goAfterLogin(user) {
-  const roleTarget = user?.role === 'merchant' ? '/parceiro' : user?.role === 'admin' ? '/admin' : '/inicio'
+  const roleTarget = user?.role === 'merchant' ? '/parceiro' : user?.role === 'admin' ? '/admin' : user?.role === 'courier' ? '/entregador' : '/inicio'
   const target = redirectAfter && redirectAfter !== '/' ? redirectAfter : roleTarget
   location.hash = '#' + target
 }

@@ -26,6 +26,7 @@ const routes = [
   { pattern: /^\/perfil$/, page: 'profile' }
   ,{ pattern: /^\/parceiro$/, page: 'partner' }
   ,{ pattern: /^\/admin$/, page: 'admin' }
+  ,{ pattern: /^\/entregador$/, page: 'courier' }
   ,{ pattern: /^\/fidelidade$/, page: 'loyalty' }
   ,{ pattern: /^\/suporte$/, page: 'support' }
 ]
