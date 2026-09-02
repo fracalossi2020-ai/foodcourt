@@ -97,6 +97,20 @@ test("demo account can log in and access bootstrap", async () => {
   assert.ok(Array.isArray((await bootstrap.json()).categories));
 });
 
+test("authenticated realtime stream connects without exposing other sessions", async () => {
+  const { cookie } = await loginDemo();
+  const controller = new AbortController();
+  const response = await fetch(`${baseUrl}/api/events`, {
+    headers: { Cookie: cookie },
+    signal: controller.signal,
+  });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /text\/event-stream/);
+  const chunk = await response.body.getReader().read();
+  assert.match(Buffer.from(chunk.value).toString("utf8"), /connected/);
+  controller.abort();
+});
+
 test("partner demo account has merchant role", async () => {
   const response = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",

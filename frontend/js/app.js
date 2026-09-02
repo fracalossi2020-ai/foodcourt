@@ -35,6 +35,37 @@ const routes = [
 let currentPage = null
 let authUser = null
 let handlingUnauthorized = false
+let realtimeSource = null
+let realtimeRefreshTimer = null
+
+function stopRealtime() {
+  realtimeSource?.close()
+  realtimeSource = null
+  clearTimeout(realtimeRefreshTimer)
+}
+
+function startRealtime() {
+  if (!authUser || realtimeSource || !('EventSource' in window)) return
+  const source = new EventSource('/api/events')
+  realtimeSource = source
+  source.onmessage = event => {
+    let detail
+    try { detail = JSON.parse(event.data) } catch { return }
+    if (detail.type === 'connected') return
+    if (detail.notification && !store.notifications.some(item => item.id === detail.notification.id)) {
+      store.notifications.unshift(detail.notification)
+      updateNotifBadge()
+    }
+    window.dispatchEvent(new CustomEvent('fc:realtime', { detail }))
+    const path = (location.hash.replace(/^#/, '') || '/').split('?')[0]
+    if (!/^\/(parceiro|entregador|admin|pedido\/|conversa\/|notificacoes)/.test(path)) return
+    clearTimeout(realtimeRefreshTimer)
+    realtimeRefreshTimer = setTimeout(() => navigate(), 250)
+  }
+  source.onerror = () => {
+    if (!authUser) stopRealtime()
+  }
+}
 
 function isAuthPath(path) {
   return path.startsWith('/login') || path.startsWith('/cadastro') || path.startsWith('/esqueci-senha') || path.startsWith('/redefinir-senha')
@@ -46,6 +77,7 @@ async function ensureAuth() {
     const res = await api.me()
     authUser = res.user
     setAuthUser(res.user)
+    startRealtime()
     return true
   } catch {
     return false
@@ -325,6 +357,8 @@ function wireAuthEvents() {
     handlingUnauthorized = false
     setAuthUser(e.detail)
     bootPromise = null
+    stopRealtime()
+    startRealtime()
   })
 
   window.addEventListener('fc:unauthorized', () => {
@@ -332,6 +366,7 @@ function wireAuthEvents() {
     handlingUnauthorized = true
     authUser = null
     bootPromise = null
+    stopRealtime()
     if (!isAuthPath(location.hash.replace(/^#/, '') || '/')) {
       toast('Sessão expirada. Entre novamente.', 'info', '🔒')
       location.hash = '#/login'
@@ -341,6 +376,7 @@ function wireAuthEvents() {
   window.addEventListener('fc:logout', () => {
     authUser = null
     bootPromise = null
+    stopRealtime()
     handlingUnauthorized = false
     location.hash = '#/login'
   })

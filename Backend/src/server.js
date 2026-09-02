@@ -532,9 +532,22 @@ function canAccessOrder(user, order) {
   return false
 }
 
+const realtimeClients = new Map()
+function emitRealtime(userId, event) {
+  const clients = realtimeClients.get(userId)
+  if (!clients?.size) return
+  const payload = `data: ${JSON.stringify({ ...event, at: platform.now() })}\n\n`
+  for (const response of clients) {
+    try { response.write(payload) } catch { clients.delete(response) }
+  }
+  if (!clients.size) realtimeClients.delete(userId)
+}
+
 function pushNotification(userId, type, title, text, orderId = null) {
   if (!userId) return
-  db.state.userNotifications.unshift({ id: db.uid('notification'), userId, type, title, text, orderId, read: false, createdAt: platform.now() })
+  const notification = { id: db.uid('notification'), userId, type, title, text, orderId, read: false, createdAt: platform.now() }
+  db.state.userNotifications.unshift(notification)
+  emitRealtime(userId, { type, orderId, notification })
 }
 
 const clientIp = (req) => (process.env.TRUST_PROXY === '1' && req.headers['x-forwarded-for']?.split(',')[0]?.trim()) || req.socket.remoteAddress || 'unknown'
@@ -1522,6 +1535,26 @@ Object.assign(api, {
     db.save()
     return { read: true }
   },
+  'GET /api/events': (params, query, body, ctx) => {
+    const response = ctx.res
+    response.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    })
+    response.write(`retry: 3000\ndata: ${JSON.stringify({ type: 'connected', at: platform.now() })}\n\n`)
+    const clients = realtimeClients.get(ctx.user.id) || new Set()
+    clients.add(response)
+    realtimeClients.set(ctx.user.id, clients)
+    const heartbeat = setInterval(() => { try { response.write(': heartbeat\n\n') } catch {} }, 25000)
+    ctx.req.on('close', () => {
+      clearInterval(heartbeat)
+      clients.delete(response)
+      if (!clients.size) realtimeClients.delete(ctx.user.id)
+    })
+    return { handled: true }
+  },
 
   'POST /api/address': (params, query, body, ctx) => {
     const cep = String(body.cep || '').replace(/\D/g, '')
@@ -1742,7 +1775,9 @@ Object.assign(api, {
     pushNotification(order.customerId, 'order', `Pedido ${order.id} atualizado`, { accepted: 'A loja aceitou seu pedido.', preparing: 'Seu pedido está em preparação.', ready: 'Seu pedido está pronto para coleta.', delivered: 'Pedido entregue. Bom apetite!', cancelled: 'O estabelecimento cancelou o pedido.' }[body.status] || `Novo status: ${body.status}.`, order.id)
     if (body.status === 'ready' && !db.state.deliveries.some(delivery => delivery.orderId === order.id)) {
       const timestamp = platform.now()
-      db.state.deliveries.push({ id: db.uid('delivery'), orderId: order.id, storeId: order.storeId, customerId: order.customerId, courierId: null, status: 'searching', pickupAddress: store.address || {}, dropoffAddress: order.address, fee: Number(order.deliveryFee || 0), courierPayout: 6.5, createdAt: timestamp, updatedAt: timestamp, statusHistory: [{ status: 'searching', at: timestamp }] })
+      const delivery = { id: db.uid('delivery'), orderId: order.id, storeId: order.storeId, customerId: order.customerId, courierId: null, status: 'searching', pickupAddress: store.address || {}, dropoffAddress: order.address, fee: Number(order.deliveryFee || 0), courierPayout: 6.5, createdAt: timestamp, updatedAt: timestamp, statusHistory: [{ status: 'searching', at: timestamp }] }
+      db.state.deliveries.push(delivery)
+      for (const courier of db.state.users.filter(user => user.role === 'courier' && user.courierAvailable)) emitRealtime(courier.id, { type: 'delivery', orderId: order.id, deliveryId: delivery.id })
     }
     if (body.status === 'delivered' && order.customerId && !order.loyaltyGranted) {
       const customer = db.state.users.find((user) => user.id === order.customerId)
@@ -2158,6 +2193,8 @@ Object.assign(api, {
       order.statusHistory.push({ status: order.status, at: delivery.updatedAt })
       pushNotification(order.customerId, 'order', action === 'start' ? 'Seu pedido saiu para entrega' : 'Pedido entregue', action === 'start' ? 'O entregador está a caminho do seu endereço.' : 'Confirme se recebeu tudo corretamente.', order.id)
     }
+    const storeOwnerId = db.state.stores.find(item => item.id === delivery.storeId)?.ownerId
+    if (storeOwnerId) emitRealtime(storeOwnerId, { type: 'delivery', orderId: delivery.orderId, deliveryId: delivery.id, status: delivery.status })
     platform.audit(ctx.user, `delivery.${action}`, 'delivery', delivery.id)
     db.saveNow()
     return { delivery, order }
