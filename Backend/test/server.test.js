@@ -61,6 +61,14 @@ test("private API rejects anonymous requests", async () => {
   assert.equal(response.status, 401);
 });
 
+test("payment webhook fails closed when provider secrets are absent", async () => {
+  const response = await fetch(`${baseUrl}/api/payments/mercadopago/webhook`, {
+    method: "POST",
+    body: "{}",
+  });
+  assert.equal(response.status, 503);
+});
+
 test("social login routes fail safely when provider credentials are absent", async () => {
   const google = await fetch(`${baseUrl}/api/auth/oauth/google`, {
     redirect: "manual",

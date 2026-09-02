@@ -3,6 +3,7 @@ require('./lib/env').loadEnv()
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 const data = require('./data/catalog')
 const db = require('./lib/db')
 const auth = require('./lib/auth')
@@ -1295,6 +1296,7 @@ async function analyzeMenuImage(store, image) {
 }
 
 const PIX_KEY = process.env.PIX_KEY || '3ddfdfec-13f0-4a48-8350-1f6d37ba892a'
+const MERCADO_PAGO_API = 'https://api.mercadopago.com'
 function pixField(id, value) {
   const text = String(value)
   return `${id}${String(Buffer.byteLength(text, 'utf8')).padStart(2, '0')}${text}`
@@ -1317,8 +1319,8 @@ api['POST /api/pix-charge'] = async (params, query, body, ctx) => {
   const amount = Number(body.amount)
   if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) return { status: 400, body: { error: 'Valor do Pix inválido.' } }
   const txid = `FC${Date.now().toString(36).toUpperCase()}`.slice(0, 25)
-  const payload = createPixPayload(amount, txid)
-  const qrCode = await QRCode.toDataURL(payload, {
+  let payload = createPixPayload(amount, txid)
+  let qrCode = await QRCode.toDataURL(payload, {
     width: 360,
     margin: 2,
     errorCorrectionLevel: 'M',
@@ -1330,6 +1332,42 @@ api['POST /api/pix-charge'] = async (params, query, body, ctx) => {
     expiresAt: new Date(Date.now() + 420000).toISOString(),
   }
   db.state.paymentEvents.unshift(charge)
+  const accessToken = String(process.env.MERCADO_PAGO_ACCESS_TOKEN || '').trim()
+  if (accessToken) {
+    const document = String(ctx.user.document || '').replace(/\D/g, '')
+    const paymentResponse = await fetch(`${MERCADO_PAGO_API}/v1/payments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': charge.id },
+      body: JSON.stringify({
+        transaction_amount: charge.amount,
+        description: 'Pedido FoodCourt',
+        payment_method_id: 'pix',
+        external_reference: charge.id,
+        notification_url: `${String(process.env.APP_URL || '').replace(/\/$/, '')}/api/payments/mercadopago/webhook`,
+        payer: { email: ctx.user.email, ...(document ? { identification: { type: document.length === 11 ? 'CPF' : 'CNPJ', number: document } } : {}) },
+      }),
+    })
+    const providerPayment = await paymentResponse.json().catch(() => ({}))
+    if (!paymentResponse.ok) {
+      charge.status = 'failed'
+      charge.providerError = providerPayment.message || 'Falha ao criar pagamento Pix.'
+      db.saveNow()
+      return { status: 502, body: { error: charge.providerError } }
+    }
+    const transaction = providerPayment.point_of_interaction?.transaction_data || {}
+    if (!transaction.qr_code) {
+      charge.status = 'failed'
+      charge.providerError = 'O provedor não retornou o QR Code Pix.'
+      db.saveNow()
+      return { status: 502, body: { error: charge.providerError } }
+    }
+    charge.provider = 'mercado-pago'
+    charge.providerPaymentId = String(providerPayment.id)
+    charge.status = providerPayment.status || 'pending'
+    charge.expiresAt = providerPayment.date_of_expiration || charge.expiresAt
+    payload = transaction.qr_code
+    qrCode = transaction.qr_code_base64 ? `data:image/png;base64,${transaction.qr_code_base64}` : await QRCode.toDataURL(payload, { width: 360, margin: 2 })
+  }
   db.saveNow()
   return {
     id: charge.id,
@@ -1339,9 +1377,44 @@ api['POST /api/pix-charge'] = async (params, query, body, ctx) => {
     key: PIX_KEY,
     txid,
     expiresIn: 420,
-    expiresAt: Date.now() + 420000,
-    mode: 'test',
+    expiresAt: Date.parse(charge.expiresAt),
+    mode: accessToken ? 'provider' : 'test',
   }
+}
+
+async function mercadoPagoWebhook(req, res, url) {
+  const secret = String(process.env.MERCADO_PAGO_WEBHOOK_SECRET || '').trim()
+  const accessToken = String(process.env.MERCADO_PAGO_ACCESS_TOKEN || '').trim()
+  if (!secret || !accessToken) return sendJson(res, 503, { error: 'Webhook de pagamentos não configurado.' })
+  const body = await readBody(req)
+  const dataId = String(url.searchParams.get('data.id') || body.data?.id || '')
+  const requestId = String(req.headers['x-request-id'] || '')
+  const signature = Object.fromEntries(String(req.headers['x-signature'] || '').split(',').map(part => part.trim().split('=')))
+  if (!dataId || !requestId || !signature.ts || !signature.v1) return sendJson(res, 401, { error: 'Assinatura ausente.' })
+  const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${signature.ts};`
+  const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex')
+  const valid = expected.length === signature.v1.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature.v1))
+  if (!valid) return sendJson(res, 401, { error: 'Assinatura inválida.' })
+  const response = await fetch(`${MERCADO_PAGO_API}/v1/payments/${encodeURIComponent(dataId)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+  const providerPayment = await response.json().catch(() => ({}))
+  if (!response.ok) return sendJson(res, 502, { error: 'Não foi possível consultar o pagamento.' })
+  const payment = db.state.paymentEvents.find(item => item.providerPaymentId === String(providerPayment.id) || item.id === providerPayment.external_reference)
+  if (!payment) return sendJson(res, 200, { received: true })
+  payment.status = providerPayment.status === 'approved' ? 'paid' : providerPayment.status
+  payment.updatedAt = platform.now()
+  for (const orderId of payment.orderIds || []) {
+    const order = db.state.platformOrders.find(item => item.id === orderId)
+    if (!order) continue
+    order.paymentStatus = payment.status
+    order.updatedAt = platform.now()
+    if (payment.status === 'paid') {
+      const store = db.state.stores.find(item => item.id === order.storeId)
+      if (store?.ownerId) pushNotification(store.ownerId, 'payment', 'Pagamento confirmado', `O pedido ${order.id} já pode ser aceito.`, order.id)
+      pushNotification(order.customerId, 'payment', 'Pagamento aprovado', `Recebemos o pagamento do pedido ${order.id}.`, order.id)
+    }
+  }
+  db.saveNow()
+  return sendJson(res, 200, { received: true })
 }
 
 api['POST /api/partner-subscription-pix'] = async (params, query, body, ctx) => {
@@ -2461,6 +2534,11 @@ const server = http.createServer(async (req, res) => {
         persistentStorage: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH),
         timestamp: new Date().toISOString(),
       })
+      return
+    }
+    if (pathname === '/api/payments/mercadopago/webhook' && req.method === 'POST') {
+      try { await mercadoPagoWebhook(req, res, url) }
+      catch (error) { console.error('[payments] webhook:', error.message); sendJson(res, 500, { error: 'Falha ao processar notificação.' }) }
       return
     }
 
