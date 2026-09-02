@@ -2253,6 +2253,8 @@ Object.assign(api, {
         pendingStores: db.state.stores.filter(store => store.status === 'pending').length,
         activeDeliveries: db.state.deliveries.filter(delivery => !['delivered', 'cancelled'].includes(delivery.status)).length,
         couriers: couriers.length,
+        paidPayments: db.state.paymentEvents.filter(payment => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+        pendingPayments: db.state.paymentEvents.filter(payment => ['pending', 'in_process', 'refund_pending'].includes(payment.status)).length,
       },
       stores: db.state.stores,
       users: db.state.users.map(auth.publicUser),
@@ -2262,6 +2264,10 @@ Object.assign(api, {
         order: db.state.platformOrders.find(order => order.id === delivery.orderId) || null,
         courierName: db.state.users.find(user => user.id === delivery.courierId)?.fullName || null,
         storeName: db.state.stores.find(store => store.id === delivery.storeId)?.name || null,
+      })),
+      payments: db.state.paymentEvents.slice(0, 100).map(payment => ({
+        ...payment,
+        customerEmail: db.state.users.find(user => user.id === payment.userId)?.email || null,
       })),
       audit: db.state.auditLog.slice(0, 30),
     }

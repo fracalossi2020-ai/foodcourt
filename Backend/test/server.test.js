@@ -401,6 +401,13 @@ test("admin manages store approval and courier access", async () => {
   });
   const cookie = login.headers.get("set-cookie")?.split(";")[0];
   assert.equal(login.status, 200);
+  const dashboard = await fetch(`${baseUrl}/api/admin-dashboard`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(dashboard.status, 200);
+  const adminData = await dashboard.json();
+  assert.ok(Array.isArray(adminData.payments));
+  assert.equal(typeof adminData.metrics.pendingPayments, "number");
 
   const targetStore = db.state.stores[0];
   const storeStatus = await fetch(`${baseUrl}/api/admin-store-status`, {
