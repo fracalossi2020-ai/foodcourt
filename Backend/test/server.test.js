@@ -111,6 +111,33 @@ test("authenticated realtime stream connects without exposing other sessions", a
   controller.abort();
 });
 
+test("loyalty redemption creates a personal coupon exactly once", async () => {
+  const { cookie } = await loginDemo();
+  const payload = {
+    rewardId: "discount_5",
+    redemptionKey: "redeem-test-unique-1",
+  };
+  const redeem = () =>
+    fetch(`${baseUrl}/api/loyalty-redeem`, {
+      method: "POST",
+      headers: { Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  const first = await redeem();
+  assert.equal(first.status, 200);
+  const result = await first.json();
+  assert.equal(result.points, 1000);
+  assert.match(result.coupon.code, /^CLUBE/);
+  const repeated = await redeem();
+  assert.equal(repeated.status, 200);
+  assert.equal((await repeated.json()).points, 1000);
+  assert.equal(
+    db.state.userCoupons.filter((item) => item.userId === result.coupon.userId)
+      .length,
+    1,
+  );
+});
+
 test("partner demo account has merchant role", async () => {
   const response = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",

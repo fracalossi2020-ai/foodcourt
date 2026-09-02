@@ -392,6 +392,12 @@ function normalize(s) {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
+const LOYALTY_REWARDS = [
+  { id: 'discount_5', title: 'R$ 5 de desconto', cost: 250, type: 'fixed', value: 5, minimumOrder: 20 },
+  { id: 'free_delivery', title: 'Frete grátis', cost: 300, type: 'shipping', value: 0, minimumOrder: 25 },
+  { id: 'discount_10', title: 'R$ 10 de desconto', cost: 450, type: 'fixed', value: 10, minimumOrder: 40 },
+]
+
 function restaurantCard(r) {
   return {
     id: r.id,
@@ -877,7 +883,10 @@ const api = {
     })(),
     categories: data.categories,
     banners: data.banners,
-    coupons: db.state.promotions.filter(item => item.active && item.code && (!item.startsAt || Date.parse(item.startsAt) <= Date.now()) && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())).map(item => ({ code: item.code, type: item.type, value: Number(item.value), min: Number(item.minimumOrder || 0), rules: { min: Number(item.minimumOrder || 0) }, storeId: item.storeId })),
+    coupons: [
+      ...db.state.promotions.filter(item => item.active && item.code && (!item.startsAt || Date.parse(item.startsAt) <= Date.now()) && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())),
+      ...db.state.userCoupons.filter(item => item.userId === ctx.user.id && item.active && (!item.expiresAt || Date.parse(item.expiresAt) >= Date.now())),
+    ].map(item => ({ code: item.code, type: item.type, value: Number(item.value), min: Number(item.minimumOrder || 0), rules: { min: Number(item.minimumOrder || 0) }, storeId: item.storeId || null, personal: Boolean(item.userId) })),
     notifications: db.state.userNotifications.filter(item => item.userId === ctx.user.id).slice(0, 50).map(item => ({ ...item, time: new Date(item.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) })),
     flashDeals: [],
     paymentMethods: data.paymentMethods,
@@ -2325,10 +2334,10 @@ Object.assign(api, {
       const freeShippingMin = Number(catalogRestaurant?.freeShippingMin ?? partnerStore?.freeShippingMin ?? 0)
       const deliveryFee = freeShippingMin > 0 && subtotal >= freeShippingMin ? 0 : baseDeliveryFee
       const couponCode = auth.sanitize(body.couponCode).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20)
-      const promotion = couponCode ? db.state.promotions.find(item => item.storeId === partnerStore?.id && item.active && item.code === couponCode && (!item.startsAt || Date.parse(item.startsAt) <= Date.now()) && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())) : null
+      const promotion = couponCode ? db.state.promotions.find(item => item.storeId === partnerStore?.id && item.active && item.code === couponCode && (!item.startsAt || Date.parse(item.startsAt) <= Date.now()) && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())) || db.state.userCoupons.find(item => item.userId === ctx.user.id && item.active && item.code === couponCode && (!item.expiresAt || Date.parse(item.expiresAt) >= Date.now())) : null
       if (couponCode && !promotion) throw new Error('Cupom inválido ou expirado para este estabelecimento.')
       if (promotion && subtotal < Number(promotion.minimumOrder || 0)) throw new Error(`Este cupom exige pedido mínimo de R$ ${Number(promotion.minimumOrder).toFixed(2).replace('.', ',')}.`)
-      const discount = promotion ? Math.min(subtotal, promotion.type === 'fixed' ? Number(promotion.value) : subtotal * Number(promotion.value) / 100) : 0
+      const discount = promotion ? promotion.type === 'shipping' ? deliveryFee : Math.min(subtotal, promotion.type === 'fixed' ? Number(promotion.value) : subtotal * Number(promotion.value) / 100) : 0
       const savedAddress = body.addressId ? db.state.customerAddresses.find(address => address.id === body.addressId && address.userId === ctx.user.id) : null
       if (body.addressId && !savedAddress) throw new Error('Endereço de entrega inválido.')
       let scheduledAt = null
@@ -2374,7 +2383,11 @@ Object.assign(api, {
         order.paymentIntentId = charge.id
         order.paymentStatus = 'pending'
       }
-      if (promotion) promotion.uses = Number(promotion.uses || 0) + 1
+      if (promotion?.userId) {
+        promotion.active = false
+        promotion.usedAt = platform.now()
+        promotion.orderId = order.id
+      } else if (promotion) promotion.uses = Number(promotion.uses || 0) + 1
       if (partnerStore) for (const line of items) { const product = partnerStore.products.find(item => item.id === line.productId); if (product && Number.isFinite(Number(product.stock))) product.stock = Math.max(0, Number(product.stock) - line.quantity) }
       db.state.platformOrders.unshift(order)
       const owner = partnerStore ? db.state.users.find(user => user.id === partnerStore.ownerId) : null
@@ -2407,6 +2420,12 @@ Object.assign(api, {
       }
       const promotion = order.couponCode ? db.state.promotions.find(item => item.storeId === order.storeId && item.code === order.couponCode) : null
       if (promotion) promotion.uses = Math.max(0, Number(promotion.uses || 0) - 1)
+      const personalCoupon = order.couponCode ? db.state.userCoupons.find(item => item.userId === ctx.user.id && item.code === order.couponCode && item.orderId === order.id) : null
+      if (personalCoupon) {
+        personalCoupon.active = true
+        personalCoupon.usedAt = null
+        personalCoupon.orderId = null
+      }
       order.inventoryRestored = true
     }
     const payment = order.paymentIntentId ? db.state.paymentEvents.find(item => item.id === order.paymentIntentId) : null
@@ -2480,6 +2499,8 @@ Object.assign(api, {
       level: level.name,
       next,
       events: db.state.loyaltyEvents.filter((event) => event.userId === ctx.user.id).slice(0, 30),
+      rewards: LOYALTY_REWARDS.map(reward => ({ ...reward, available: points >= reward.cost })),
+      coupons: db.state.userCoupons.filter(coupon => coupon.userId === ctx.user.id && coupon.active),
       missions: [
         {
           id: 'mission_categories',
@@ -2504,6 +2525,32 @@ Object.assign(api, {
         },
       ],
     }
+  },
+  'POST /api/loyalty-redeem': (params, query, body, ctx) => {
+    const redemptionKey = auth.sanitize(body.redemptionKey).slice(0, 100)
+    if (redemptionKey.length < 8) return { status: 400, body: { error: 'Identificador de resgate inválido.' } }
+    const previous = db.state.loyaltyRedemptions.find(item => item.userId === ctx.user.id && item.redemptionKey === redemptionKey)
+    if (previous) return { coupon: db.state.userCoupons.find(item => item.id === previous.couponId), points: ctx.user.points }
+    const reward = LOYALTY_REWARDS.find(item => item.id === body.rewardId)
+    if (!reward) return { status: 400, body: { error: 'Benefício inválido.' } }
+    const points = Number(ctx.user.points || 0)
+    if (points < reward.cost) return { status: 409, body: { error: `Você precisa de mais ${reward.cost - points} pontos para este resgate.` } }
+    const now = platform.now()
+    const code = `CLUBE${crypto.randomBytes(3).toString('hex').toUpperCase()}`
+    const coupon = {
+      id: db.uid('coupon'), userId: ctx.user.id, rewardId: reward.id, code,
+      type: reward.type, value: reward.value, minimumOrder: reward.minimumOrder,
+      active: true, createdAt: now, expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+    }
+    const redemption = { id: db.uid('redemption'), redemptionKey, userId: ctx.user.id, rewardId: reward.id, couponId: coupon.id, points: reward.cost, at: now }
+    ctx.user.points = points - reward.cost
+    db.state.userCoupons.unshift(coupon)
+    db.state.loyaltyRedemptions.unshift(redemption)
+    db.state.loyaltyEvents.unshift({ id: db.uid('loyalty'), userId: ctx.user.id, type: 'redemption', points: -reward.cost, label: `Resgate: ${reward.title}`, at: now })
+    pushNotification(ctx.user.id, 'loyalty', 'Benefício resgatado', `Use o cupom ${code} no checkout. Ele vale por 30 dias.`)
+    platform.audit(ctx.user, 'loyalty.redeem', 'coupon', coupon.id, reward.id)
+    db.saveNow()
+    return { coupon, points: ctx.user.points }
   },
   'GET /api/customer-support': (params, query, body, ctx) => ({
     tickets: db.state.supportTickets.filter((ticket) => ticket.customerId === ctx.user.id),

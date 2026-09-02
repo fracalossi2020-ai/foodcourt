@@ -11,7 +11,7 @@ function ensureDbDirectory() {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
 }
 
-const EMPTY = () => ({ users: [], sessions: {}, resetTokens: {}, stores: [], subscriptions: [], storeMembers: [], platformOrders: [], promotions: [], reviews: [], supportTickets: [], auditLog: [], loyaltyEvents: [], referrals: [], customerAddresses: [], deliveries: [], conversations: [], paymentEvents: [], userNotifications: [] })
+const EMPTY = () => ({ users: [], sessions: {}, resetTokens: {}, stores: [], subscriptions: [], storeMembers: [], platformOrders: [], promotions: [], reviews: [], supportTickets: [], auditLog: [], loyaltyEvents: [], loyaltyRedemptions: [], userCoupons: [], referrals: [], customerAddresses: [], deliveries: [], conversations: [], paymentEvents: [], userNotifications: [] })
 let state = EMPTY()
 let emailIndex = new Map()
 let phoneIndex = new Map()

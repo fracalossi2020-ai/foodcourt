@@ -80,6 +80,7 @@ export const api = {
   customerReviews: () => get('/api/customer-reviews'),
   createReview: (review) => post('/api/customer-reviews', review),
   loyalty: () => get('/api/loyalty'),
+  redeemLoyalty: (rewardId, redemptionKey) => post('/api/loyalty-redeem', { rewardId, redemptionKey }),
   customerSupport: () => get('/api/customer-support'),
   createSupportTicket: (ticket) => post('/api/customer-support', ticket),
   cep: (cep) => get(`/api/cep/${String(cep).replace(/\D/g, '')}`),
