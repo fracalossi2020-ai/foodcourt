@@ -288,6 +288,71 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
     store.products.find((item) => item.id === "product_real_test").stock,
     3,
   );
+  const chat = await fetch(`${baseUrl}/api/chat-message`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      orderId: order.id,
+      text: "Por favor, sem guardanapos.",
+    }),
+  });
+  assert.equal(chat.status, 200);
+  const messages = await fetch(`${baseUrl}/api/chat/${order.id}`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(messages.status, 200);
+  assert.equal(
+    (await messages.json()).messages[0].text,
+    "Por favor, sem guardanapos.",
+  );
+});
+
+test("admin manages store approval and courier access", async () => {
+  const customer = await loginDemo();
+  const denied = await fetch(`${baseUrl}/api/admin-dashboard`, {
+    headers: { Cookie: customer.cookie },
+  });
+  assert.equal(denied.status, 403);
+
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "admin@foodcourt.com",
+      password: "foodcourt123",
+    }),
+  });
+  const cookie = login.headers.get("set-cookie")?.split(";")[0];
+  assert.equal(login.status, 200);
+
+  const targetStore = db.state.stores[0];
+  const storeStatus = await fetch(`${baseUrl}/api/admin-store-status`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ storeId: targetStore.id, status: "active" }),
+  });
+  assert.equal(storeStatus.status, 200);
+  assert.equal(targetStore.status, "active");
+
+  const courier = await fetch(`${baseUrl}/api/admin-courier`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "joao@foodcourt.com",
+      vehicle: "Bicicleta",
+      action: "enable",
+    }),
+  });
+  assert.equal(courier.status, 200);
+  assert.equal(db.findByEmail("joao@foodcourt.com").role, "courier");
+
+  const disable = await fetch(`${baseUrl}/api/admin-courier`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "joao@foodcourt.com", action: "disable" }),
+  });
+  assert.equal(disable.status, 200);
+  assert.equal(db.findByEmail("joao@foodcourt.com").role, "customer");
 });
 
 test("invalid JSON and untrusted origins are rejected", async () => {

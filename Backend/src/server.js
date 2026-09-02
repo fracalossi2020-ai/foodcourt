@@ -2105,6 +2105,12 @@ Object.assign(api, {
   },
   'GET /api/admin-dashboard': (params, query, body, ctx) => {
     if (ctx.user.role !== 'admin') return forbidden('administradores')
+    const couriers = db.state.users.filter(user => user.role === 'courier').map(user => ({
+      ...auth.publicUser(user),
+      available: Boolean(user.courierAvailable),
+      vehicle: user.courierVehicle || 'Moto',
+      deliveries: db.state.deliveries.filter(delivery => delivery.courierId === user.id && delivery.status === 'delivered').length,
+    }))
     return {
       metrics: {
         users: db.state.users.length,
@@ -2112,11 +2118,58 @@ Object.assign(api, {
         orders: db.state.platformOrders.length,
         gross: db.state.platformOrders.reduce((sum, o) => sum + o.total, 0),
         openTickets: db.state.supportTickets.filter((t) => t.status === 'open').length,
+        pendingStores: db.state.stores.filter(store => store.status === 'pending').length,
+        activeDeliveries: db.state.deliveries.filter(delivery => !['delivered', 'cancelled'].includes(delivery.status)).length,
+        couriers: couriers.length,
       },
       stores: db.state.stores,
       users: db.state.users.map(auth.publicUser),
+      couriers,
+      deliveries: db.state.deliveries.map(delivery => ({
+        ...delivery,
+        order: db.state.platformOrders.find(order => order.id === delivery.orderId) || null,
+        courierName: db.state.users.find(user => user.id === delivery.courierId)?.fullName || null,
+        storeName: db.state.stores.find(store => store.id === delivery.storeId)?.name || null,
+      })),
       audit: db.state.auditLog.slice(0, 30),
     }
+  },
+  'POST /api/admin-store-status': (params, query, body, ctx) => {
+    if (ctx.user.role !== 'admin') return forbidden('administradores')
+    const store = db.state.stores.find(item => item.id === body.storeId)
+    const status = String(body.status || '')
+    if (!store || !['active', 'pending', 'suspended'].includes(status)) return { status: 400, body: { error: 'Estabelecimento ou status inválido.' } }
+    store.status = status
+    if (status !== 'active') store.open = false
+    store.updatedAt = platform.now()
+    platform.audit(ctx.user, `store.${status}`, 'store', store.id, store.name)
+    db.saveNow()
+    return { store }
+  },
+  'POST /api/admin-courier': (params, query, body, ctx) => {
+    if (ctx.user.role !== 'admin') return forbidden('administradores')
+    const email = auth.validEmail(body.email)
+    if (!email.ok) return { status: 400, body: { error: email.error } }
+    const user = db.findByEmail(email.value)
+    if (!user) return { status: 404, body: { error: 'Nenhuma conta foi encontrada com este e-mail.' } }
+    if (user.role === 'admin' || (user.role === 'merchant' && platform.storeForUser(user))) return { status: 409, body: { error: 'Esta conta já administra uma operação e não pode virar entregador.' } }
+    const action = body.action === 'disable' ? 'disable' : 'enable'
+    if (action === 'enable') {
+      user.role = 'courier'
+      user.level = 'Entregador'
+      user.status = 'active'
+      user.courierVehicle = auth.sanitize(body.vehicle || 'Moto').slice(0, 40)
+      user.courierAvailable = false
+    } else {
+      if (db.state.deliveries.some(delivery => delivery.courierId === user.id && ['accepted', 'picked_up', 'out_for_delivery'].includes(delivery.status))) return { status: 409, body: { error: 'Finalize a entrega atual antes de desativar este entregador.' } }
+      user.role = 'customer'
+      user.level = 'Cliente'
+      user.courierAvailable = false
+    }
+    user.updatedAt = platform.now()
+    platform.audit(ctx.user, `courier.${action}`, 'user', user.id, user.email)
+    db.saveNow()
+    return { user: auth.publicUser(user) }
   },
   'GET /api/orders': (params, query, body, ctx) => ({
     orders: db.state.platformOrders.filter((order) => order.customerId === ctx.user.id),

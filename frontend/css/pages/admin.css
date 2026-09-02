@@ -1,0 +1,4 @@
+.admin-tabs{margin-bottom:20px}
+.admin-tabs a.active{background:var(--brand);color:#fff}
+.admin-action{width:130px;min-height:36px;padding:6px 9px;font-size:.7rem}
+@media(max-width:650px){.admin-row{flex-wrap:wrap}.admin-action{width:100%}}
