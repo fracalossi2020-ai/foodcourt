@@ -76,6 +76,8 @@ export const api = {
   customerSupport: () => get('/api/customer-support'),
   createSupportTicket: (ticket) => post('/api/customer-support', ticket),
   cep: (cep) => get(`/api/cep/${String(cep).replace(/\D/g, '')}`),
+  addresses: () => get('/api/addresses'),
+  saveAddress: (address) => post('/api/address', address),
 
   me: () => get('/api/auth/me'),
   turnstileConfig: () => get('/api/auth/turnstile-config', { ttl: 300000 }),

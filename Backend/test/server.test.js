@@ -167,6 +167,32 @@ test("registered establishments automatically appear in the customer marketplace
   assert.ok(publicPayload.restaurants.some((item) => item.id === store.id));
 });
 
+test("customer addresses are persisted and isolated by user", async () => {
+  const { cookie } = await loginDemo();
+  const created = await fetch(`${baseUrl}/api/address`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      label: "Casa",
+      cep: "35180312",
+      street: "Avenida Monsenhor Rafael",
+      number: "10",
+      neighborhood: "Timirim",
+      city: "Timóteo",
+      state: "MG",
+    }),
+  });
+  assert.equal(created.status, 200);
+  const saved = (await created.json()).address;
+  assert.equal(saved.userId, db.findByEmail("joao@foodcourt.com").id);
+
+  const list = await fetch(`${baseUrl}/api/addresses`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(list.status, 200);
+  assert.ok((await list.json()).addresses.some((item) => item.id === saved.id));
+});
+
 test("invalid JSON and untrusted origins are rejected", async () => {
   const invalid = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",

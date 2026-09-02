@@ -73,7 +73,7 @@ function sectionContent(sectionId, boot) {
   if (sectionId === 'enderecos') return `<div class="detail-info-banner"><span>🚴</span><div><b>Destino da próxima entrega</b><small>Toque em um endereço para torná-lo o principal.</small></div></div><div class="profile-option-list">${store.addresses.map(address => optionCard({
     id: address.id, group: 'address', selected: store.address?.id === address.id, icon: address.emoji,
     title: address.label, description: `${address.street} · ${address.city}`
-  })).join('')}</div>`
+  })).join('')}</div><form class="card profile-detail-card profile-form" data-address-form><h2>Adicionar endereço</h2><label>Identificação<input class="input" name="label" placeholder="Casa, trabalho..." required></label><label>CEP<input class="input" name="cep" inputmode="numeric" maxlength="9" required></label><label>Rua<input class="input" name="street" required></label><label>Número<input class="input" name="number" required></label><label>Complemento<input class="input" name="complement"></label><label>Bairro<input class="input" name="neighborhood" required></label><label>Cidade<input class="input" name="city" required></label><label>Estado<input class="input" name="state" maxlength="2" required></label><button class="btn btn-primary">Salvar endereço</button></form>`
 
   if (sectionId === 'pagamentos') return `<div class="detail-info-banner"><span>🔒</span><div><b>Pagamento seguro</b><small>Seus dados sensíveis não ficam expostos no FoodCourt.</small></div></div><div class="profile-option-list">${boot.paymentMethods.map(payment => optionCard({
     id: payment.id, group: 'payment', selected: store.preferredPaymentId === payment.id, icon: payment.emoji,
@@ -107,6 +107,27 @@ function bindSection(view, sectionId) {
     selectOnly(view, '[data-address]', button)
     toast('Endereço de entrega atualizado.', 'success')
   }))
+
+  const addressForm = view.querySelector('[data-address-form]')
+  addressForm?.elements.cep.addEventListener('blur', async event => {
+    const cep = event.currentTarget.value.replace(/\D/g, '')
+    if (cep.length !== 8) return
+    try {
+      const { address } = await api.cep(cep)
+      for (const field of ['street','neighborhood','city','state']) if (addressForm.elements[field]) addressForm.elements[field].value = address[field] || ''
+    } catch (error) { toast(error.message, 'error') }
+  })
+  addressForm?.addEventListener('submit', async event => {
+    event.preventDefault()
+    const button = event.currentTarget.querySelector('button')
+    button.disabled = true
+    try {
+      const result = await api.saveAddress(Object.fromEntries(new FormData(event.currentTarget)))
+      store.addAddress(result.address)
+      toast('Endereço salvo com segurança.', 'success')
+      location.hash = '#/perfil?secao=enderecos&at=' + Date.now()
+    } catch (error) { toast(error.message, 'error'); button.disabled = false }
+  })
 
   view.querySelectorAll('[data-payment]').forEach(button => button.addEventListener('click', () => {
     store.setPreferredPayment(button.dataset.payment)

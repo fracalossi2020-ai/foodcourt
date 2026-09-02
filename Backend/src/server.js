@@ -844,7 +844,10 @@ const api = {
   }),
   'GET /api/bootstrap': (params, query, body, ctx) => ({
     user: auth.publicUser(ctx.user),
-    addresses: data.addresses,
+    addresses: (() => {
+      const saved = db.state.customerAddresses.filter(address => address.userId === ctx.user.id)
+      return saved.length ? saved : data.addresses
+    })(),
     categories: data.categories,
     banners: data.banners,
     coupons: [],
@@ -1414,6 +1417,32 @@ Object.assign(api, {
         },
       }
     }
+  },
+
+  'GET /api/addresses': (params, query, body, ctx) => ({
+    addresses: db.state.customerAddresses.filter(address => address.userId === ctx.user.id),
+  }),
+
+  'POST /api/address': (params, query, body, ctx) => {
+    const cep = String(body.cep || '').replace(/\D/g, '')
+    const street = auth.sanitize(body.street).slice(0, 120)
+    const number = auth.sanitize(body.number).slice(0, 20)
+    const neighborhood = auth.sanitize(body.neighborhood).slice(0, 80)
+    const city = auth.sanitize(body.city).slice(0, 80)
+    const state = auth.sanitize(body.state).toUpperCase().slice(0, 2)
+    const label = auth.sanitize(body.label || 'Endereço').slice(0, 40)
+    if (!/^\d{8}$/.test(cep) || !street || !number || !neighborhood || !city || !/^[A-Z]{2}$/.test(state)) {
+      return { status: 400, body: { error: 'Preencha o endereço completo antes de salvar.' } }
+    }
+    let address = db.state.customerAddresses.find(item => item.id === body.id && item.userId === ctx.user.id)
+    const values = { label, cep, street, number, complement: auth.sanitize(body.complement).slice(0, 80), neighborhood, city, state, emoji: body.emoji || '📍', updatedAt: platform.now() }
+    if (address) Object.assign(address, values)
+    else {
+      address = { id: db.uid('address'), userId: ctx.user.id, ...values, createdAt: platform.now() }
+      db.state.customerAddresses.push(address)
+    }
+    db.saveNow()
+    return { address }
   },
 
   'POST /api/auth/partner-register': (params, query, body, ctx) => {
