@@ -266,6 +266,14 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
     endsAt: new Date(Date.now() + 86_400_000).toISOString(),
     uses: 0,
   });
+  const pixResponse = await fetch(`${baseUrl}/api/pix-charge`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: 45 }),
+  });
+  assert.equal(pixResponse.status, 200);
+  const pix = await pixResponse.json();
+  assert.ok(db.state.paymentEvents.some((item) => item.id === pix.id));
   const response = await fetch(`${baseUrl}/api/orders`, {
     method: "POST",
     headers: { Cookie: cookie, "Content-Type": "application/json" },
@@ -274,6 +282,7 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
       items: [{ productId: "product_real_test", quantity: 2 }],
       addressId: address.id,
       paymentMethod: "Pix",
+      paymentIntentId: pix.id,
       couponCode: "TESTE10",
       scheduledAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     }),
@@ -283,6 +292,7 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
   assert.equal(order.discount, 5);
   assert.equal(order.total, 45);
   assert.equal(order.addressId, address.id);
+  assert.equal(order.paymentStatus, "pending");
   assert.ok(order.scheduledAt);
   assert.equal(
     store.products.find((item) => item.id === "product_real_test").stock,
@@ -304,6 +314,21 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
   assert.equal(
     (await messages.json()).messages[0].text,
     "Por favor, sem guardanapos.",
+  );
+  const cancellation = await fetch(`${baseUrl}/api/order-cancel`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ orderId: order.id, reason: "Teste de estorno" }),
+  });
+  assert.equal(cancellation.status, 200);
+  assert.equal((await cancellation.json()).order.paymentStatus, "cancelled");
+  assert.equal(
+    store.products.find((item) => item.id === "product_real_test").stock,
+    5,
+  );
+  assert.equal(
+    db.state.promotions.find((item) => item.id === "promo_order_test").uses,
+    0,
   );
 });
 

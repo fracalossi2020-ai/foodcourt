@@ -261,7 +261,7 @@ export async function render(view, boot) {
     const placeButton = view.querySelector('[data-place]')
     if (placeButton) { placeButton.disabled = true; placeButton.textContent = 'CONFIRMANDO...' }
     try {
-      const results = await Promise.all(cartGroups.map(group => api.createOrder({ storeId:group.restaurantId, items:group.items.map(item => ({ productId:item.id,quantity:item.qty,options:item.optionNames||[] })), addressId:addr.id, address:`${addr.label} — ${addr.street}${addr.number?', '+addr.number:''}`, paymentMethod:pm.name, couponCode:t.coupon?.code||'', scheduledAt:state.scheduledAt||null })))
+      const results = await Promise.all(cartGroups.map(group => api.createOrder({ storeId:group.restaurantId, items:group.items.map(item => ({ productId:item.id,quantity:item.qty,options:item.optionNames||[] })), addressId:addr.id, address:`${addr.label} — ${addr.street}${addr.number?', '+addr.number:''}`, paymentMethod:pm.name, paymentIntentId:state.payment==='pix'?state.pixCharge?.id:null, couponCode:t.coupon?.code||'', scheduledAt:state.scheduledAt||null })))
       const localOrders = results.map((result,index) => { const serverOrder=result.order; const group=cartGroups[index]; return store.addOrder({
       id: serverOrder.id,
       restaurantId: group.restaurantId,

@@ -1313,7 +1313,7 @@ function createPixPayload(amount, txid) {
   const base = pixField('00', '01') + pixField('26', merchantAccount) + pixField('52', '0000') + pixField('53', '986') + pixField('54', amount.toFixed(2)) + pixField('58', 'BR') + pixField('59', 'FOODCOURT') + pixField('60', 'SAO PAULO') + pixField('62', additional) + '6304'
   return base + pixCrc(base)
 }
-api['POST /api/pix-charge'] = async (params, query, body) => {
+api['POST /api/pix-charge'] = async (params, query, body, ctx) => {
   const amount = Number(body.amount)
   if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) return { status: 400, body: { error: 'Valor do Pix inválido.' } }
   const txid = `FC${Date.now().toString(36).toUpperCase()}`.slice(0, 25)
@@ -1324,7 +1324,15 @@ api['POST /api/pix-charge'] = async (params, query, body) => {
     errorCorrectionLevel: 'M',
     color: { dark: '#10251A', light: '#FFFFFFFF' },
   })
+  const charge = {
+    id: db.uid('payment'), userId: ctx.user.id, provider: 'pix-manual', method: 'pix', txid,
+    amount: +amount.toFixed(2), status: 'pending', createdAt: platform.now(),
+    expiresAt: new Date(Date.now() + 420000).toISOString(),
+  }
+  db.state.paymentEvents.unshift(charge)
+  db.saveNow()
   return {
+    id: charge.id,
     payload,
     qrCode,
     amount: +amount.toFixed(2),
@@ -1651,6 +1659,7 @@ Object.assign(api, {
     const order = db.state.platformOrders.find((item) => item.id === body.orderId && item.storeId === store.id)
     const allowed = ['pending', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']
     if (!order || !allowed.includes(body.status)) return { status: 400, body: { error: 'Pedido ou status inválido.' } }
+    if (order.paymentStatus === 'pending' && body.status !== 'cancelled') return { status: 409, body: { error: 'Aguarde a confirmação do pagamento antes de aceitar este pedido.' } }
     order.status = body.status
     order.statusHistory = order.statusHistory || []
     order.statusHistory.push({ status: body.status, at: platform.now() })
@@ -2227,12 +2236,26 @@ Object.assign(api, {
         couponCode: promotion?.code || null,
         total: Number((subtotal + deliveryFee - discount).toFixed(2)),
         paymentMethod: body.paymentMethod || 'Simulado',
+        paymentIntentId: null,
+        paymentStatus: 'authorized',
         addressId: savedAddress?.id || null,
         address: savedAddress ? `${savedAddress.label} — ${savedAddress.street}, ${savedAddress.number}` : body.address || '',
         scheduledAt,
         createdAt: platform.now(),
         updatedAt: platform.now(),
         cancelReason: null,
+      }
+      if (String(body.paymentMethod || '').toLowerCase().includes('pix')) {
+        const charge = db.state.paymentEvents.find(item => item.id === body.paymentIntentId && item.userId === ctx.user.id && item.status === 'pending')
+        if (!charge || Date.parse(charge.expiresAt) <= Date.now()) throw new Error('O Pix expirou. Gere um novo código para continuar.')
+        const reserved = Number(charge.reservedAmount || 0)
+        if (reserved + order.total - Number(charge.amount) > 0.01) throw new Error('O valor do Pix não corresponde ao total deste pedido.')
+        charge.reservedAmount = Number((reserved + order.total).toFixed(2))
+        charge.orderIds = [...(charge.orderIds || []), order.id]
+        charge.orderId = charge.orderIds[0]
+        charge.updatedAt = platform.now()
+        order.paymentIntentId = charge.id
+        order.paymentStatus = 'pending'
       }
       if (promotion) promotion.uses = Number(promotion.uses || 0) + 1
       if (partnerStore) for (const line of items) { const product = partnerStore.products.find(item => item.id === line.productId); if (product && Number.isFinite(Number(product.stock))) product.stock = Math.max(0, Number(product.stock) - line.quantity) }
@@ -2259,7 +2282,34 @@ Object.assign(api, {
     order.cancelReason = String(body.reason || 'Cancelado pelo cliente')
     order.statusHistory.push({ status: 'cancelled', at: platform.now() })
     order.updatedAt = platform.now()
+    if (!order.inventoryRestored) {
+      const store = db.state.stores.find(item => item.id === order.storeId)
+      for (const line of order.items || []) {
+        const product = store?.products?.find(item => item.id === line.productId)
+        if (product && Number.isFinite(Number(product.stock))) product.stock = Number(product.stock) + Number(line.quantity || 0)
+      }
+      const promotion = order.couponCode ? db.state.promotions.find(item => item.storeId === order.storeId && item.code === order.couponCode) : null
+      if (promotion) promotion.uses = Math.max(0, Number(promotion.uses || 0) - 1)
+      order.inventoryRestored = true
+    }
+    const payment = order.paymentIntentId ? db.state.paymentEvents.find(item => item.id === order.paymentIntentId) : null
+    if (payment) {
+      payment.reservedAmount = Math.max(0, Number(payment.reservedAmount || 0) - Number(order.total || 0))
+      payment.orderIds = (payment.orderIds || []).filter(id => id !== order.id)
+      payment.status = order.paymentStatus === 'paid' ? 'refund_pending' : payment.orderIds.length ? 'pending' : 'cancelled'
+      payment.updatedAt = platform.now()
+      order.paymentStatus = order.paymentStatus === 'paid' ? 'refund_pending' : 'cancelled'
+    }
+    const delivery = db.state.deliveries.find(item => item.orderId === order.id)
+    if (delivery && !['delivered', 'cancelled'].includes(delivery.status)) {
+      delivery.status = 'cancelled'
+      delivery.updatedAt = platform.now()
+      delivery.statusHistory.push({ status: 'cancelled', at: delivery.updatedAt })
+    }
+    const store = db.state.stores.find(item => item.id === order.storeId)
+    if (store?.ownerId) pushNotification(store.ownerId, 'order', `Pedido ${order.id} cancelado`, order.cancelReason, order.id)
     platform.audit(ctx.user, 'order.cancel', 'order', order.id, order.cancelReason)
+    db.saveNow()
     return { order }
   },
   'GET /api/customer-reviews': (params, query, body, ctx) => ({
