@@ -257,6 +257,8 @@ test("courier can become available and complete an assigned delivery", async () 
 test("order applies a store coupon, reserves stock and accepts scheduling", async () => {
   const { cookie } = await loginDemo();
   const store = db.state.stores.find((item) => item.id === "store_real_test");
+  store.deliveryFee = 7;
+  store.freeShippingMin = 100;
   const customer = db.findByEmail("joao@foodcourt.com");
   const address = db.state.customerAddresses.find(
     (item) => item.userId === customer.id,
@@ -277,7 +279,7 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
   const pixResponse = await fetch(`${baseUrl}/api/pix-charge`, {
     method: "POST",
     headers: { Cookie: cookie, "Content-Type": "application/json" },
-    body: JSON.stringify({ amount: 45 }),
+    body: JSON.stringify({ amount: 52 }),
   });
   assert.equal(pixResponse.status, 200);
   const pix = await pixResponse.json();
@@ -298,7 +300,8 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
   assert.equal(response.status, 201);
   const order = (await response.json()).order;
   assert.equal(order.discount, 5);
-  assert.equal(order.total, 45);
+  assert.equal(order.deliveryFee, 7);
+  assert.equal(order.total, 52);
   assert.equal(order.addressId, address.id);
   assert.equal(order.paymentStatus, "pending");
   assert.ok(order.scheduledAt);

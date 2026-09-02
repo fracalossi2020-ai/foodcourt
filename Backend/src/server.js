@@ -467,11 +467,11 @@ function registeredRestaurant(store) {
     rating,
     reviews: reviewItems.length,
     deliveryTime: [prep, prep + 15],
-    deliveryFee: 0,
-    freeShippingMin: 0,
+    deliveryFee: Math.max(0, Number(store.deliveryFee) || 0),
+    freeShippingMin: Math.max(0, Number(store.freeShippingMin) || 0),
     distance: 0,
     priceRange: averagePrice > 60 ? '$$$' : averagePrice > 30 ? '$$' : '$',
-    open: Boolean(store.open),
+    open: store.status === 'active' && Boolean(store.open),
     promo: promotion ? `${promotion.type === 'fixed' ? 'R$ ' + Number(promotion.value).toFixed(2).replace('.', ',') : promotion.value + '%'} OFF` : null,
     badge: 'LOJA FOODCOURT',
     logo: logoImage ? `<img src="${logoImage}" alt="">` : '🏪',
@@ -482,7 +482,7 @@ function registeredRestaurant(store) {
 }
 
 function marketplaceRestaurants() {
-  return db.state.stores.filter((store) => store.status !== 'inactive' && store.status !== 'rejected' && normalize(store.name) !== 'meu estabelecimento').map(registeredRestaurant)
+  return db.state.stores.filter((store) => ['active', 'pending'].includes(store.status) && normalize(store.name) !== 'meu estabelecimento').map(registeredRestaurant)
 }
 
 function marketplaceOffers() {
@@ -1648,6 +1648,8 @@ Object.assign(api, {
       commissionRate: 0,
       preparationMinutes: Math.max(5, Math.min(180, Number(body.preparationMinutes) || 30)),
       minimumOrder: Math.max(0, Number(body.minimumOrder) || 0),
+      deliveryFee: Math.max(0, Number(body.deliveryFee) || 0),
+      freeShippingMin: Math.max(0, Number(body.freeShippingMin) || 0),
       phone: auth.sanitize(body.commercialPhone || phone.value),
       email: auth.sanitize(body.commercialEmail || email.value),
       address: {
@@ -1898,6 +1900,8 @@ Object.assign(api, {
     for (const field of ['description', 'phone', 'email', 'category']) if (body[field] !== undefined) store[field] = auth.sanitize(body[field]).slice(0, field === 'description' ? 500 : 120)
     if (body.preparationMinutes !== undefined) store.preparationMinutes = Math.max(5, Math.min(180, Number(body.preparationMinutes) || 30))
     if (body.minimumOrder !== undefined) store.minimumOrder = Math.max(0, Number(body.minimumOrder) || 0)
+    if (body.deliveryFee !== undefined) store.deliveryFee = Math.max(0, Math.min(500, Number(body.deliveryFee) || 0))
+    if (body.freeShippingMin !== undefined) store.freeShippingMin = Math.max(0, Math.min(100000, Number(body.freeShippingMin) || 0))
     if (body.hours && typeof body.hours === 'object') store.hours = body.hours
     if (typeof body.autoSchedule === 'boolean') store.autoSchedule = body.autoSchedule
     platform.applyStoreSchedule(store)
@@ -2279,7 +2283,10 @@ Object.assign(api, {
         }
       })
       const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-      const deliveryFee = Number(catalogRestaurant?.deliveryFee ?? 0)
+      if (partnerStore && subtotal < Number(partnerStore.minimumOrder || 0)) throw new Error(`Este estabelecimento exige pedido mínimo de R$ ${Number(partnerStore.minimumOrder).toFixed(2).replace('.', ',')}.`)
+      const baseDeliveryFee = Number(catalogRestaurant?.deliveryFee ?? partnerStore?.deliveryFee ?? 0)
+      const freeShippingMin = Number(catalogRestaurant?.freeShippingMin ?? partnerStore?.freeShippingMin ?? 0)
+      const deliveryFee = freeShippingMin > 0 && subtotal >= freeShippingMin ? 0 : baseDeliveryFee
       const couponCode = auth.sanitize(body.couponCode).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20)
       const promotion = couponCode ? db.state.promotions.find(item => item.storeId === partnerStore?.id && item.active && item.code === couponCode && (!item.startsAt || Date.parse(item.startsAt) <= Date.now()) && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())) : null
       if (couponCode && !promotion) throw new Error('Cupom inválido ou expirado para este estabelecimento.')
