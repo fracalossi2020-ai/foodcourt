@@ -1,7 +1,9 @@
 import { store } from '../core/store.js'
+import { api } from '../core/api.js'
 import { esc, emptyState } from '../core/ui.js'
 
 export async function render(view) {
+  try { store.notifications=(await api.notifications()).notifications } catch {}
   let filter = 'all'
   const icons = { order: '🛵', coupon: '🎟️', promo: '🔥', benefits: '🏅' }
 
@@ -19,5 +21,6 @@ export async function render(view) {
 
   draw()
   store.markNotifsRead()
+  api.markNotificationsRead().catch(()=>{})
   setTimeout(() => window.dispatchEvent(new Event('fc:notifs')), 50)
 }

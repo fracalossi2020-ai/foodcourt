@@ -523,6 +523,19 @@ function searchProducts(q, restaurants = marketplaceRestaurants()) {
   return out.slice(0, 20)
 }
 
+function canAccessOrder(user, order) {
+  if (!user || !order) return false
+  if (user.role === 'admin' || order.customerId === user.id) return true
+  if (user.role === 'merchant') return platform.storeForUser(user)?.id === order.storeId
+  if (user.role === 'courier') return db.state.deliveries.some(delivery => delivery.orderId === order.id && delivery.courierId === user.id)
+  return false
+}
+
+function pushNotification(userId, type, title, text, orderId = null) {
+  if (!userId) return
+  db.state.userNotifications.unshift({ id: db.uid('notification'), userId, type, title, text, orderId, read: false, createdAt: platform.now() })
+}
+
 const clientIp = (req) => (process.env.TRUST_PROXY === '1' && req.headers['x-forwarded-for']?.split(',')[0]?.trim()) || req.socket.remoteAddress || 'unknown'
 
 function isTrustedOrigin(req) {
@@ -851,7 +864,7 @@ const api = {
     categories: data.categories,
     banners: data.banners,
     coupons: db.state.promotions.filter(item => item.active && item.code && (!item.startsAt || Date.parse(item.startsAt) <= Date.now()) && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())).map(item => ({ code: item.code, type: item.type, value: Number(item.value), min: Number(item.minimumOrder || 0), rules: { min: Number(item.minimumOrder || 0) }, storeId: item.storeId })),
-    notifications: [],
+    notifications: db.state.userNotifications.filter(item => item.userId === ctx.user.id).slice(0, 50).map(item => ({ ...item, time: new Date(item.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) })),
     flashDeals: [],
     paymentMethods: data.paymentMethods,
   }),
@@ -1422,6 +1435,12 @@ Object.assign(api, {
   'GET /api/addresses': (params, query, body, ctx) => ({
     addresses: db.state.customerAddresses.filter(address => address.userId === ctx.user.id),
   }),
+  'GET /api/notifications': (params, query, body, ctx) => ({ notifications: db.state.userNotifications.filter(item => item.userId === ctx.user.id).slice(0, 50).map(item => ({ ...item, time: new Date(item.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) })) }),
+  'POST /api/notifications-read': (params, query, body, ctx) => {
+    for (const item of db.state.userNotifications) if (item.userId === ctx.user.id) item.read = true
+    db.save()
+    return { read: true }
+  },
 
   'POST /api/address': (params, query, body, ctx) => {
     const cep = String(body.cep || '').replace(/\D/g, '')
@@ -1636,6 +1655,7 @@ Object.assign(api, {
     order.statusHistory = order.statusHistory || []
     order.statusHistory.push({ status: body.status, at: platform.now() })
     order.updatedAt = platform.now()
+    pushNotification(order.customerId, 'order', `Pedido ${order.id} atualizado`, { accepted: 'A loja aceitou seu pedido.', preparing: 'Seu pedido está em preparação.', ready: 'Seu pedido está pronto para coleta.', delivered: 'Pedido entregue. Bom apetite!', cancelled: 'O estabelecimento cancelou o pedido.' }[body.status] || `Novo status: ${body.status}.`, order.id)
     if (body.status === 'ready' && !db.state.deliveries.some(delivery => delivery.orderId === order.id)) {
       const timestamp = platform.now()
       db.state.deliveries.push({ id: db.uid('delivery'), orderId: order.id, storeId: order.storeId, customerId: order.customerId, courierId: null, status: 'searching', pickupAddress: store.address || {}, dropoffAddress: order.address, fee: Number(order.deliveryFee || 0), courierPayout: 6.5, createdAt: timestamp, updatedAt: timestamp, statusHistory: [{ status: 'searching', at: timestamp }] })
@@ -2050,10 +2070,38 @@ Object.assign(api, {
     if (order && ['start', 'deliver'].includes(action)) {
       order.updatedAt = delivery.updatedAt
       order.statusHistory.push({ status: order.status, at: delivery.updatedAt })
+      pushNotification(order.customerId, 'order', action === 'start' ? 'Seu pedido saiu para entrega' : 'Pedido entregue', action === 'start' ? 'O entregador está a caminho do seu endereço.' : 'Confirme se recebeu tudo corretamente.', order.id)
     }
     platform.audit(ctx.user, `delivery.${action}`, 'delivery', delivery.id)
     db.saveNow()
     return { delivery, order }
+  },
+  'GET /api/chat/:id': (params, query, body, ctx) => {
+    const order = db.state.platformOrders.find(item => item.id === params.id)
+    if (!canAccessOrder(ctx.user, order)) return { status: 403, body: { error: 'Você não pode acessar a conversa deste pedido.' } }
+    const conversation = db.state.conversations.find(item => item.orderId === order.id)
+    return { orderId: order.id, messages: conversation?.messages || [] }
+  },
+  'POST /api/chat-message': (params, query, body, ctx) => {
+    const order = db.state.platformOrders.find(item => item.id === body.orderId)
+    if (!canAccessOrder(ctx.user, order)) return { status: 403, body: { error: 'Você não pode enviar mensagens neste pedido.' } }
+    if (['delivered', 'cancelled'].includes(order.status)) return { status: 409, body: { error: 'A conversa deste pedido foi encerrada.' } }
+    const text = auth.sanitize(body.text).slice(0, 600)
+    if (text.length < 1) return { status: 400, body: { error: 'Escreva uma mensagem.' } }
+    let conversation = db.state.conversations.find(item => item.orderId === order.id)
+    if (!conversation) { conversation = { id: db.uid('conversation'), orderId: order.id, storeId: order.storeId, customerId: order.customerId, messages: [], createdAt: platform.now() }; db.state.conversations.push(conversation) }
+    const message = { id: db.uid('message'), userId: ctx.user.id, role: ctx.user.role, senderName: ctx.user.fullName, text, at: platform.now() }
+    conversation.messages.push(message)
+    conversation.updatedAt = message.at
+    const recipients = new Set([order.customerId])
+    const store = db.state.stores.find(item => item.id === order.storeId)
+    if (store?.ownerId) recipients.add(store.ownerId)
+    const delivery = db.state.deliveries.find(item => item.orderId === order.id)
+    if (delivery?.courierId) recipients.add(delivery.courierId)
+    recipients.delete(ctx.user.id)
+    for (const userId of recipients) pushNotification(userId, 'order', `Nova mensagem em ${order.id}`, `${ctx.user.fullName}: ${text}`, order.id)
+    db.saveNow()
+    return { message }
   },
   'GET /api/admin-dashboard': (params, query, body, ctx) => {
     if (ctx.user.role !== 'admin') return forbidden('administradores')
@@ -2136,6 +2184,8 @@ Object.assign(api, {
       if (promotion) promotion.uses = Number(promotion.uses || 0) + 1
       if (partnerStore) for (const line of items) { const product = partnerStore.products.find(item => item.id === line.productId); if (product && Number.isFinite(Number(product.stock))) product.stock = Math.max(0, Number(product.stock) - line.quantity) }
       db.state.platformOrders.unshift(order)
+      const owner = partnerStore ? db.state.users.find(user => user.id === partnerStore.ownerId) : null
+      if (owner) pushNotification(owner.id, 'order', 'Novo pedido recebido', `${ctx.user.fullName} fez o pedido ${order.id}.`, order.id)
       platform.audit(ctx.user, 'order.create', 'order', order.id)
       return { status: 201, body: { order } }
     } catch (error) {

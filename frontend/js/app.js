@@ -19,6 +19,7 @@ const routes = [
   { pattern: /^\/restaurante\/([\w-]+)$/, page: 'restaurant' },
   { pattern: /^\/checkout$/, page: 'checkout' },
   { pattern: /^\/pedido\/([\w-]+)$/, page: 'tracking' },
+  { pattern: /^\/conversa\/([\w-]+)$/, page: 'chat' },
   { pattern: /^\/pedidos$/, page: 'orders' },
   { pattern: /^\/favoritos$/, page: 'favorites' },
   { pattern: /^\/ofertas$/, page: 'offers' },

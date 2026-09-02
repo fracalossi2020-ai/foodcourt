@@ -72,6 +72,8 @@ export const api = {
   createOrder: (order) => post('/api/orders', order),
   createPixCharge: (amount) => post('/api/pix-charge', { amount }),
   order: (id) => get(`/api/order/${id}`),
+  orderChat: (id) => get(`/api/chat/${id}`),
+  sendOrderMessage: (orderId, text) => post('/api/chat-message', { orderId, text }),
   cancelOrder: (orderId, reason) => post('/api/order-cancel', { orderId, reason }),
   customerReviews: () => get('/api/customer-reviews'),
   createReview: (review) => post('/api/customer-reviews', review),
@@ -81,6 +83,8 @@ export const api = {
   cep: (cep) => get(`/api/cep/${String(cep).replace(/\D/g, '')}`),
   addresses: () => get('/api/addresses'),
   saveAddress: (address) => post('/api/address', address),
+  notifications: () => get('/api/notifications'),
+  markNotificationsRead: () => post('/api/notifications-read'),
 
   me: () => get('/api/auth/me'),
   turnstileConfig: () => get('/api/auth/turnstile-config', { ttl: 300000 }),
