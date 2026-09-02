@@ -4,7 +4,8 @@ const db = require('./db')
 
 // Sessões do FoodCourt permanecem válidas por 1 hora de inatividade.
 // O prazo é renovado pelo servidor enquanto o usuário continua usando o portal.
-const SESSION_HOURS = 1
+const configuredSessionHours = Number(process.env.SESSION_TTL_HOURS || 1)
+const SESSION_HOURS = Number.isFinite(configuredSessionHours) ? Math.min(24 * 30, Math.max(1, configuredSessionHours)) : 1
 const SESSION_TTL = 1000 * 60 * 60 * SESSION_HOURS
 const SESSION_REFRESH = 1000 * 60 * 15
 const RESET_TTL = 1000 * 60 * 60
@@ -46,7 +47,7 @@ function createSession(userId) {
     userId,
     createdAt: now,
     lastSeen: now,
-    expiresAt: now + SESSION_TTL
+    expiresAt: now + SESSION_TTL,
   })
   return token
 }
@@ -79,7 +80,10 @@ function revokeUserSessions(userId) {
 
 function createResetToken(userId) {
   const token = crypto.randomBytes(32).toString('hex')
-  db.setResetToken(sha256(token), { userId, expiresAt: Date.now() + RESET_TTL })
+  db.setResetToken(sha256(token), {
+    userId,
+    expiresAt: Date.now() + RESET_TTL,
+  })
   return token
 }
 
@@ -104,19 +108,31 @@ function rateLimit(key, max, windowMs) {
     buckets.set(key, b)
   }
   b.count++
-  return { allowed: b.count <= max, retryInSec: Math.ceil((b.resetAt - now) / 1000) }
+  return {
+    allowed: b.count <= max,
+    retryInSec: Math.ceil((b.resetAt - now) / 1000),
+  }
 }
-function clearRate(key) { buckets.delete(key) }
+function clearRate(key) {
+  buckets.delete(key)
+}
 
 /* ============ VALIDAÇÃO E SANITIZAÇÃO ============ */
 
-const sanitize = (s) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim()
+const sanitize = (s) =>
+  String(s ?? '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .trim()
 
 function validName(v) {
   const name = sanitize(v)
   const words = name.split(/\s+/).filter(Boolean)
   if (words.length < 2) return { ok: false, error: 'Informe seu nome e sobrenome.' }
-  if (words.some(w => w.length < 2)) return { ok: false, error: 'Cada parte do nome precisa ter pelo menos 2 letras.' }
+  if (words.some((w) => w.length < 2))
+    return {
+      ok: false,
+      error: 'Cada parte do nome precisa ter pelo menos 2 letras.',
+    }
   if (!/^[\p{L}\s'’-]+$/u.test(name)) return { ok: false, error: 'O nome deve conter apenas letras.' }
   return { ok: true, value: name }
 }
@@ -133,7 +149,10 @@ function validPhone(v) {
   if (!digits) return { ok: false, error: 'Informe seu telefone.' }
   if (digits.length !== 10 && digits.length !== 11) return { ok: false, error: 'Digite um telefone válido com DDD.' }
   if (digits.length === 11 && digits[2] !== '9') return { ok: false, error: 'Celulares devem começar com 9 após o DDD.' }
-  return { ok: true, value: digits.replace(/^(\d{2})(\d{4,5})(\d{4})$/, '($1) $2-$3') }
+  return {
+    ok: true,
+    value: digits.replace(/^(\d{2})(\d{4,5})(\d{4})$/, '($1) $2-$3'),
+  }
 }
 
 function validPassword(v) {
@@ -161,7 +180,7 @@ function publicUser(u) {
     cashback: u.cashback,
     role: u.role || 'customer',
     createdAt: u.createdAt,
-    lastLogin: u.lastLogin || null
+    lastLogin: u.lastLogin || null,
   }
 }
 
@@ -183,5 +202,5 @@ module.exports = {
   validEmail,
   validPhone,
   validPassword,
-  publicUser
+  publicUser,
 }

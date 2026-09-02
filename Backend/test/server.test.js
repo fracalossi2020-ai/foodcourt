@@ -11,6 +11,8 @@ process.env.FC_DB_PATH = path.join(tempDir, "db.json");
 process.env.SESSION_SECRET = "test-secret-with-at-least-32-characters";
 process.env.APP_URL = "http://127.0.0.1";
 process.env.DEV_EXPOSE_RESET_LINK = "0";
+process.env.SEED_DEMO_DATA = "1";
+process.env.SESSION_TTL_HOURS = "1";
 
 const { server, start } = require("../src/server");
 const db = require("../src/lib/db");
@@ -103,26 +105,66 @@ test("partner demo account has merchant role", async () => {
 test("registered establishments automatically appear in the customer marketplace", async () => {
   const { cookie } = await loginDemo();
   const store = {
-    id: "store_real_test", ownerId: "owner_real_test", name: "Loja Real Teste", slug: "loja-real-teste",
-    category: "Restaurante", description: "Cadastro real", status: "pending", open: true,
-    rating: 0, preparationMinutes: 20, minimumOrder: 0, products: [
-      { id: "product_real_test", name: "Prato real", category: "Pratos", description: "Produto cadastrado", price: 25, stock: 5, active: true },
+    id: "store_real_test",
+    ownerId: "owner_real_test",
+    name: "Loja Real Teste",
+    slug: "loja-real-teste",
+    category: "Restaurante",
+    description: "Cadastro real",
+    status: "pending",
+    open: true,
+    rating: 0,
+    preparationMinutes: 20,
+    minimumOrder: 0,
+    products: [
+      {
+        id: "product_real_test",
+        name: "Prato real",
+        category: "Pratos",
+        description: "Produto cadastrado",
+        price: 25,
+        stock: 5,
+        active: true,
+      },
     ],
   };
   db.state.stores.push(store);
-  db.state.stores.push({ id:"store_placeholder_test", ownerId:"owner_placeholder", name:"Meu estabelecimento", category:"Restaurante", status:"active", open:false, products:[] });
+  db.state.stores.push({
+    id: "store_placeholder_test",
+    ownerId: "owner_placeholder",
+    name: "Meu estabelecimento",
+    category: "Restaurante",
+    status: "active",
+    open: false,
+    products: [],
+  });
   db.saveNow();
 
-  const home = await fetch(`${baseUrl}/api/home`, { headers: { Cookie: cookie } });
+  const home = await fetch(`${baseUrl}/api/home`, {
+    headers: { Cookie: cookie },
+  });
   assert.equal(home.status, 200);
   const homePayload = await home.json();
   assert.ok(homePayload.restaurants.some((item) => item.id === store.id));
-  assert.ok(!homePayload.restaurants.some((item) => item.id === "store_placeholder_test"));
-  assert.ok(homePayload.products.some((item) => item.id === "product_real_test"));
+  assert.ok(
+    !homePayload.restaurants.some(
+      (item) => item.id === "store_placeholder_test",
+    ),
+  );
+  assert.ok(
+    homePayload.products.some((item) => item.id === "product_real_test"),
+  );
 
-  const restaurant = await fetch(`${baseUrl}/api/restaurants/${store.id}`, { headers: { Cookie: cookie } });
+  const restaurant = await fetch(`${baseUrl}/api/restaurants/${store.id}`, {
+    headers: { Cookie: cookie },
+  });
   assert.equal(restaurant.status, 200);
   assert.equal((await restaurant.json()).restaurant.name, store.name);
+
+  const publicDirectory = await fetch(`${baseUrl}/api/public/restaurants`);
+  assert.equal(publicDirectory.status, 200);
+  const publicPayload = await publicDirectory.json();
+  assert.ok(publicPayload.restaurants.some((item) => item.id === store.id));
 });
 
 test("invalid JSON and untrusted origins are rejected", async () => {
