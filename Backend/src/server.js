@@ -72,6 +72,21 @@ function ensureSystemUser(email, fullName, phone, password, role) {
 const sellerAccount = seedDemoData ? ensureSystemUser('dono@foodcourt.com', 'Carlos Mendes', '(11) 98888-1000', 'foodcourt123', 'merchant') : null
 if (seedDemoData) ensureSystemUser('admin@foodcourt.com', 'Admin FoodCourt', '(11) 98888-2000', 'foodcourt123', 'admin')
 platform.seed()
+if (!seedDemoData) {
+  const demoEmails = new Set(['joao@foodcourt.com', 'dono@foodcourt.com', 'admin@foodcourt.com'])
+  const demoUsers = db.state.users.filter(user => demoEmails.has(user.email) && auth.verifyPassword('foodcourt123', user.passwordHash))
+  const demoUserIds = new Set(demoUsers.map(user => user.id))
+  if (demoUsers.length) {
+    db.state.users = db.state.users.filter(user => !demoUserIds.has(user.id))
+    db.state.storeMembers = db.state.storeMembers.filter(member => !demoEmails.has(String(member.email).toLowerCase()))
+    for (const [sessionId, session] of Object.entries(db.state.sessions)) {
+      if (demoUserIds.has(session.userId)) delete db.state.sessions[sessionId]
+    }
+    db.rebuildIndexes()
+    db.saveNow()
+    console.log(`[db] ${demoUsers.length} conta(s) de demonstração removida(s).`)
+  }
+}
 if (seedDemoData && db.state.stores[0] && !db.state.stores[0].ownerId && sellerAccount) {
   db.state.stores[0].ownerId = sellerAccount.id
   db.saveNow()

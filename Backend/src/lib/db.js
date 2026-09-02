@@ -56,6 +56,7 @@ const uid = (prefix = 'id') => prefix + '_' + crypto.randomUUID()
 module.exports = {
   path: DB_PATH,
   load,
+  rebuildIndexes,
   save,
   saveNow,
   uid,
