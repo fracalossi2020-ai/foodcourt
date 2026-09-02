@@ -556,6 +556,53 @@ function pushNotification(userId, type, title, text, orderId = null) {
   emitRealtime(userId, { type, orderId, notification })
 }
 
+function grantOrderLoyalty(order) {
+  if (!order?.customerId || order.loyaltyGranted) return
+  const customer = db.state.users.find(user => user.id === order.customerId)
+  if (!customer) return
+  const points = Math.max(10, Math.floor(order.total))
+  customer.points = Number(customer.points || 0) + points
+  db.state.loyaltyEvents.unshift({ id: db.uid('loyalty'), userId: customer.id, type: 'order', points, label: `Pedido ${order.id}`, at: platform.now() })
+  order.loyaltyGranted = true
+}
+
+function cancelOrderState(order, reason) {
+  const timestamp = platform.now()
+  order.status = 'cancelled'
+  order.cancelReason = auth.sanitize(reason || 'Pedido cancelado').slice(0, 300)
+  order.statusHistory = order.statusHistory || []
+  order.statusHistory.push({ status: 'cancelled', at: timestamp })
+  order.updatedAt = timestamp
+  if (!order.inventoryRestored) {
+    const store = db.state.stores.find(item => item.id === order.storeId)
+    for (const line of order.items || []) {
+      const product = store?.products?.find(item => item.id === line.productId)
+      if (product && Number.isFinite(Number(product.stock))) product.stock = Number(product.stock) + Number(line.quantity || 0)
+    }
+    const promotion = order.couponCode ? db.state.promotions.find(item => item.storeId === order.storeId && item.code === order.couponCode) : null
+    if (promotion) promotion.uses = Math.max(0, Number(promotion.uses || 0) - 1)
+    const personalCoupon = order.couponCode ? db.state.userCoupons.find(item => item.userId === order.customerId && item.code === order.couponCode && item.orderId === order.id) : null
+    if (personalCoupon) Object.assign(personalCoupon, { active: true, usedAt: null, orderId: null })
+    order.inventoryRestored = true
+  }
+  const payment = order.paymentIntentId ? db.state.paymentEvents.find(item => item.id === order.paymentIntentId) : null
+  if (payment) {
+    payment.reservedAmount = Math.max(0, Number(payment.reservedAmount || 0) - Number(order.total || 0))
+    payment.orderIds = (payment.orderIds || []).filter(id => id !== order.id)
+    payment.status = order.paymentStatus === 'paid' ? 'refund_pending' : payment.orderIds.length ? 'pending' : 'cancelled'
+    payment.updatedAt = timestamp
+    order.paymentStatus = order.paymentStatus === 'paid' ? 'refund_pending' : 'cancelled'
+  }
+  const delivery = db.state.deliveries.find(item => item.orderId === order.id)
+  if (delivery && !['delivered', 'cancelled'].includes(delivery.status)) {
+    delivery.status = 'cancelled'
+    delivery.updatedAt = timestamp
+    delivery.statusHistory.push({ status: 'cancelled', at: timestamp })
+    if (delivery.courierId) pushNotification(delivery.courierId, 'delivery', 'Entrega cancelada', `A entrega do pedido ${order.id} foi cancelada.`, order.id)
+  }
+  return order
+}
+
 const clientIp = (req) => (process.env.TRUST_PROXY === '1' && req.headers['x-forwarded-for']?.split(',')[0]?.trim()) || req.socket.remoteAddress || 'unknown'
 
 function isTrustedOrigin(req) {
@@ -1774,8 +1821,17 @@ Object.assign(api, {
     if (!['merchant', 'admin'].includes(ctx.user.role)) return forbidden('parceiros')
     const store = platform.storeForUser(ctx.user)
     const order = db.state.platformOrders.find((item) => item.id === body.orderId && item.storeId === store.id)
-    const allowed = ['pending', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']
-    if (!order || !allowed.includes(body.status)) return { status: 400, body: { error: 'Pedido ou status inválido.' } }
+    if (!order) return { status: 404, body: { error: 'Pedido não encontrado.' } }
+    if (body.status === 'cancelled') {
+      if (!['pending', 'accepted', 'preparing', 'ready'].includes(order.status)) return { status: 409, body: { error: 'Este pedido não pode mais ser cancelado pela loja.' } }
+      cancelOrderState(order, body.reason || 'Cancelado pelo estabelecimento')
+      pushNotification(order.customerId, 'order', `Pedido ${order.id} cancelado`, order.cancelReason, order.id)
+      platform.audit(ctx.user, 'order.cancel', 'order', order.id, order.cancelReason)
+      db.saveNow()
+      return { order }
+    }
+    const expectedStatus = { pending: 'accepted', accepted: 'preparing', preparing: 'ready' }[order.status]
+    if (!expectedStatus || body.status !== expectedStatus) return { status: 409, body: { error: `A próxima etapa permitida é ${expectedStatus || 'nenhuma'}.` } }
     if (order.paymentStatus === 'pending' && body.status !== 'cancelled') return { status: 409, body: { error: 'Aguarde a confirmação do pagamento antes de aceitar este pedido.' } }
     order.status = body.status
     order.statusHistory = order.statusHistory || []
@@ -1787,22 +1843,6 @@ Object.assign(api, {
       const delivery = { id: db.uid('delivery'), orderId: order.id, storeId: order.storeId, customerId: order.customerId, courierId: null, status: 'searching', pickupAddress: store.address || {}, dropoffAddress: order.address, fee: Number(order.deliveryFee || 0), courierPayout: 6.5, createdAt: timestamp, updatedAt: timestamp, statusHistory: [{ status: 'searching', at: timestamp }] }
       db.state.deliveries.push(delivery)
       for (const courier of db.state.users.filter(user => user.role === 'courier' && user.courierAvailable)) emitRealtime(courier.id, { type: 'delivery', orderId: order.id, deliveryId: delivery.id })
-    }
-    if (body.status === 'delivered' && order.customerId && !order.loyaltyGranted) {
-      const customer = db.state.users.find((user) => user.id === order.customerId)
-      if (customer) {
-        const points = Math.max(10, Math.floor(order.total))
-        customer.points = (customer.points || 0) + points
-        db.state.loyaltyEvents.unshift({
-          id: db.uid('loyalty'),
-          userId: customer.id,
-          type: 'order',
-          points,
-          label: `Pedido ${order.id}`,
-          at: platform.now(),
-        })
-        order.loyaltyGranted = true
-      }
     }
     platform.audit(ctx.user, 'order.status', 'order', order.id, body.status)
     return { order }
@@ -2196,7 +2236,10 @@ Object.assign(api, {
     delivery.statusHistory.push({ status: delivery.status, at: delivery.updatedAt })
     const order = db.state.platformOrders.find(item => item.id === delivery.orderId)
     if (order && action === 'start') order.status = 'out_for_delivery'
-    if (order && action === 'deliver') order.status = 'delivered'
+    if (order && action === 'deliver') {
+      order.status = 'delivered'
+      grantOrderLoyalty(order)
+    }
     if (order && ['start', 'deliver'].includes(action)) {
       order.updatedAt = delivery.updatedAt
       order.statusHistory.push({ status: order.status, at: delivery.updatedAt })
@@ -2414,40 +2457,7 @@ Object.assign(api, {
           error: 'Este pedido já está em preparação e não pode ser cancelado automaticamente.',
         },
       }
-    order.status = 'cancelled'
-    order.cancelReason = String(body.reason || 'Cancelado pelo cliente')
-    order.statusHistory.push({ status: 'cancelled', at: platform.now() })
-    order.updatedAt = platform.now()
-    if (!order.inventoryRestored) {
-      const store = db.state.stores.find(item => item.id === order.storeId)
-      for (const line of order.items || []) {
-        const product = store?.products?.find(item => item.id === line.productId)
-        if (product && Number.isFinite(Number(product.stock))) product.stock = Number(product.stock) + Number(line.quantity || 0)
-      }
-      const promotion = order.couponCode ? db.state.promotions.find(item => item.storeId === order.storeId && item.code === order.couponCode) : null
-      if (promotion) promotion.uses = Math.max(0, Number(promotion.uses || 0) - 1)
-      const personalCoupon = order.couponCode ? db.state.userCoupons.find(item => item.userId === ctx.user.id && item.code === order.couponCode && item.orderId === order.id) : null
-      if (personalCoupon) {
-        personalCoupon.active = true
-        personalCoupon.usedAt = null
-        personalCoupon.orderId = null
-      }
-      order.inventoryRestored = true
-    }
-    const payment = order.paymentIntentId ? db.state.paymentEvents.find(item => item.id === order.paymentIntentId) : null
-    if (payment) {
-      payment.reservedAmount = Math.max(0, Number(payment.reservedAmount || 0) - Number(order.total || 0))
-      payment.orderIds = (payment.orderIds || []).filter(id => id !== order.id)
-      payment.status = order.paymentStatus === 'paid' ? 'refund_pending' : payment.orderIds.length ? 'pending' : 'cancelled'
-      payment.updatedAt = platform.now()
-      order.paymentStatus = order.paymentStatus === 'paid' ? 'refund_pending' : 'cancelled'
-    }
-    const delivery = db.state.deliveries.find(item => item.orderId === order.id)
-    if (delivery && !['delivered', 'cancelled'].includes(delivery.status)) {
-      delivery.status = 'cancelled'
-      delivery.updatedAt = platform.now()
-      delivery.statusHistory.push({ status: 'cancelled', at: delivery.updatedAt })
-    }
+    cancelOrderState(order, body.reason || 'Cancelado pelo cliente')
     const store = db.state.stores.find(item => item.id === order.storeId)
     if (store?.ownerId) pushNotification(store.ownerId, 'order', `Pedido ${order.id} cancelado`, order.cancelReason, order.id)
     platform.audit(ctx.user, 'order.cancel', 'order', order.id, order.cancelReason)

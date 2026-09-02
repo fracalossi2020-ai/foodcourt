@@ -257,7 +257,7 @@ test("courier can become available and complete an assigned delivery", async () 
     id: "delivery_test",
     orderId: "order_delivery_test",
     storeId: "store_real_test",
-    customerId: "customer_test",
+    customerId: db.findByEmail("joao@foodcourt.com").id,
     courierId: null,
     status: "searching",
     pickupAddress: { street: "Rua da Loja", number: "1" },
@@ -268,6 +268,17 @@ test("courier can become available and complete an assigned delivery", async () 
     updatedAt: new Date().toISOString(),
   };
   db.state.deliveries.push(delivery);
+  const customer = db.findByEmail("joao@foodcourt.com");
+  const pointsBefore = customer.points;
+  db.state.platformOrders.push({
+    id: delivery.orderId,
+    storeId: delivery.storeId,
+    customerId: customer.id,
+    status: "ready",
+    statusHistory: [{ status: "ready", at: new Date().toISOString() }],
+    total: 20,
+    createdAt: new Date().toISOString(),
+  });
   const login = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -293,6 +304,17 @@ test("courier can become available and complete an assigned delivery", async () 
   });
   assert.equal(accept.status, 200);
   assert.equal((await accept.json()).delivery.courierId, courier.id);
+  const action = (name) =>
+    fetch(`${baseUrl}/api/courier-delivery`, {
+      method: "POST",
+      headers: { Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ deliveryId: delivery.id, action: name }),
+    });
+  assert.equal((await action("pickup")).status, 200);
+  assert.equal((await action("start")).status, 200);
+  assert.equal((await action("deliver")).status, 200);
+  assert.equal(delivery.status, "delivered");
+  assert.equal(customer.points, pointsBefore + 20);
 });
 
 test("order applies a store coupon, reserves stock and accepts scheduling", async () => {
@@ -381,6 +403,67 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
   assert.equal(
     db.state.promotions.find((item) => item.id === "promo_order_test").uses,
     0,
+  );
+});
+
+test("merchant follows order transitions and cancellation restores inventory", async () => {
+  const customerLogin = await loginDemo();
+  const customer = db.findByEmail("joao@foodcourt.com");
+  const store = db.state.stores.find((item) => item.id === "store_real_test");
+  const merchant = db.addUser({
+    id: db.uid("user"),
+    fullName: "Gestor Teste",
+    email: "gestor.teste@foodcourt.com",
+    phone: "11955550000",
+    passwordHash: require("../src/lib/auth").hashPassword("gestor123"),
+    status: "active",
+    role: "merchant",
+    points: 0,
+    createdAt: new Date().toISOString(),
+  });
+  store.ownerId = merchant.id;
+  const address = db.state.customerAddresses.find(
+    (item) => item.userId === customer.id,
+  );
+  const creation = await fetch(`${baseUrl}/api/orders`, {
+    method: "POST",
+    headers: {
+      Cookie: customerLogin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      storeId: store.id,
+      items: [{ productId: "product_real_test", quantity: 1 }],
+      addressId: address.id,
+      paymentMethod: "Cartão",
+    }),
+  });
+  assert.equal(creation.status, 201);
+  const order = (await creation.json()).order;
+  assert.equal(store.products[0].stock, 4);
+
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: merchant.email, password: "gestor123" }),
+  });
+  const cookie = login.headers.get("set-cookie")?.split(";")[0];
+  const update = (status) =>
+    fetch(`${baseUrl}/api/partner-order-status`, {
+      method: "POST",
+      headers: { Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: order.id, status }),
+    });
+  assert.equal((await update("ready")).status, 409);
+  assert.equal((await update("accepted")).status, 200);
+  const cancelled = await update("cancelled");
+  assert.equal(cancelled.status, 200);
+  assert.equal((await cancelled.json()).order.status, "cancelled");
+  assert.equal(store.products[0].stock, 5);
+  assert.ok(
+    db.state.userNotifications.some(
+      (item) => item.userId === customer.id && item.orderId === order.id,
+    ),
   );
 });
 
