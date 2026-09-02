@@ -246,6 +246,50 @@ test("courier can become available and complete an assigned delivery", async () 
   assert.equal((await accept.json()).delivery.courierId, courier.id);
 });
 
+test("order applies a store coupon, reserves stock and accepts scheduling", async () => {
+  const { cookie } = await loginDemo();
+  const store = db.state.stores.find((item) => item.id === "store_real_test");
+  const customer = db.findByEmail("joao@foodcourt.com");
+  const address = db.state.customerAddresses.find(
+    (item) => item.userId === customer.id,
+  );
+  db.state.promotions.push({
+    id: "promo_order_test",
+    storeId: store.id,
+    name: "Teste 10",
+    code: "TESTE10",
+    type: "percent",
+    value: 10,
+    minimumOrder: 0,
+    active: true,
+    startsAt: new Date(Date.now() - 60_000).toISOString(),
+    endsAt: new Date(Date.now() + 86_400_000).toISOString(),
+    uses: 0,
+  });
+  const response = await fetch(`${baseUrl}/api/orders`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      storeId: store.id,
+      items: [{ productId: "product_real_test", quantity: 2 }],
+      addressId: address.id,
+      paymentMethod: "Pix",
+      couponCode: "TESTE10",
+      scheduledAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    }),
+  });
+  assert.equal(response.status, 201);
+  const order = (await response.json()).order;
+  assert.equal(order.discount, 5);
+  assert.equal(order.total, 45);
+  assert.equal(order.addressId, address.id);
+  assert.ok(order.scheduledAt);
+  assert.equal(
+    store.products.find((item) => item.id === "product_real_test").stock,
+    3,
+  );
+});
+
 test("invalid JSON and untrusted origins are rejected", async () => {
   const invalid = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",

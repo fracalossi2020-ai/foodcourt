@@ -16,7 +16,7 @@ export async function render(view, boot) {
 
   const rest = await api.restaurant(cart.restaurantId).then(d => d.restaurant).catch(() => null)
   const cartGroups = Object.values(cart.items.reduce((groups,item) => { const restaurantId=item.restaurantId||cart.restaurantId; (groups[restaurantId] ||= { restaurantId, restaurantName:item.restaurantName, items:[] }).items.push(item); return groups }, {}))
-  const savedAddresses = () => store.addresses.filter(address => address.custom)
+  const savedAddresses = () => store.addresses.filter(address => address.street)
   const fee = rest?.deliveryFee ?? 0
   const freeMin = rest?.freeShippingMin ?? 0
   setFeeContext(fee, freeMin)
@@ -26,6 +26,7 @@ export async function render(view, boot) {
     addressId: savedAddresses()[0]?.id || null,
     delivery: 'standard',
     payment: 'pix',
+    scheduledAt: null,
     card: null,
     pixCharge: null
   }
@@ -95,12 +96,10 @@ export async function render(view, boot) {
       }catch(error){if(request!==cepRequest)return;feedback.className='cep-feedback wide error';feedback.innerHTML=`<b>CEP não localizado</b><span>${esc(error.message||'Preencha o endereço manualmente.')}</span>`}
     })
     body.querySelector('[data-cancel-address]')?.addEventListener('click', () => drawAddress(body))
-    body.querySelector('[data-address-form]')?.addEventListener('submit', event => {
+    body.querySelector('[data-address-form]')?.addEventListener('submit', async event => {
       event.preventDefault(); const form = new FormData(event.currentTarget)
-      const street=[String(form.get('street')).trim(),String(form.get('number')).trim()].filter(Boolean).join(', ')
-      const city=[String(form.get('city')).trim(),String(form.get('state')).trim().toUpperCase()].filter(Boolean).join(', ')
-      const address = store.addAddress({ label:String(form.get('label')).trim(), street, neighborhood:String(form.get('neighborhood')).trim(), city, cep:String(form.get('cep')).trim() })
-      state.addressId = address.id; toast('Endereço adicionado e selecionado.','success','📍'); drawAddress(body)
+      const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true
+      try{const result=await api.saveAddress(Object.fromEntries(form));const address=store.addAddress(result.address);state.addressId=address.id;toast('Endereço adicionado e selecionado.','success','📍');drawAddress(body)}catch(error){toast(error.message,'error');button.disabled=false}
     })
   }
 
@@ -116,7 +115,8 @@ export async function render(view, boot) {
         ${deliveryCard('standard', 'Entrega padrão', `${rest?.deliveryTime?.[0] ?? 25}–${rest?.deliveryTime?.[1] ?? 40} min`, fee === 0 ? 'Grátis' : money(fee), 'A loja prepara o pedido na fila normal e o entregador segue o fluxo regular até seu endereço.', 'RECOMENDADA')}
         ${deliveryCard('priority', 'Prioridade FC', `${Math.max(10, (rest?.deliveryTime?.[0] ?? 25) - 8)}–${Math.max(15, (rest?.deliveryTime?.[1] ?? 40) - 10)} min`, money(fee + 4.9), 'Seu pedido recebe prioridade operacional para ser preparado e enviado mais rapidamente.')}
       </div>
-      <div class="delivery-estimate-note"><span>⏱</span><p><b>Os prazos são estimativas</b><small>Podem variar conforme o preparo da loja, trânsito e disponibilidade de entregadores.</small></p></div>`
+      <label class="card" style="display:block;padding:16px;margin-top:14px"><b>Agendar entrega (opcional)</b><small style="display:block;margin:5px 0 10px">Escolha uma data e horário nos próximos 7 dias.</small><input class="input" type="datetime-local" data-scheduled-at value="${state.scheduledAt||''}"></label><div class="delivery-estimate-note"><span>⏱</span><p><b>Os prazos são estimativas</b><small>Podem variar conforme o preparo da loja, trânsito e disponibilidade de entregadores.</small></p></div>`
+    body.querySelector('[data-scheduled-at]')?.addEventListener('change',event=>{state.scheduledAt=event.currentTarget.value})
     bindSelects(body, 'delivery', drawDelivery, state)
   }
 
@@ -261,7 +261,7 @@ export async function render(view, boot) {
     const placeButton = view.querySelector('[data-place]')
     if (placeButton) { placeButton.disabled = true; placeButton.textContent = 'CONFIRMANDO...' }
     try {
-      const results = await Promise.all(cartGroups.map(group => api.createOrder({ storeId:group.restaurantId, items:group.items.map(item => ({ productId:item.id,quantity:item.qty,options:item.optionNames||[] })), address:`${addr.label} — ${addr.street}`, paymentMethod:pm.name })))
+      const results = await Promise.all(cartGroups.map(group => api.createOrder({ storeId:group.restaurantId, items:group.items.map(item => ({ productId:item.id,quantity:item.qty,options:item.optionNames||[] })), addressId:addr.id, address:`${addr.label} — ${addr.street}${addr.number?', '+addr.number:''}`, paymentMethod:pm.name, couponCode:t.coupon?.code||'', scheduledAt:state.scheduledAt||null })))
       const localOrders = results.map((result,index) => { const serverOrder=result.order; const group=cartGroups[index]; return store.addOrder({
       id: serverOrder.id,
       restaurantId: group.restaurantId,

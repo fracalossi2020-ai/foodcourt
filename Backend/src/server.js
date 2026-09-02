@@ -850,7 +850,7 @@ const api = {
     })(),
     categories: data.categories,
     banners: data.banners,
-    coupons: [],
+    coupons: db.state.promotions.filter(item => item.active && item.code && (!item.startsAt || Date.parse(item.startsAt) <= Date.now()) && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())).map(item => ({ code: item.code, type: item.type, value: Number(item.value), min: Number(item.minimumOrder || 0), rules: { min: Number(item.minimumOrder || 0) }, storeId: item.storeId })),
     notifications: [],
     flashDeals: [],
     paymentMethods: data.paymentMethods,
@@ -940,7 +940,7 @@ const api = {
     return { query: q, restaurants, products, categories: suggestions }
   },
 
-  'GET /api/coupons': () => [],
+  'GET /api/coupons': () => db.state.promotions.filter(item => item.active && item.code).map(item => ({ code: item.code, type: item.type, value: Number(item.value), min: Number(item.minimumOrder || 0), rules: { min: Number(item.minimumOrder || 0) }, storeId: item.storeId })),
 
   'GET /api/flash-deals': () => [],
 }
@@ -2086,7 +2086,7 @@ Object.assign(api, {
       const items = body.items.map((line) => {
         const product = catalogItems.find((item) => item.id === line.productId)
         const quantity = Math.max(1, Math.min(20, Number(line.quantity) || 1))
-        if (!product) throw new Error('Produto indisponível.')
+        if (!product || product.active === false || (Number.isFinite(Number(product.stock)) && Number(product.stock) < quantity)) throw new Error('Produto indisponível ou sem estoque suficiente.')
         return {
           productId: product.id,
           name: product.name,
@@ -2097,6 +2097,19 @@ Object.assign(api, {
       })
       const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
       const deliveryFee = Number(catalogRestaurant?.deliveryFee ?? 0)
+      const couponCode = auth.sanitize(body.couponCode).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20)
+      const promotion = couponCode ? db.state.promotions.find(item => item.storeId === partnerStore?.id && item.active && item.code === couponCode && (!item.startsAt || Date.parse(item.startsAt) <= Date.now()) && (!item.endsAt || Date.parse(item.endsAt) >= Date.now())) : null
+      if (couponCode && !promotion) throw new Error('Cupom inválido ou expirado para este estabelecimento.')
+      if (promotion && subtotal < Number(promotion.minimumOrder || 0)) throw new Error(`Este cupom exige pedido mínimo de R$ ${Number(promotion.minimumOrder).toFixed(2).replace('.', ',')}.`)
+      const discount = promotion ? Math.min(subtotal, promotion.type === 'fixed' ? Number(promotion.value) : subtotal * Number(promotion.value) / 100) : 0
+      const savedAddress = body.addressId ? db.state.customerAddresses.find(address => address.id === body.addressId && address.userId === ctx.user.id) : null
+      if (body.addressId && !savedAddress) throw new Error('Endereço de entrega inválido.')
+      let scheduledAt = null
+      if (body.scheduledAt) {
+        const scheduleTime = Date.parse(body.scheduledAt)
+        if (!Number.isFinite(scheduleTime) || scheduleTime < Date.now() + 15 * 60000 || scheduleTime > Date.now() + 7 * 86400000) throw new Error('Escolha um agendamento entre 15 minutos e 7 dias.')
+        scheduledAt = new Date(scheduleTime).toISOString()
+      }
       const order = {
         id: 'FC-' + Date.now(),
         customerId: ctx.user.id,
@@ -2109,14 +2122,19 @@ Object.assign(api, {
         items,
         subtotal,
         deliveryFee,
-        discount: 0,
-        total: Number((subtotal + deliveryFee).toFixed(2)),
+        discount: Number(discount.toFixed(2)),
+        couponCode: promotion?.code || null,
+        total: Number((subtotal + deliveryFee - discount).toFixed(2)),
         paymentMethod: body.paymentMethod || 'Simulado',
-        address: body.address || '',
+        addressId: savedAddress?.id || null,
+        address: savedAddress ? `${savedAddress.label} — ${savedAddress.street}, ${savedAddress.number}` : body.address || '',
+        scheduledAt,
         createdAt: platform.now(),
         updatedAt: platform.now(),
         cancelReason: null,
       }
+      if (promotion) promotion.uses = Number(promotion.uses || 0) + 1
+      if (partnerStore) for (const line of items) { const product = partnerStore.products.find(item => item.id === line.productId); if (product && Number.isFinite(Number(product.stock))) product.stock = Math.max(0, Number(product.stock) - line.quantity) }
       db.state.platformOrders.unshift(order)
       platform.audit(ctx.user, 'order.create', 'order', order.id)
       return { status: 201, body: { order } }
