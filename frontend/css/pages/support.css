@@ -1,0 +1,43 @@
+.support-thread {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  max-height: 320px;
+  overflow: auto;
+}
+.support-thread > div {
+  max-width: 88%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.support-thread .from-support {
+  margin-right: auto;
+  border: 1px solid var(--brand-border);
+  background: var(--brand-soft);
+}
+.support-thread .from-customer {
+  margin-left: auto;
+}
+.support-thread b,
+.support-thread small {
+  display: block;
+  font-size: 0.65rem;
+}
+.support-thread p {
+  margin: 4px 0;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.support-ticket > [data-ticket-reply] {
+  margin: 12px 0;
+}
+@media (max-width: 650px) {
+  .support-ticket > [data-ticket-reply] {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .support-thread > div {
+    max-width: 96%;
+  }
+}

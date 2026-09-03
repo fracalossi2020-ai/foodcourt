@@ -2357,8 +2357,33 @@ Object.assign(api, {
         ...payment,
         customerEmail: db.state.users.find(user => user.id === payment.userId)?.email || null,
       })),
+      tickets: db.state.supportTickets.slice(0, 100).map(ticket => ({
+        ...ticket,
+        requester: ticket.customerId ? db.state.users.find(user => user.id === ticket.customerId)?.fullName || 'Cliente' : db.state.stores.find(store => store.id === ticket.storeId)?.name || 'Estabelecimento',
+      })),
       audit: db.state.auditLog.slice(0, 30),
     }
+  },
+  'POST /api/admin-support-ticket': (params, query, body, ctx) => {
+    if (ctx.user.role !== 'admin') return forbidden('administradores')
+    const ticket = db.state.supportTickets.find(item => item.id === body.ticketId)
+    if (!ticket) return { status: 404, body: { error: 'Chamado não encontrado.' } }
+    const action = String(body.action || 'reply')
+    if (action === 'reply') {
+      const text = auth.sanitize(body.message).slice(0, 1000)
+      if (!text) return { status: 400, body: { error: 'Escreva uma resposta.' } }
+      ticket.messages.push({ from: 'support', userId: ctx.user.id, text, at: platform.now() })
+      ticket.status = 'open'
+    } else if (action === 'resolve') ticket.status = 'resolved'
+    else if (action === 'reopen') ticket.status = 'open'
+    else return { status: 400, body: { error: 'Ação inválida.' } }
+    if (['low', 'normal', 'high', 'urgent'].includes(body.priority)) ticket.priority = body.priority
+    ticket.updatedAt = platform.now()
+    const recipient = ticket.customerId || db.state.stores.find(store => store.id === ticket.storeId)?.ownerId
+    if (recipient) pushNotification(recipient, 'support', action === 'resolve' ? 'Chamado resolvido' : 'Nova resposta do suporte', action === 'resolve' ? `O chamado ${ticket.id} foi encerrado.` : `Nossa equipe respondeu: ${ticket.messages.at(-1)?.text || ''}`)
+    platform.audit(ctx.user, `support.${action}`, 'ticket', ticket.id, ticket.priority)
+    db.saveNow()
+    return { ticket }
   },
   'POST /api/admin-store-status': (params, query, body, ctx) => {
     if (ctx.user.role !== 'admin') return forbidden('administradores')
@@ -2618,25 +2643,43 @@ Object.assign(api, {
     tickets: db.state.supportTickets.filter((ticket) => ticket.customerId === ctx.user.id),
   }),
   'POST /api/customer-support': (params, query, body, ctx) => {
+    if (body.id) {
+      const existing = db.state.supportTickets.find(ticket => ticket.id === body.id && ticket.customerId === ctx.user.id)
+      if (!existing) return { status: 404, body: { error: 'Atendimento não encontrado.' } }
+      const text = auth.sanitize(body.message).slice(0, 1000)
+      if (!text) return { status: 400, body: { error: 'Escreva uma mensagem.' } }
+      existing.messages.push({ from: 'customer', userId: ctx.user.id, text, at: platform.now() })
+      existing.status = 'open'
+      existing.updatedAt = platform.now()
+      platform.audit(ctx.user, 'support.reply', 'ticket', existing.id)
+      db.saveNow()
+      return { ticket: existing }
+    }
+    const orderId = auth.sanitize(body.orderId).slice(0, 80)
+    if (orderId && !db.state.platformOrders.some(order => order.id === orderId && order.customerId === ctx.user.id)) return { status: 400, body: { error: 'Este pedido não pertence à sua conta.' } }
+    const message = auth.sanitize(body.message).slice(0, 1000)
+    if (!message) return { status: 400, body: { error: 'Descreva o problema.' } }
     const ticket = {
       id: db.uid('ticket'),
       customerId: ctx.user.id,
       storeId: body.storeId || null,
-      orderId: body.orderId || null,
-      subject: String(body.subject || 'Atendimento').slice(0, 120),
+      orderId: orderId || null,
+      subject: auth.sanitize(body.subject || 'Atendimento').slice(0, 120),
       status: 'open',
       priority: 'normal',
       messages: [
         {
           from: 'customer',
-          text: String(body.message || '').slice(0, 1000),
+          text: message,
           at: platform.now(),
         },
       ],
       createdAt: platform.now(),
+      updatedAt: platform.now(),
     }
     db.state.supportTickets.unshift(ticket)
     platform.audit(ctx.user, 'support.create', 'ticket', ticket.id)
+    db.saveNow()
     return { status: 201, body: { ticket } }
   },
 })

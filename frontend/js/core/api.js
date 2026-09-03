@@ -67,6 +67,7 @@ export const api = {
   adminDashboard: () => get('/api/admin-dashboard'),
   updateAdminStoreStatus: (storeId, status) => post('/api/admin-store-status', { storeId, status }),
   updateAdminCourier: (payload) => post('/api/admin-courier', payload),
+  updateAdminSupport: (payload) => post('/api/admin-support-ticket', payload),
   courierDashboard: () => get('/api/courier-dashboard'),
   setCourierAvailability: (available) => post('/api/courier-availability', { available }),
   updateCourierDelivery: (deliveryId, action) => post('/api/courier-delivery', { deliveryId, action }),

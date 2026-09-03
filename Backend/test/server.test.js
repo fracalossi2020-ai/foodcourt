@@ -547,6 +547,93 @@ test("admin manages store approval and courier access", async () => {
   assert.equal(db.findByEmail("joao@foodcourt.com").role, "customer");
 });
 
+test("customer and admin complete a support conversation", async () => {
+  const customer = await loginDemo();
+  const invalidOrder = await fetch(`${baseUrl}/api/customer-support`, {
+    method: "POST",
+    headers: {
+      Cookie: customer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      subject: "Pedido",
+      orderId: "pedido-de-outra-conta",
+      message: "Preciso de ajuda.",
+    }),
+  });
+  assert.equal(invalidOrder.status, 400);
+
+  const created = await fetch(`${baseUrl}/api/customer-support`, {
+    method: "POST",
+    headers: {
+      Cookie: customer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      subject: "Dúvida no aplicativo",
+      message: "Não consigo acompanhar uma atualização.",
+    }),
+  });
+  assert.equal(created.status, 201);
+  const ticket = (await created.json()).ticket;
+
+  const customerReply = await fetch(`${baseUrl}/api/customer-support`, {
+    method: "POST",
+    headers: {
+      Cookie: customer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id: ticket.id, message: "Ainda preciso de ajuda." }),
+  });
+  assert.equal(customerReply.status, 200);
+
+  const adminLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "admin@foodcourt.com",
+      password: "foodcourt123",
+    }),
+  });
+  const adminCookie = adminLogin.headers.get("set-cookie")?.split(";")[0];
+  assert.equal(adminLogin.status, 200);
+
+  const adminReply = await fetch(`${baseUrl}/api/admin-support-ticket`, {
+    method: "POST",
+    headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ticketId: ticket.id,
+      action: "reply",
+      message: "Recebemos seu chamado e já verificamos.",
+      priority: "high",
+    }),
+  });
+  assert.equal(adminReply.status, 200);
+
+  const resolved = await fetch(`${baseUrl}/api/admin-support-ticket`, {
+    method: "POST",
+    headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ ticketId: ticket.id, action: "resolve" }),
+  });
+  assert.equal(resolved.status, 200);
+  assert.equal((await resolved.json()).ticket.status, "resolved");
+
+  const ticketsResponse = await fetch(`${baseUrl}/api/customer-support`, {
+    headers: { Cookie: customer.cookie },
+  });
+  const tickets = (await ticketsResponse.json()).tickets;
+  const updated = tickets.find((item) => item.id === ticket.id);
+  assert.equal(updated.priority, "high");
+  assert.equal(updated.status, "resolved");
+  assert.ok(updated.messages.some((item) => item.from === "support"));
+
+  const notificationsResponse = await fetch(`${baseUrl}/api/notifications`, {
+    headers: { Cookie: customer.cookie },
+  });
+  const notifications = (await notificationsResponse.json()).notifications;
+  assert.ok(notifications.some((item) => item.type === "support"));
+});
+
 test("invalid JSON and untrusted origins are rejected", async () => {
   const invalid = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",

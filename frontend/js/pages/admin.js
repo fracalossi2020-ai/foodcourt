@@ -7,6 +7,7 @@ const tabs = [
   ["entregadores", "Entregadores"],
   ["entregas", "Entregas"],
   ["pagamentos", "Pagamentos"],
+  ["suporte", "Suporte"],
   ["auditoria", "Auditoria"],
 ];
 const labels = {
@@ -53,6 +54,13 @@ const paymentRows = (data) =>
         `<div class="admin-row"><span>💳</span><div><b>${money(payment.amount)} · ${esc(payment.method || "Pagamento")}</b><small>${esc(payment.customerEmail || "Conta não localizada")} · ${esc(payment.txid || payment.id)} · ${new Date(payment.updatedAt || payment.createdAt).toLocaleString("pt-BR")}</small></div><em>${labels[payment.status] || esc(payment.status)}</em></div>`,
     )
     .join("") || empty("Nenhuma cobrança registrada.");
+const supportRows = (data) =>
+  data.tickets
+    .map(
+      (ticket) =>
+        `<article class="ticket-row"><span>#${esc(ticket.id.split("_").pop())}</span><div><b>${esc(ticket.subject)} · ${esc(ticket.requester)}</b><small>${esc(ticket.messages.at(-1)?.text || "Sem mensagens")} · ${ticket.priority || "normal"}</small></div><em>${ticket.status === "open" ? "Aberto" : "Resolvido"}</em><button class="btn btn-outline btn-sm" data-support-reply="${ticket.id}">Responder</button><button class="btn btn-ghost btn-sm" data-support-action="${ticket.status === "open" ? "resolve" : "reopen"}" data-ticket-id="${ticket.id}">${ticket.status === "open" ? "Resolver" : "Reabrir"}</button></article>`,
+    )
+    .join("") || empty("Nenhum chamado registrado.");
 
 export async function render(view) {
   view.innerHTML =
@@ -80,9 +88,11 @@ export async function render(view) {
             ? `<section class="partner-panel"><header><h2>Operação de entregas</h2><span>${data.deliveries.length} registros</span></header>${deliveryRows(data)}</section>`
             : section === "pagamentos"
               ? `<section class="partner-metrics"><article class="partner-metric"><i>✅</i><span>Pagamentos aprovados</span><b>${money(data.metrics.paidPayments)}</b><small>valor confirmado pelo provedor</small></article><article class="partner-metric"><i>⏳</i><span>Pendências</span><b>${data.metrics.pendingPayments}</b><small>pagamentos ou estornos aguardando</small></article></section><section class="partner-panel"><header><h2>Movimentações financeiras</h2><span>${data.payments.length} registros</span></header>${paymentRows(data)}</section>`
-            : section === "auditoria"
-              ? `<section class="partner-panel"><header><h2>Auditoria recente</h2></header>${audit}</section>`
-              : `${metrics}<div class="partner-columns"><section class="partner-panel"><header><h2>Lojas que precisam de análise</h2><a href="#/admin?secao=lojas">Ver todas →</a></header>${storeRows({ ...data, stores: data.stores.filter((store) => store.status === "pending").slice(0, 5) })}</section><section class="partner-panel"><header><h2>Auditoria recente</h2><a href="#/admin?secao=auditoria">Abrir →</a></header>${audit}</section></div>`;
+              : section === "suporte"
+                ? `<section class="partner-metrics"><article class="partner-metric"><i>💬</i><span>Chamados abertos</span><b>${data.metrics.openTickets}</b><small>aguardando atendimento</small></article></section><section class="partner-panel"><header><h2>Central de atendimento</h2><span>${data.tickets.length} chamados</span></header>${supportRows(data)}</section>`
+                : section === "auditoria"
+                  ? `<section class="partner-panel"><header><h2>Auditoria recente</h2></header>${audit}</section>`
+                  : `${metrics}<div class="partner-columns"><section class="partner-panel"><header><h2>Lojas que precisam de análise</h2><a href="#/admin?secao=lojas">Ver todas →</a></header>${storeRows({ ...data, stores: data.stores.filter((store) => store.status === "pending").slice(0, 5) })}</section><section class="partner-panel"><header><h2>Auditoria recente</h2><a href="#/admin?secao=auditoria">Abrir →</a></header>${audit}</section></div>`;
     view.innerHTML = `<div class="admin-page"><header class="admin-head"><div><span>FOODCOURT CONTROL</span><h1>Administração da plataforma</h1><p>Cada operação em sua área, com permissões e auditoria.</p></div><a class="btn btn-dark" href="#/perfil">Minha conta</a></header><nav class="partner-quick-actions admin-tabs" aria-label="Seções administrativas">${tabs.map(([id, label]) => `<a class="${section === id ? "active" : ""}" href="#/admin?secao=${id}">${label}</a>`).join("")}</nav>${content}</div>`;
     view.querySelectorAll("[data-store-status]").forEach((select) =>
       select.addEventListener("change", async () => {
@@ -136,6 +146,41 @@ export async function render(view) {
           });
           toast("Entregador desativado.", "success");
           location.hash = `#/admin?secao=entregadores&at=${Date.now()}`;
+        } catch (error) {
+          toast(error.message, "error");
+          button.disabled = false;
+        }
+      }),
+    );
+    view.querySelectorAll("[data-support-reply]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        const message = prompt("Resposta para este atendimento:");
+        if (!message) return;
+        button.disabled = true;
+        try {
+          await api.updateAdminSupport({
+            ticketId: button.dataset.supportReply,
+            action: "reply",
+            message,
+          });
+          toast("Resposta enviada.", "success");
+          location.hash = `#/admin?secao=suporte&at=${Date.now()}`;
+        } catch (error) {
+          toast(error.message, "error");
+          button.disabled = false;
+        }
+      }),
+    );
+    view.querySelectorAll("[data-support-action]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          await api.updateAdminSupport({
+            ticketId: button.dataset.ticketId,
+            action: button.dataset.supportAction,
+          });
+          toast("Atendimento atualizado.", "success");
+          location.hash = `#/admin?secao=suporte&at=${Date.now()}`;
         } catch (error) {
           toast(error.message, "error");
           button.disabled = false;

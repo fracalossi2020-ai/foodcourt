@@ -58,7 +58,7 @@ function startRealtime() {
     }
     window.dispatchEvent(new CustomEvent('fc:realtime', { detail }))
     const path = (location.hash.replace(/^#/, '') || '/').split('?')[0]
-    if (!/^\/(parceiro|entregador|admin|pedido\/|conversa\/|notificacoes)/.test(path)) return
+    if (!/^\/(parceiro|entregador|admin|pedido\/|conversa\/|notificacoes|suporte)/.test(path)) return
     clearTimeout(realtimeRefreshTimer)
     realtimeRefreshTimer = setTimeout(() => navigate(), 250)
   }
