@@ -41,7 +41,7 @@ function renderOverview(view) {
       ${item('🏅','Programa de benefícios',`${u.cashback}% cashback ativo`,'#/fidelidade')}
       ${item('🔔','Notificações','Alertas e novidades','#/notificacoes')}
       ${item('💬','Ajuda e suporte','Pedidos, pagamentos e atendimento','#/suporte')}
-      ${u.role === 'courier' ? item('🚴','Portal do Entregador','Corridas, rotas e ganhos','#/entregador') : u.role === 'merchant' || u.role === 'admin' ? item('▦','Portal do Parceiro','Administrar estabelecimento','#/parceiro') : item('↗','Venda no FoodCourt','Tem um estabelecimento? Seja parceiro.','#/para-estabelecimentos')}
+      ${u.role === 'courier' ? item('🚴','Portal do Entregador','Corridas, rotas e ganhos','#/entregador') : u.role === 'merchant' || u.role === 'admin' ? item('▦','Portal do Parceiro','Administrar estabelecimento','#/parceiro') : `${item('🛵','Quero ser entregador','Cadastre-se para realizar entregas','#/quero-ser-entregador')}${item('↗','Venda no FoodCourt','Tem um estabelecimento? Seja parceiro.','#/para-estabelecimentos')}`}
       ${item('⚙️','Configurações','Privacidade e preferências','#/perfil?secao=configuracoes')}
     </div></div></section>
     <button class="btn btn-dark btn-block" id="logoutBtn">Sair da conta</button>

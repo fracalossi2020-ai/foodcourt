@@ -42,6 +42,7 @@ const EMPTY = () => ({
   conversations: [],
   paymentEvents: [],
   courierPayouts: [],
+  courierApplications: [],
   userNotifications: [],
 });
 let state = EMPTY();

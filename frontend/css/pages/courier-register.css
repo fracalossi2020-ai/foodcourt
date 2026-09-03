@@ -1,0 +1,108 @@
+.courier-signup {
+  max-width: 820px;
+}
+.courier-signup > header {
+  text-align: center;
+  margin: 24px auto 28px;
+}
+.courier-signup > header > span {
+  color: var(--brand);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+.courier-signup > header h1 {
+  margin: 8px 0;
+  font-size: 2rem;
+}
+.courier-signup > header p {
+  max-width: 620px;
+  margin: auto;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.courier-signup-card {
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.courier-signup-card h2 {
+  margin: 0 0 20px;
+}
+.courier-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.courier-form-grid label {
+  display: grid;
+  gap: 7px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.courier-terms {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin: 20px 0;
+  color: var(--text-2);
+  font-size: 0.7rem;
+}
+.courier-application-status {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--brand-border);
+  border-radius: 16px;
+  background: var(--brand-soft);
+}
+.courier-application-status b,
+.courier-application-status small {
+  display: block;
+}
+.courier-application-status p {
+  margin: 5px 0;
+  color: var(--text-2);
+  font-size: 0.75rem;
+}
+.courier-application-status.rejected {
+  border-color: #f3b7b7;
+  background: #fff0f0;
+}
+.courier-status {
+  text-align: center;
+  margin-top: 50px;
+}
+.courier-status > span {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  margin: auto;
+  border-radius: 20px;
+  background: var(--brand-soft);
+  font-size: 1.7rem;
+}
+.courier-status h1 {
+  margin: 18px 0 7px;
+}
+.courier-status p {
+  margin: 0 auto 22px;
+  max-width: 500px;
+  color: var(--text-2);
+}
+@media (max-width: 650px) {
+  .courier-signup {
+    padding-inline: 14px;
+  }
+  .courier-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .courier-signup-card {
+    padding: 20px;
+  }
+  .courier-signup > header h1 {
+    font-size: 1.55rem;
+  }
+}

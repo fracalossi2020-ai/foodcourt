@@ -89,10 +89,15 @@ export const api = {
   updateAdminStoreStatus: (storeId, status) =>
     post("/api/admin-store-status", { storeId, status }),
   updateAdminCourier: (payload) => post("/api/admin-courier", payload),
+  updateAdminCourierApplication: (applicationId, action, note = "") =>
+    post("/api/admin-courier-application", { applicationId, action, note }),
   updateAdminSupport: (payload) => post("/api/admin-support-ticket", payload),
   updateAdminCourierPayout: (payoutId, status) =>
     post("/api/admin-courier-payout", { payoutId, status }),
   courierDashboard: () => get("/api/courier-dashboard"),
+  courierApplication: () => get("/api/courier-application"),
+  submitCourierApplication: (payload) =>
+    post("/api/courier-application", payload),
   setCourierAvailability: (available) =>
     post("/api/courier-availability", { available }),
   updateCourierDelivery: (deliveryId, action) =>

@@ -3132,6 +3132,82 @@ Object.assign(api, {
       withdrawals: withdrawals.slice(0, 30),
     };
   },
+  "GET /api/courier-application": (params, query, body, ctx) => ({
+    application:
+      db.state.courierApplications.find(
+        (application) => application.userId === ctx.user.id,
+      ) || null,
+  }),
+  "POST /api/courier-application": (params, query, body, ctx) => {
+    if (ctx.user.role === "courier")
+      return {
+        status: 409,
+        body: { error: "Sua conta já está habilitada como entregador." },
+      };
+    if (["merchant", "admin"].includes(ctx.user.role))
+      return {
+        status: 409,
+        body: {
+          error:
+            "Use uma conta de cliente para solicitar acesso de entregador.",
+        },
+      };
+    const document = String(body.document || "").replace(/\D/g, "");
+    const vehicle = auth.sanitize(body.vehicle).slice(0, 40);
+    const city = auth.sanitize(body.city).slice(0, 80);
+    const pixKey = auth.sanitize(body.pixKey).slice(0, 140);
+    const birthDate = String(body.birthDate || "");
+    if (![11, 14].includes(document.length))
+      return { status: 400, body: { error: "Informe um CPF ou CNPJ válido." } };
+    if (
+      !vehicle ||
+      !city ||
+      pixKey.length < 5 ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)
+    )
+      return {
+        status: 400,
+        body: { error: "Preencha os dados obrigatórios do cadastro." },
+      };
+    const minimumBirth = new Date();
+    minimumBirth.setFullYear(minimumBirth.getFullYear() - 18);
+    if (Date.parse(`${birthDate}T12:00:00Z`) > minimumBirth.getTime())
+      return {
+        status: 400,
+        body: { error: "É necessário ter pelo menos 18 anos." },
+      };
+    let application = db.state.courierApplications.find(
+      (item) => item.userId === ctx.user.id,
+    );
+    const values = {
+      document,
+      birthDate,
+      vehicle,
+      licensePlate: auth.sanitize(body.licensePlate).toUpperCase().slice(0, 10),
+      city,
+      pixKey,
+      status: "pending",
+      updatedAt: platform.now(),
+    };
+    if (application) Object.assign(application, values);
+    else {
+      application = {
+        id: db.uid("courier-application"),
+        userId: ctx.user.id,
+        ...values,
+        createdAt: platform.now(),
+      };
+      db.state.courierApplications.unshift(application);
+    }
+    platform.audit(
+      ctx.user,
+      "courier.application.submit",
+      "courier-application",
+      application.id,
+    );
+    db.saveNow();
+    return { status: 201, body: { application } };
+  },
   "POST /api/courier-withdrawal": (params, query, body, ctx) => {
     if (!["courier", "admin"].includes(ctx.user.role))
       return forbidden("entregadores");
@@ -3389,6 +3465,14 @@ Object.assign(api, {
       stores: db.state.stores,
       users: db.state.users.map(auth.publicUser),
       couriers,
+      courierApplications: db.state.courierApplications
+        .slice(0, 100)
+        .map((application) => {
+          const user = db.state.users.find(
+            (item) => item.id === application.userId,
+          );
+          return { ...application, user: user ? auth.publicUser(user) : null };
+        }),
       deliveries: db.state.deliveries.map((delivery) => ({
         ...delivery,
         order:
@@ -3580,6 +3664,62 @@ Object.assign(api, {
     platform.audit(ctx.user, `courier.${action}`, "user", user.id, user.email);
     db.saveNow();
     return { user: auth.publicUser(user) };
+  },
+  "POST /api/admin-courier-application": (params, query, body, ctx) => {
+    if (ctx.user.role !== "admin") return forbidden("administradores");
+    const application = db.state.courierApplications.find(
+      (item) => item.id === body.applicationId,
+    );
+    if (!application)
+      return { status: 404, body: { error: "Cadastro não encontrado." } };
+    if (application.status !== "pending")
+      return {
+        status: 409,
+        body: { error: "Este cadastro já foi analisado." },
+      };
+    const action =
+      body.action === "approve"
+        ? "approved"
+        : body.action === "reject"
+          ? "rejected"
+          : null;
+    if (!action) return { status: 400, body: { error: "Ação inválida." } };
+    const user = db.state.users.find((item) => item.id === application.userId);
+    if (!user)
+      return {
+        status: 404,
+        body: { error: "Conta do candidato não encontrada." },
+      };
+    application.status = action;
+    application.reviewedAt = platform.now();
+    application.reviewedBy = ctx.user.id;
+    application.reviewNote = auth.sanitize(body.note).slice(0, 300);
+    if (action === "approved") {
+      user.role = "courier";
+      user.level = "Entregador";
+      user.courierVehicle = application.vehicle;
+      user.courierAvailable = false;
+      user.updatedAt = application.reviewedAt;
+    }
+    pushNotification(
+      user.id,
+      "courier",
+      action === "approved"
+        ? "Cadastro de entregador aprovado"
+        : "Cadastro de entregador não aprovado",
+      action === "approved"
+        ? "Seu Portal do Entregador já está liberado."
+        : application.reviewNote ||
+            "Revise seus dados e envie uma nova solicitação.",
+    );
+    platform.audit(
+      ctx.user,
+      `courier.application.${action}`,
+      "courier-application",
+      application.id,
+    );
+    db.saveNow();
+    return { application, user: auth.publicUser(user) };
   },
   "GET /api/orders": (params, query, body, ctx) => ({
     orders: db.state.platformOrders.filter(

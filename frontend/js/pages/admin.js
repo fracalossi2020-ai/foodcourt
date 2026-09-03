@@ -40,6 +40,13 @@ const courierRows = (data) =>
         `<div class="admin-row"><span>🛵</span><div><b>${esc(user.fullName)}</b><small>${esc(user.email)} · ${esc(user.vehicle)} · ${user.deliveries} concluídas</small></div><em>${user.available ? "Disponível" : "Indisponível"}</em><button class="btn btn-outline btn-sm" data-disable-courier="${esc(user.email)}">Desativar</button></div>`,
     )
     .join("") || empty("Nenhum entregador habilitado.");
+const courierApplicationRows = (data) =>
+  data.courierApplications
+    .map(
+      (application) =>
+        `<div class="admin-row"><span>📋</span><div><b>${esc(application.user?.fullName || "Conta não encontrada")}</b><small>${esc(application.user?.email || "")} · ${esc(application.vehicle)} · ${esc(application.city)} · Documento final ${esc(application.document.slice(-4))}</small></div><em>${application.status === "pending" ? "Em análise" : application.status === "approved" ? "Aprovado" : "Recusado"}</em>${application.status === "pending" ? `<button class="btn btn-primary btn-sm" data-courier-application="${application.id}" data-application-action="approve">Aprovar</button><button class="btn btn-ghost btn-sm" data-courier-application="${application.id}" data-application-action="reject">Recusar</button>` : ""}</div>`,
+    )
+    .join("") || empty("Nenhum cadastro recebido.");
 const deliveryRows = (data) =>
   data.deliveries
     .map(
@@ -90,7 +97,7 @@ export async function render(view) {
       section === "lojas"
         ? `<section class="partner-panel"><header><h2>Gerenciar estabelecimentos</h2><a href="#/cadastro-parceiro">+ Novo parceiro</a></header>${storeRows(data)}</section>`
         : section === "entregadores"
-          ? `<section class="partner-panel"><header><h2>Gerenciar entregadores</h2><button class="btn btn-primary btn-sm" data-new-courier>Habilitar conta</button></header>${courierRows(data)}</section>`
+          ? `<section class="partner-panel"><header><h2>Cadastros para análise</h2><span>${data.courierApplications.filter((item) => item.status === "pending").length} pendentes</span></header>${courierApplicationRows(data)}</section><section class="partner-panel"><header><h2>Entregadores ativos</h2><button class="btn btn-primary btn-sm" data-new-courier>Habilitar conta manualmente</button></header>${courierRows(data)}</section>`
           : section === "entregas"
             ? `<section class="partner-panel"><header><h2>Operação de entregas</h2><span>${data.deliveries.length} registros</span></header>${deliveryRows(data)}</section>`
             : section === "pagamentos"
@@ -137,6 +144,32 @@ export async function render(view) {
           toast(error.message, "error");
         }
       });
+    view.querySelectorAll("[data-courier-application]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        const action = button.dataset.applicationAction;
+        const note =
+          action === "reject" ? prompt("Explique o motivo da recusa:") : "";
+        if (action === "reject" && !note) return;
+        button.disabled = true;
+        try {
+          await api.updateAdminCourierApplication(
+            button.dataset.courierApplication,
+            action,
+            note,
+          );
+          toast(
+            action === "approve"
+              ? "Entregador aprovado."
+              : "Cadastro recusado.",
+            "success",
+          );
+          location.hash = `#/admin?secao=entregadores&at=${Date.now()}`;
+        } catch (error) {
+          toast(error.message, "error");
+          button.disabled = false;
+        }
+      }),
+    );
     view.querySelectorAll("[data-disable-courier]").forEach((button) =>
       button.addEventListener("click", async () => {
         if (

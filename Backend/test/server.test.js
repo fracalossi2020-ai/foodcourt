@@ -242,6 +242,68 @@ test("customer addresses are persisted and isolated by user", async () => {
   assert.ok((await list.json()).addresses.some((item) => item.id === saved.id));
 });
 
+test("customer applies to become a courier and admin approves access", async () => {
+  const applicant = db.addUser({
+    id: "courier_applicant_test",
+    fullName: "Candidato Entregador",
+    email: "candidato@foodcourt.test",
+    phone: "(31) 98888-1111",
+    passwordHash: require("../src/lib/auth").hashPassword("entrega123"),
+    status: "active",
+    role: "customer",
+    createdAt: new Date().toISOString(),
+  });
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: applicant.email, password: "entrega123" }),
+  });
+  const applicantCookie = login.headers.get("set-cookie").split(";")[0];
+  const submission = await fetch(`${baseUrl}/api/courier-application`, {
+    method: "POST",
+    headers: { Cookie: applicantCookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      document: "12345678901",
+      birthDate: "1995-05-10",
+      vehicle: "Moto",
+      licensePlate: "ABC1D23",
+      city: "Timóteo",
+      pixKey: applicant.email,
+    }),
+  });
+  assert.equal(submission.status, 201);
+  const application = (await submission.json()).application;
+  assert.equal(application.status, "pending");
+
+  const adminLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "admin@foodcourt.com",
+      password: "foodcourt123",
+    }),
+  });
+  const adminCookie = adminLogin.headers.get("set-cookie").split(";")[0];
+  const approval = await fetch(`${baseUrl}/api/admin-courier-application`, {
+    method: "POST",
+    headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      applicationId: application.id,
+      action: "approve",
+    }),
+  });
+  assert.equal(approval.status, 200);
+  assert.equal((await approval.json()).application.status, "approved");
+  assert.equal(applicant.role, "courier");
+  assert.equal(applicant.courierVehicle, "Moto");
+  assert.ok(
+    db.state.userNotifications.some(
+      (notification) =>
+        notification.userId === applicant.id && notification.type === "courier",
+    ),
+  );
+});
+
 test("courier can become available and complete an assigned delivery", async () => {
   const courier = db.addUser({
     id: "courier_test",

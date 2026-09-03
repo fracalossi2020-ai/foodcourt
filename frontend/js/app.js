@@ -28,6 +28,7 @@ const routes = [
   ,{ pattern: /^\/parceiro$/, page: 'partner' }
   ,{ pattern: /^\/admin$/, page: 'admin' }
   ,{ pattern: /^\/entregador$/, page: 'courier' }
+  ,{ pattern: /^\/quero-ser-entregador$/, page: 'courier-register' }
   ,{ pattern: /^\/fidelidade$/, page: 'loyalty' }
   ,{ pattern: /^\/suporte$/, page: 'support' }
 ]
