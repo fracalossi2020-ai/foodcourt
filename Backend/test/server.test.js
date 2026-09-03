@@ -262,7 +262,7 @@ test("courier can become available and complete an assigned delivery", async () 
     status: "searching",
     pickupAddress: { street: "Rua da Loja", number: "1" },
     dropoffAddress: "Casa — Rua do Cliente, 10",
-    courierPayout: 7,
+    courierPayout: 17,
     statusHistory: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -315,6 +315,18 @@ test("courier can become available and complete an assigned delivery", async () 
   assert.equal((await action("deliver")).status, 200);
   assert.equal(delivery.status, "delivered");
   assert.equal(customer.points, pointsBefore + 20);
+  const withdrawal = await fetch(`${baseUrl}/api/courier-withdrawal`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: 10, pixKey: courier.email }),
+  });
+  assert.equal(withdrawal.status, 201);
+  const payout = (await withdrawal.json()).payout;
+  assert.equal(payout.status, "pending");
+  const afterWithdrawal = await fetch(`${baseUrl}/api/courier-dashboard`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal((await afterWithdrawal.json()).availableBalance, 7);
 });
 
 test("order applies a store coupon, reserves stock and accepts scheduling", async () => {
@@ -516,6 +528,18 @@ test("admin manages store approval and courier access", async () => {
   const adminData = await dashboard.json();
   assert.ok(Array.isArray(adminData.payments));
   assert.equal(typeof adminData.metrics.pendingPayments, "number");
+  assert.ok(adminData.courierPayouts.some((item) => item.status === "pending"));
+
+  const pendingPayout = adminData.courierPayouts.find(
+    (item) => item.status === "pending",
+  );
+  const payPayout = await fetch(`${baseUrl}/api/admin-courier-payout`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ payoutId: pendingPayout.id, status: "paid" }),
+  });
+  assert.equal(payPayout.status, 200);
+  assert.equal((await payPayout.json()).payout.status, "paid");
 
   const targetStore = db.state.stores[0];
   const storeStatus = await fetch(`${baseUrl}/api/admin-store-status`, {

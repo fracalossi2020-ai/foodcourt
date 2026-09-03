@@ -54,6 +54,13 @@ const paymentRows = (data) =>
         `<div class="admin-row"><span>💳</span><div><b>${money(payment.amount)} · ${esc(payment.method || "Pagamento")}</b><small>${esc(payment.customerEmail || "Conta não localizada")} · ${esc(payment.txid || payment.id)} · ${new Date(payment.updatedAt || payment.createdAt).toLocaleString("pt-BR")}</small></div><em>${labels[payment.status] || esc(payment.status)}</em></div>`,
     )
     .join("") || empty("Nenhuma cobrança registrada.");
+const payoutRows = (data) =>
+  data.courierPayouts
+    .map(
+      (payout) =>
+        `<div class="admin-row"><span>💸</span><div><b>${money(payout.amount)} · ${esc(payout.courierName)}</b><small>Pix ${esc(payout.pixKey)} · ${new Date(payout.requestedAt).toLocaleString("pt-BR")}</small></div><em>${labels[payout.status] || esc(payout.status)}</em>${payout.status === "pending" ? `<button class="btn btn-primary btn-sm" data-payout="${payout.id}" data-payout-status="paid">Marcar pago</button><button class="btn btn-ghost btn-sm" data-payout="${payout.id}" data-payout-status="rejected">Recusar</button>` : ""}</div>`,
+    )
+    .join("") || empty("Nenhum saque solicitado.");
 const supportRows = (data) =>
   data.tickets
     .map(
@@ -87,7 +94,7 @@ export async function render(view) {
           : section === "entregas"
             ? `<section class="partner-panel"><header><h2>Operação de entregas</h2><span>${data.deliveries.length} registros</span></header>${deliveryRows(data)}</section>`
             : section === "pagamentos"
-              ? `<section class="partner-metrics"><article class="partner-metric"><i>✅</i><span>Pagamentos aprovados</span><b>${money(data.metrics.paidPayments)}</b><small>valor confirmado pelo provedor</small></article><article class="partner-metric"><i>⏳</i><span>Pendências</span><b>${data.metrics.pendingPayments}</b><small>pagamentos ou estornos aguardando</small></article></section><section class="partner-panel"><header><h2>Movimentações financeiras</h2><span>${data.payments.length} registros</span></header>${paymentRows(data)}</section>`
+              ? `<section class="partner-metrics"><article class="partner-metric"><i>✅</i><span>Pagamentos aprovados</span><b>${money(data.metrics.paidPayments)}</b><small>valor confirmado pelo provedor</small></article><article class="partner-metric"><i>⏳</i><span>Pendências</span><b>${data.metrics.pendingPayments}</b><small>pagamentos ou estornos aguardando</small></article></section><section class="partner-panel"><header><h2>Saques de entregadores</h2><span>${data.courierPayouts.length} solicitações</span></header>${payoutRows(data)}</section><section class="partner-panel"><header><h2>Pagamentos de pedidos</h2><span>${data.payments.length} registros</span></header>${paymentRows(data)}</section>`
               : section === "suporte"
                 ? `<section class="partner-metrics"><article class="partner-metric"><i>💬</i><span>Chamados abertos</span><b>${data.metrics.openTickets}</b><small>aguardando atendimento</small></article></section><section class="partner-panel"><header><h2>Central de atendimento</h2><span>${data.tickets.length} chamados</span></header>${supportRows(data)}</section>`
                 : section === "auditoria"
@@ -165,6 +172,27 @@ export async function render(view) {
           });
           toast("Resposta enviada.", "success");
           location.hash = `#/admin?secao=suporte&at=${Date.now()}`;
+        } catch (error) {
+          toast(error.message, "error");
+          button.disabled = false;
+        }
+      }),
+    );
+    view.querySelectorAll("[data-payout]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        const verb =
+          button.dataset.payoutStatus === "paid"
+            ? "confirmar o pagamento"
+            : "recusar o saque";
+        if (!confirm(`Deseja ${verb}?`)) return;
+        button.disabled = true;
+        try {
+          await api.updateAdminCourierPayout(
+            button.dataset.payout,
+            button.dataset.payoutStatus,
+          );
+          toast("Solicitação de saque atualizada.", "success");
+          location.hash = `#/admin?secao=pagamentos&at=${Date.now()}`;
         } catch (error) {
           toast(error.message, "error");
           button.disabled = false;
