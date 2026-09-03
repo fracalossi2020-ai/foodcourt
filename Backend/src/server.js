@@ -3588,6 +3588,10 @@ Object.assign(api, {
     return {
       metrics: {
         users: db.state.users.length,
+        customers: db.state.users.filter((user) => user.role === "customer")
+          .length,
+        merchants: db.state.users.filter((user) => user.role === "merchant")
+          .length,
         stores: db.state.stores.length,
         orders: db.state.platformOrders.length,
         gross: db.state.platformOrders.reduce((sum, o) => sum + o.total, 0),
@@ -3609,8 +3613,28 @@ Object.assign(api, {
         pendingCourierPayouts: db.state.courierPayouts.filter(
           (payout) => payout.status === "pending",
         ).length,
+        pendingCourierApplications: db.state.courierApplications.filter(
+          (application) => application.status === "pending",
+        ).length,
+        platformRevenue: db.state.courierPayouts
+          .filter((payout) => payout.status === "paid")
+          .reduce((sum, payout) => sum + Number(payout.platformFee || 0), 0),
       },
-      stores: db.state.stores,
+      stores: db.state.stores.map((store) => {
+        const owner = db.state.users.find((user) => user.id === store.ownerId);
+        const orders = db.state.platformOrders.filter(
+          (order) => order.storeId === store.id,
+        );
+        return {
+          ...store,
+          owner: owner ? auth.publicUser(owner) : null,
+          orderCount: orders.length,
+          revenue: orders
+            .filter((order) => order.status === "delivered")
+            .reduce((sum, order) => sum + Number(order.total || 0), 0),
+          productCount: store.products?.length || 0,
+        };
+      }),
       users: db.state.users.map(auth.publicUser),
       couriers,
       courierApplications: db.state.courierApplications
@@ -3640,6 +3664,22 @@ Object.assign(api, {
           db.state.users.find((user) => user.id === payment.userId)?.email ||
           null,
       })),
+      orders: db.state.platformOrders.slice(0, 200).map((order) => ({
+        ...order,
+        customerName:
+          db.state.users.find((user) => user.id === order.customerId)
+            ?.fullName ||
+          order.customerName ||
+          "Cliente",
+        storeName:
+          db.state.stores.find((store) => store.id === order.storeId)?.name ||
+          order.restaurantName ||
+          "Estabelecimento",
+        delivery:
+          db.state.deliveries.find(
+            (delivery) => delivery.orderId === order.id,
+          ) || null,
+      })),
       courierPayouts: db.state.courierPayouts.slice(0, 100).map((payout) => ({
         ...payout,
         courierName:
@@ -3655,7 +3695,38 @@ Object.assign(api, {
               ?.name || "Estabelecimento",
       })),
       audit: db.state.auditLog.slice(0, 30),
+      system: {
+        persistentStorage: Boolean(
+          process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.FC_DB_PATH,
+        ),
+        mercadoPagoConfigured: Boolean(process.env.MERCADO_PAGO_ACCESS_TOKEN),
+        mailConfigured: Boolean(
+          process.env.RESEND_API_KEY || process.env.SMTP_HOST,
+        ),
+        sessionHours: Number(process.env.SESSION_TTL_HOURS || 1),
+      },
     };
+  },
+  "POST /api/admin-user-status": (params, query, body, ctx) => {
+    if (ctx.user.role !== "admin") return forbidden("administradores");
+    const user = db.state.users.find((item) => item.id === body.userId);
+    const status = String(body.status || "");
+    if (!user || !["active", "suspended"].includes(status))
+      return { status: 400, body: { error: "Conta ou situação inválida." } };
+    if (user.id === ctx.user.id || user.role === "admin")
+      return {
+        status: 409,
+        body: {
+          error:
+            "Uma conta administrativa não pode ser suspensa por esta tela.",
+        },
+      };
+    user.status = status;
+    user.updatedAt = platform.now();
+    if (status === "suspended") db.removeUserSessions(user.id);
+    platform.audit(ctx.user, `user.${status}`, "user", user.id, user.email);
+    db.saveNow();
+    return { user: auth.publicUser(user) };
   },
   "POST /api/admin-support-ticket": (params, query, body, ctx) => {
     if (ctx.user.role !== "admin") return forbidden("administradores");

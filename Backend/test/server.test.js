@@ -618,6 +618,25 @@ test("admin manages store approval and courier access", async () => {
   const adminData = await dashboard.json();
   assert.ok(Array.isArray(adminData.payments));
   assert.equal(typeof adminData.metrics.pendingPayments, "number");
+  assert.ok(Array.isArray(adminData.orders));
+  assert.ok(adminData.stores.some((item) => item.owner?.email));
+  assert.equal(typeof adminData.system.persistentStorage, "boolean");
+
+  const candidate = db.findByEmail("candidato@foodcourt.test");
+  const suspendUser = await fetch(`${baseUrl}/api/admin-user-status`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: candidate.id, status: "suspended" }),
+  });
+  assert.equal(suspendUser.status, 200);
+  assert.equal(candidate.status, "suspended");
+  const reactivateUser = await fetch(`${baseUrl}/api/admin-user-status`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: candidate.id, status: "active" }),
+  });
+  assert.equal(reactivateUser.status, 200);
+  assert.equal(candidate.status, "active");
   assert.ok(adminData.courierPayouts.some((item) => item.status === "pending"));
 
   const pendingPayout = adminData.courierPayouts.find(

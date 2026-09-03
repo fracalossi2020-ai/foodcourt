@@ -3,12 +3,15 @@ import { esc, money, toast } from "../core/ui.js";
 
 const tabs = [
   ["visao", "Visão geral"],
+  ["usuarios", "Usuários"],
   ["lojas", "Estabelecimentos"],
   ["entregadores", "Entregadores"],
+  ["pedidos", "Pedidos"],
   ["entregas", "Entregas"],
   ["pagamentos", "Pagamentos"],
   ["suporte", "Suporte"],
   ["auditoria", "Auditoria"],
+  ["sistema", "Sistema"],
 ];
 const labels = {
   active: "Ativo",
@@ -30,7 +33,7 @@ const storeRows = (data) =>
   data.stores
     .map(
       (store) =>
-        `<div class="admin-row"><span>🏪</span><div><b>${esc(store.name)}</b><small>${esc(store.category || "Estabelecimento")} · ${esc(store.address?.city || "Endereço pendente")}</small></div><em>${labels[store.status] || esc(store.status)}</em><select class="input admin-action" data-store-status="${store.id}" aria-label="Alterar situação de ${esc(store.name)}"><option value="pending" ${store.status === "pending" ? "selected" : ""}>Pendente</option><option value="active" ${store.status === "active" ? "selected" : ""}>Aprovar</option><option value="suspended" ${store.status === "suspended" ? "selected" : ""}>Suspender</option></select></div>`,
+        `<div class="admin-row"><span>🏪</span><div><b>${esc(store.name)}</b><small>Dono: ${esc(store.owner?.fullName || "Não vinculado")} · ${esc(store.owner?.email || "sem e-mail")}</small><small>${esc(store.category || "Estabelecimento")} · ${esc(store.address?.city || "Endereço pendente")} · ${store.productCount} produtos · ${store.orderCount} pedidos · ${money(store.revenue)}</small></div><em>${labels[store.status] || esc(store.status)}</em><select class="input admin-action" data-store-status="${store.id}" aria-label="Alterar situação de ${esc(store.name)}"><option value="pending" ${store.status === "pending" ? "selected" : ""}>Pendente</option><option value="active" ${store.status === "active" ? "selected" : ""}>Aprovar</option><option value="suspended" ${store.status === "suspended" ? "selected" : ""}>Suspender</option></select></div>`,
     )
     .join("") || empty("Nenhum estabelecimento cadastrado.");
 const courierRows = (data) =>
@@ -75,8 +78,23 @@ const supportRows = (data) =>
         `<article class="ticket-row"><span>#${esc(ticket.id.split("_").pop())}</span><div><b>${esc(ticket.subject)} · ${esc(ticket.requester)}</b><small>${esc(ticket.messages.at(-1)?.text || "Sem mensagens")} · ${ticket.priority || "normal"}</small></div><em>${ticket.status === "open" ? "Aberto" : "Resolvido"}</em><button class="btn btn-outline btn-sm" data-support-reply="${ticket.id}">Responder</button><button class="btn btn-ghost btn-sm" data-support-action="${ticket.status === "open" ? "resolve" : "reopen"}" data-ticket-id="${ticket.id}">${ticket.status === "open" ? "Resolver" : "Reabrir"}</button></article>`,
     )
     .join("") || empty("Nenhum chamado registrado.");
+const userRows = (data) =>
+  data.users
+    .map(
+      (user) =>
+        `<div class="admin-row"><span>${user.role === "admin" ? "🛡️" : user.role === "merchant" ? "🏪" : user.role === "courier" ? "🛵" : "👤"}</span><div><b>${esc(user.fullName)}</b><small>${esc(user.email)} · ${esc(user.phone || "sem telefone")} · ${esc(user.role)}</small></div><em>${labels[user.status] || esc(user.status)}</em>${user.role !== "admin" ? `<button class="btn btn-outline btn-sm" data-user-status="${user.id}" data-next-status="${user.status === "suspended" ? "active" : "suspended"}">${user.status === "suspended" ? "Reativar" : "Suspender"}</button>` : ""}</div>`,
+    )
+    .join("") || empty("Nenhum usuário cadastrado.");
+const orderRows = (data) =>
+  data.orders
+    .map(
+      (order) =>
+        `<div class="admin-row"><span>🧾</span><div><b>${esc(order.id)} · ${esc(order.storeName)}</b><small>${esc(order.customerName)} · ${order.items?.length || 0} itens · ${new Date(order.createdAt).toLocaleString("pt-BR")}</small></div><strong>${money(order.total)}</strong><em>${labels[order.status] || esc(order.status)}</em></div>`,
+    )
+    .join("") || empty("Nenhum pedido registrado.");
 
 export async function render(view) {
+  document.body.classList.add("admin-mode");
   view.innerHTML =
     '<div class="partner-loading">Carregando administração...</div>';
   try {
@@ -85,7 +103,7 @@ export async function render(view) {
     const section = tabs.some(([id]) => id === query.get("secao"))
       ? query.get("secao")
       : "visao";
-    const metrics = `<section class="partner-metrics"><article class="partner-metric"><i>👥</i><span>Usuários</span><b>${data.metrics.users}</b><small>contas cadastradas</small></article><article class="partner-metric"><i>🏪</i><span>Lojas pendentes</span><b>${data.metrics.pendingStores}</b><small>${data.metrics.stores} lojas no total</small></article><article class="partner-metric"><i>🛵</i><span>Entregadores</span><b>${data.metrics.couriers}</b><small>${data.metrics.activeDeliveries} entregas ativas</small></article><article class="partner-metric"><i>💰</i><span>Volume bruto</span><b>${money(data.metrics.gross)}</b><small>${data.metrics.orders} pedidos</small></article></section>`;
+    const metrics = `<section class="partner-metrics admin-kpis"><article class="partner-metric"><i>👥</i><span>Usuários</span><b>${data.metrics.users}</b><small>${data.metrics.customers} clientes · ${data.metrics.merchants} donos</small></article><article class="partner-metric"><i>🏪</i><span>Estabelecimentos</span><b>${data.metrics.stores}</b><small>${data.metrics.pendingStores} aguardando análise</small></article><article class="partner-metric"><i>🛵</i><span>Entregadores</span><b>${data.metrics.couriers}</b><small>${data.metrics.pendingCourierApplications} cadastros pendentes</small></article><article class="partner-metric"><i>🧾</i><span>Pedidos</span><b>${data.metrics.orders}</b><small>${data.metrics.activeDeliveries} entregas ativas</small></article><article class="partner-metric"><i>💰</i><span>Volume bruto</span><b>${money(data.metrics.gross)}</b><small>movimentado em pedidos</small></article><article class="partner-metric"><i>🏦</i><span>Receita FoodCourt</span><b>${money(data.metrics.platformRevenue)}</b><small>taxas de saque confirmadas</small></article></section>`;
     const audit =
       data.audit
         .map(
@@ -94,20 +112,26 @@ export async function render(view) {
         )
         .join("") || empty("As ações operacionais aparecerão aqui.");
     const content =
-      section === "lojas"
-        ? `<section class="partner-panel"><header><h2>Gerenciar estabelecimentos</h2><a href="#/cadastro-parceiro">+ Novo parceiro</a></header>${storeRows(data)}</section>`
-        : section === "entregadores"
-          ? `<section class="partner-panel"><header><h2>Cadastros para análise</h2><span>${data.courierApplications.filter((item) => item.status === "pending").length} pendentes</span></header>${courierApplicationRows(data)}</section><section class="partner-panel"><header><h2>Entregadores ativos</h2><button class="btn btn-primary btn-sm" data-new-courier>Habilitar conta manualmente</button></header>${courierRows(data)}</section>`
-          : section === "entregas"
-            ? `<section class="partner-panel"><header><h2>Operação de entregas</h2><span>${data.deliveries.length} registros</span></header>${deliveryRows(data)}</section>`
-            : section === "pagamentos"
-              ? `<section class="partner-metrics"><article class="partner-metric"><i>✅</i><span>Pagamentos aprovados</span><b>${money(data.metrics.paidPayments)}</b><small>valor confirmado pelo provedor</small></article><article class="partner-metric"><i>⏳</i><span>Pendências</span><b>${data.metrics.pendingPayments}</b><small>pagamentos ou estornos aguardando</small></article></section><section class="partner-panel"><header><h2>Saques de entregadores</h2><span>${data.courierPayouts.length} solicitações</span></header>${payoutRows(data)}</section><section class="partner-panel"><header><h2>Pagamentos de pedidos</h2><span>${data.payments.length} registros</span></header>${paymentRows(data)}</section>`
-              : section === "suporte"
-                ? `<section class="partner-metrics"><article class="partner-metric"><i>💬</i><span>Chamados abertos</span><b>${data.metrics.openTickets}</b><small>aguardando atendimento</small></article></section><section class="partner-panel"><header><h2>Central de atendimento</h2><span>${data.tickets.length} chamados</span></header>${supportRows(data)}</section>`
-                : section === "auditoria"
-                  ? `<section class="partner-panel"><header><h2>Auditoria recente</h2></header>${audit}</section>`
-                  : `${metrics}<div class="partner-columns"><section class="partner-panel"><header><h2>Lojas que precisam de análise</h2><a href="#/admin?secao=lojas">Ver todas →</a></header>${storeRows({ ...data, stores: data.stores.filter((store) => store.status === "pending").slice(0, 5) })}</section><section class="partner-panel"><header><h2>Auditoria recente</h2><a href="#/admin?secao=auditoria">Abrir →</a></header>${audit}</section></div>`;
-    view.innerHTML = `<div class="admin-page"><header class="admin-head"><div><span>FOODCOURT CONTROL</span><h1>Administração da plataforma</h1><p>Cada operação em sua área, com permissões e auditoria.</p></div><a class="btn btn-dark" href="#/perfil">Minha conta</a></header><nav class="partner-quick-actions admin-tabs" aria-label="Seções administrativas">${tabs.map(([id, label]) => `<a class="${section === id ? "active" : ""}" href="#/admin?secao=${id}">${label}</a>`).join("")}</nav>${content}</div>`;
+      section === "usuarios"
+        ? `<section class="partner-panel"><header><h2>Contas da plataforma</h2><span>${data.users.length} usuários</span></header>${userRows(data)}</section>`
+        : section === "lojas"
+          ? `<section class="partner-panel"><header><h2>Gerenciar estabelecimentos</h2><a href="#/cadastro-parceiro">+ Novo parceiro</a></header>${storeRows(data)}</section>`
+          : section === "entregadores"
+            ? `<section class="partner-panel"><header><h2>Cadastros para análise</h2><span>${data.courierApplications.filter((item) => item.status === "pending").length} pendentes</span></header>${courierApplicationRows(data)}</section><section class="partner-panel"><header><h2>Entregadores ativos</h2><button class="btn btn-primary btn-sm" data-new-courier>Habilitar conta manualmente</button></header>${courierRows(data)}</section>`
+            : section === "pedidos"
+              ? `<section class="partner-panel"><header><h2>Todos os pedidos</h2><span>${data.orders.length} registros recentes</span></header>${orderRows(data)}</section>`
+              : section === "entregas"
+                ? `<section class="partner-panel"><header><h2>Operação de entregas</h2><span>${data.deliveries.length} registros</span></header>${deliveryRows(data)}</section>`
+                : section === "pagamentos"
+                  ? `<section class="partner-metrics"><article class="partner-metric"><i>✅</i><span>Pagamentos aprovados</span><b>${money(data.metrics.paidPayments)}</b><small>valor confirmado pelo provedor</small></article><article class="partner-metric"><i>⏳</i><span>Pendências</span><b>${data.metrics.pendingPayments}</b><small>pagamentos ou estornos aguardando</small></article></section><section class="partner-panel"><header><h2>Saques de entregadores</h2><span>${data.courierPayouts.length} solicitações</span></header>${payoutRows(data)}</section><section class="partner-panel"><header><h2>Pagamentos de pedidos</h2><span>${data.payments.length} registros</span></header>${paymentRows(data)}</section>`
+                  : section === "suporte"
+                    ? `<section class="partner-metrics"><article class="partner-metric"><i>💬</i><span>Chamados abertos</span><b>${data.metrics.openTickets}</b><small>aguardando atendimento</small></article></section><section class="partner-panel"><header><h2>Central de atendimento</h2><span>${data.tickets.length} chamados</span></header>${supportRows(data)}</section>`
+                    : section === "auditoria"
+                      ? `<section class="partner-panel"><header><h2>Auditoria recente</h2></header>${audit}</section>`
+                      : section === "sistema"
+                        ? `<section class="admin-system-grid"><article class="partner-panel"><header><h2>Infraestrutura</h2></header><div class="admin-check"><b>Banco persistente</b><em>${data.system.persistentStorage ? "✓ Ativo" : "⚠ Verificar"}</em></div><div class="admin-check"><b>Mercado Pago</b><em>${data.system.mercadoPagoConfigured ? "✓ Configurado" : "⚠ Sem credenciais"}</em></div><div class="admin-check"><b>Envio de e-mail</b><em>${data.system.mailConfigured ? "✓ Configurado" : "⚠ Sem credenciais"}</em></div><div class="admin-check"><b>Duração da sessão</b><em>${data.system.sessionHours} hora(s)</em></div></article><article class="partner-panel"><header><h2>Segurança operacional</h2></header><p class="admin-system-copy">Alterações de contas, estabelecimentos, entregadores, pagamentos e suporte ficam registradas na auditoria. Credenciais e segredos devem ser gerenciados nas variáveis protegidas do Railway.</p><a class="btn btn-outline" href="#/admin?secao=auditoria">Abrir auditoria</a></article></section>`
+                        : `${metrics}<div class="partner-columns"><section class="partner-panel"><header><h2>Lojas que precisam de análise</h2><a href="#/admin?secao=lojas">Ver todas →</a></header>${storeRows({ ...data, stores: data.stores.filter((store) => store.status === "pending").slice(0, 5) })}</section><section class="partner-panel"><header><h2>Auditoria recente</h2><a href="#/admin?secao=auditoria">Abrir →</a></header>${audit}</section></div>`;
+    view.innerHTML = `<div class="admin-shell"><aside class="admin-sidebar"><a class="admin-brand" href="#/admin"><span>FC</span><b>FoodCourt<small>Administração geral</small></b></a><nav aria-label="Seções administrativas">${tabs.map(([id, label]) => `<a class="${section === id ? "active" : ""}" href="#/admin?secao=${id}"><i>${{ visao: "⌂", usuarios: "♙", lojas: "▣", entregadores: "♜", pedidos: "▤", entregas: "➜", pagamentos: "$", suporte: "?", auditoria: "◎", sistema: "⚙" }[id]}</i>${label}${id === "entregadores" && data.metrics.pendingCourierApplications ? `<b>${data.metrics.pendingCourierApplications}</b>` : ""}</a>`).join("")}</nav><a class="admin-account-link" href="#/perfil">Minha conta →</a></aside><main class="admin-page"><header class="admin-head"><div><span>FOODCOURT CONTROL</span><h1>${tabs.find(([id]) => id === section)?.[1]}</h1><p>Controle centralizado de toda a operação FoodCourt.</p></div><span class="admin-live">● Sistema online</span></header>${content}</main></div>`;
     view.querySelectorAll("[data-store-status]").forEach((select) =>
       select.addEventListener("change", async () => {
         select.disabled = true;
@@ -121,6 +145,28 @@ export async function render(view) {
         } catch (error) {
           toast(error.message, "error");
           select.disabled = false;
+        }
+      }),
+    );
+    view.querySelectorAll("[data-user-status]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        const status = button.dataset.nextStatus;
+        if (
+          status === "suspended" &&
+          !confirm("Suspender esta conta e encerrar suas sessões ativas?")
+        )
+          return;
+        button.disabled = true;
+        try {
+          await api.updateAdminUserStatus(button.dataset.userStatus, status);
+          toast(
+            status === "active" ? "Conta reativada." : "Conta suspensa.",
+            "success",
+          );
+          location.hash = `#/admin?secao=usuarios&at=${Date.now()}`;
+        } catch (error) {
+          toast(error.message, "error");
+          button.disabled = false;
         }
       }),
     );
@@ -251,4 +297,8 @@ export async function render(view) {
   } catch (error) {
     view.innerHTML = `<div class="state-box"><div class="state-emoji">🛡️</div><h3>Acesso administrativo</h3><p>${esc(error.message)}</p><a class="btn btn-primary" href="#/login">Entrar como administrador</a></div>`;
   }
+}
+
+export function cleanup() {
+  document.body.classList.remove("admin-mode");
 }

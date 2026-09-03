@@ -94,6 +94,8 @@ export const api = {
   adminDashboard: () => get("/api/admin-dashboard"),
   updateAdminStoreStatus: (storeId, status) =>
     post("/api/admin-store-status", { storeId, status }),
+  updateAdminUserStatus: (userId, status) =>
+    post("/api/admin-user-status", { userId, status }),
   updateAdminCourier: (payload) => post("/api/admin-courier", payload),
   updateAdminCourierApplication: (applicationId, action, note = "") =>
     post("/api/admin-courier-application", { applicationId, action, note }),
