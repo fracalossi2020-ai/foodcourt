@@ -73,6 +73,12 @@ export const api = {
   partnerSupport: () => get("/api/partner-support"),
   updatePartnerOrder: (orderId, status) =>
     post("/api/partner-order-status", { orderId, status }),
+  assignPartnerCourier: (orderId, courierId, commissionPercent) =>
+    post("/api/partner-assign-courier", {
+      orderId,
+      courierId,
+      commissionPercent,
+    }),
   savePartnerProduct: (product) => post("/api/partner-product", product),
   analyzePartnerMenu: (image) => post("/api/partner-menu-analyze", { image }),
   importPartnerMenu: (products) =>

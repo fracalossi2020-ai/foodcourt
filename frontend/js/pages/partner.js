@@ -282,7 +282,7 @@ function content(section, data) {
     return `${head("PREFERÊNCIAS", "Configurações", "Dados gerais e segurança da operação.")}<div class="partner-panel partner-settings"><article><div><b>Notificações de novos pedidos</b><small>Mostra alertas quando um pedido chegar.</small></div><label class="partner-toggle"><input type="checkbox" data-order-notifications ${data.store.orderNotifications !== false ? "checked" : ""}><i></i><span>${data.store.orderNotifications !== false ? "Ativadas" : "Desativadas"}</span></label></article><article><div><b>Segurança da conta</b><small>Sessão, autorização e vínculo da loja estão protegidos.</small></div><button data-security-details>Ver detalhes</button></article><article><div><b>Voltar ao marketplace</b><small>Acesse o FoodCourt como consumidor.</small></div><a href="#/inicio">Abrir FoodCourt →</a></article></div>`;
   if (section === "dashboard") return dashboard(data);
   if (section === "pedidos")
-    return `${head("OPERAÇÃO", "Gestor de pedidos", "Atualize cada etapa para manter o cliente informado.")}<div class="partner-order-flow"><span><i>1</i>Novo</span><b>→</b><span><i>2</i>Aceito</span><b>→</b><span><i>3</i>Preparando</span><b>→</b><span><i>4</i>Pronto</span><b>→</b><span><i>5</i>Entregue</span></div><div class="partner-filters" role="group" aria-label="Filtrar pedidos"><button class="active" data-order-filter="all">Todos <b>${data.orders.length}</b></button><button data-order-filter="pending">Novos <b>${data.orders.filter((o) => o.status === "pending").length}</b></button><button data-order-filter="preparing">Em preparo <b>${data.orders.filter((o) => ["accepted", "preparing"].includes(o.status)).length}</b></button><button data-order-filter="ready">Prontos <b>${data.orders.filter((o) => o.status === "ready").length}</b></button></div><div class="partner-panel order-board">${orderRows(data.orders, true)}</div>`;
+    return `${head("OPERAÇÃO", "Gestor de pedidos", "Atualize cada etapa para manter o cliente informado.")}<div class="partner-order-flow"><span><i>1</i>Novo</span><b>→</b><span><i>2</i>Aceito</span><b>→</b><span><i>3</i>Preparando</span><b>→</b><span><i>4</i>Pronto</span><b>→</b><span><i>5</i>Entregue</span></div><div class="partner-filters" role="group" aria-label="Filtrar pedidos"><button class="active" data-order-filter="all">Todos <b>${data.orders.length}</b></button><button data-order-filter="pending">Novos <b>${data.orders.filter((o) => o.status === "pending").length}</b></button><button data-order-filter="preparing">Em preparo <b>${data.orders.filter((o) => ["accepted", "preparing"].includes(o.status)).length}</b></button><button data-order-filter="ready">Prontos <b>${data.orders.filter((o) => o.status === "ready").length}</b></button></div><div class="partner-panel order-board">${orderRows(data.orders, true, data.couriers)}</div>`;
   if (section === "cardapio") return catalogContent(data);
   if (section === "promocoes")
     return `${head("CRESCIMENTO", "Promoções", "Crie ofertas com regras claras e acompanhe seus resultados.", `<button class="btn btn-primary" data-new-promotion>+ Criar promoção</button>`)}<section class="promotion-summary"><div><span>Campanhas</span><b>${data.promotions.length}</b></div><div><span>Ativas agora</span><b>${data.promotions.filter((p) => p.active && (!p.endsAt || Date.parse(p.endsAt) >= Date.now())).length}</b></div><div><span>Utilizações</span><b>${data.promotions.reduce((sum, p) => sum + (p.uses || 0), 0)}</b></div></section><div class="promotion-grid">${data.promotions.map((p) => promotionCard(p)).join("") || emptyState(icon("percent"), "Nenhuma promoção criada", "Crie uma oferta com período, valor mínimo e código opcional.")}</div>`;
@@ -466,12 +466,12 @@ function downloadFinanceCsv(data) {
   URL.revokeObjectURL(url);
 }
 
-function orderRows(orders, actions = false) {
+function orderRows(orders, actions = false, couriers = []) {
   return (
     orders
       .map(
         (o) =>
-          `<article class="partner-order" data-order-status="${o.status}"><span class="order-time">${new Date(o.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span><div><b>${esc(o.id)}</b><small><strong>${esc(o.customerName)}</strong> pediu ${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</small></div><em class="status-${o.status}">${statusLabel[o.status]}</em><strong>${money(o.total)}</strong>${actions ? orderAction(o) : ""}</article>`,
+          `<article class="partner-order" data-order-status="${o.status}"><span class="order-time">${new Date(o.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span><div><b>${esc(o.id)}</b><small><strong>${esc(o.customerName)}</strong> pediu ${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</small></div><em class="status-${o.status}">${statusLabel[o.status]}</em><strong>${money(o.total)}</strong>${actions ? orderAction(o, couriers) : ""}</article>`,
       )
       .join("") ||
     emptyState(
@@ -481,13 +481,21 @@ function orderRows(orders, actions = false) {
     )
   );
 }
-function orderAction(o) {
+function orderAction(o, couriers) {
   const next = {
     pending: "accepted",
     accepted: "preparing",
     preparing: "ready",
   }[o.status];
-  return `<div class="partner-order-actions">${next ? `<button class="btn btn-primary btn-sm" data-order="${o.id}" data-status="${next}">${next === "accepted" ? "Aceitar" : next === "preparing" ? "Preparar" : "Marcar pronto"}</button>` : ""}${o.status === "pending" ? `<button class="btn btn-ghost btn-sm" data-order="${o.id}" data-status="cancelled">Recusar</button>` : ""}<a class="btn btn-outline btn-sm" href="#/conversa/${o.id}">Conversar</a></div>`;
+  const canInvite =
+    o.status === "ready" &&
+    ["awaiting_store_assignment", "declined"].includes(o.delivery?.status);
+  const invite = canInvite
+    ? `<button class="btn btn-primary btn-sm" data-invite-courier="${o.id}" ${couriers.length ? "" : "disabled"}>${couriers.length ? "Chamar entregador" : "Sem entregadores"}</button>`
+    : o.delivery?.status === "offered"
+      ? `<small>Convite enviado · ${o.delivery.commissionPercent}%</small>`
+      : "";
+  return `<div class="partner-order-actions">${next ? `<button class="btn btn-primary btn-sm" data-order="${o.id}" data-status="${next}">${next === "accepted" ? "Aceitar" : next === "preparing" ? "Preparar" : "Marcar pronto"}</button>` : ""}${invite}${o.status === "pending" ? `<button class="btn btn-ghost btn-sm" data-order="${o.id}" data-status="cancelled">Recusar</button>` : ""}<a class="btn btn-outline btn-sm" href="#/conversa/${o.id}">Conversar</a></div>`;
 }
 function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image">🍔<span>${p.stock} un.</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${money(p.promoPrice ?? p.price)}</b><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button data-edit-product="${p.id}">Editar</button></article>`;
@@ -535,26 +543,22 @@ function bind(view, section, data) {
         input.disabled = false;
       }
     });
-  view
-    .querySelector("[data-plan-details]")
-    ?.addEventListener("click", () =>
-      openActionModal(view, {
-        title: "Permissões do proprietário",
-        text: "Sua conta possui acesso total às ferramentas do Portal do Parceiro.",
-        fields:
-          '<div class="partner-modal-info"><b>Status da conta</b><span>Portal ativo e loja vinculada</span><b>Acesso disponível</b><span>Pedidos, cardápio, promoções, financeiro, equipe, configurações e suporte</span></div>',
-      }),
-    );
-  view
-    .querySelector("[data-security-details]")
-    ?.addEventListener("click", () =>
-      openActionModal(view, {
-        title: "Segurança da conta",
-        text: "Somente pessoas autenticadas e vinculadas à sua loja conseguem acessar estes dados.",
-        fields:
-          '<div class="partner-modal-info"><b>✓ Sessão protegida</b><span>Seu acesso usa um cookie seguro.</span><b>✓ Dados separados</b><span>Cada parceiro visualiza apenas a própria loja.</span></div>',
-      }),
-    );
+  view.querySelector("[data-plan-details]")?.addEventListener("click", () =>
+    openActionModal(view, {
+      title: "Permissões do proprietário",
+      text: "Sua conta possui acesso total às ferramentas do Portal do Parceiro.",
+      fields:
+        '<div class="partner-modal-info"><b>Status da conta</b><span>Portal ativo e loja vinculada</span><b>Acesso disponível</b><span>Pedidos, cardápio, promoções, financeiro, equipe, configurações e suporte</span></div>',
+    }),
+  );
+  view.querySelector("[data-security-details]")?.addEventListener("click", () =>
+    openActionModal(view, {
+      title: "Segurança da conta",
+      text: "Somente pessoas autenticadas e vinculadas à sua loja conseguem acessar estes dados.",
+      fields:
+        '<div class="partner-modal-info"><b>✓ Sessão protegida</b><span>Seu acesso usa um cookie seguro.</span><b>✓ Dados separados</b><span>Cada parceiro visualiza apenas a própria loja.</span></div>',
+    }),
+  );
   const promotionModal = (promotion) => {
     const start = promotion?.startsAt
         ? new Date(promotion.startsAt).toISOString().slice(0, 10)
@@ -811,6 +815,38 @@ function bind(view, section, data) {
         button.textContent = "Salvar programação";
       }
     });
+  view.querySelectorAll("[data-invite-courier]").forEach((button) =>
+    button.addEventListener("click", async () => {
+      const options = data.couriers
+        .map(
+          (courier, index) =>
+            `${index + 1}. ${courier.fullName} · ${courier.vehicle} · ⭐ ${courier.rating.toFixed(1)}`,
+        )
+        .join("\n");
+      const choice = Number(prompt(`Escolha o entregador:\n${options}`));
+      const courier = data.couriers[choice - 1];
+      if (!courier) return;
+      const percent = Number(
+        String(
+          prompt("Comissão sobre o total do pedido (%):", "15") || "",
+        ).replace(",", "."),
+      );
+      if (!percent) return;
+      button.disabled = true;
+      try {
+        await api.assignPartnerCourier(
+          button.dataset.inviteCourier,
+          courier.id,
+          percent,
+        );
+        toast("Convite enviado ao entregador.", "success");
+        location.hash = "#/parceiro?secao=pedidos&at=" + Date.now();
+      } catch (error) {
+        toast(error.message, "error");
+        button.disabled = false;
+      }
+    }),
+  );
   view.querySelectorAll("[data-order]").forEach((button) =>
     button.addEventListener("click", async () => {
       if (

@@ -2527,7 +2527,19 @@ Object.assign(api, {
     );
     const start = (page - 1) * limit;
     return {
-      orders: all.slice(start, start + limit),
+      orders: all.slice(start, start + limit).map((order) => ({
+        ...order,
+        delivery:
+          db.state.deliveries.find((item) => item.orderId === order.id) || null,
+      })),
+      couriers: db.state.users
+        .filter((user) => user.role === "courier" && user.status === "active")
+        .map((user) => ({
+          id: user.id,
+          fullName: user.fullName,
+          vehicle: user.courierVehicle || "Veículo",
+          rating: Number(user.courierRating || 5),
+        })),
       pagination: {
         page,
         limit,
@@ -2618,27 +2630,85 @@ Object.assign(api, {
         storeId: order.storeId,
         customerId: order.customerId,
         courierId: null,
-        status: "searching",
+        status: "awaiting_store_assignment",
         pickupAddress: store.address || {},
         dropoffAddress: order.address,
         fee: Number(order.deliveryFee || 0),
-        courierPayout: 6.5,
+        commissionPercent: null,
+        courierPayout: 0,
         createdAt: timestamp,
         updatedAt: timestamp,
-        statusHistory: [{ status: "searching", at: timestamp }],
+        statusHistory: [{ status: "awaiting_store_assignment", at: timestamp }],
       };
       db.state.deliveries.push(delivery);
-      for (const courier of db.state.users.filter(
-        (user) => user.role === "courier" && user.courierAvailable,
-      ))
-        emitRealtime(courier.id, {
-          type: "delivery",
-          orderId: order.id,
-          deliveryId: delivery.id,
-        });
     }
     platform.audit(ctx.user, "order.status", "order", order.id, body.status);
     return { order };
+  },
+  "POST /api/partner-assign-courier": (params, query, body, ctx) => {
+    if (!["merchant", "admin"].includes(ctx.user.role))
+      return forbidden("parceiros");
+    const store = platform.storeForUser(ctx.user);
+    const order = db.state.platformOrders.find(
+      (item) => item.id === body.orderId && item.storeId === store.id,
+    );
+    const delivery = db.state.deliveries.find(
+      (item) => item.orderId === order?.id,
+    );
+    const courier = db.state.users.find(
+      (user) =>
+        user.id === body.courierId &&
+        user.role === "courier" &&
+        user.status === "active",
+    );
+    const commissionPercent =
+      Math.round(Number(body.commissionPercent) * 100) / 100;
+    if (!order || !delivery || order.status !== "ready")
+      return {
+        status: 409,
+        body: {
+          error: "O pedido precisa estar pronto para chamar um entregador.",
+        },
+      };
+    if (!courier)
+      return { status: 404, body: { error: "Entregador não encontrado." } };
+    if (
+      !Number.isFinite(commissionPercent) ||
+      commissionPercent < 1 ||
+      commissionPercent > 50
+    )
+      return {
+        status: 400,
+        body: { error: "A comissão deve ficar entre 1% e 50%." },
+      };
+    if (!["awaiting_store_assignment", "declined"].includes(delivery.status))
+      return {
+        status: 409,
+        body: { error: "Este pedido já possui um convite em andamento." },
+      };
+    delivery.courierId = courier.id;
+    delivery.status = "offered";
+    delivery.commissionPercent = commissionPercent;
+    delivery.courierPayout =
+      Math.round(Number(order.total) * commissionPercent) / 100;
+    delivery.updatedAt = platform.now();
+    delivery.statusHistory.push({ status: "offered", at: delivery.updatedAt });
+    pushNotification(
+      courier.id,
+      "delivery",
+      "Nova entrega disponível",
+      `${store.name} ofereceu ${delivery.courierPayout.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} por esta entrega.`,
+      order.id,
+    );
+    platform.audit(
+      ctx.user,
+      "delivery.offer",
+      "delivery",
+      delivery.id,
+      `${courier.id}:${commissionPercent}%`,
+    );
+    db.saveNow();
+    return { delivery };
   },
   "GET /api/partner-catalog": (params, query, body, ctx) => {
     if (!["merchant", "admin"].includes(ctx.user.role))
@@ -3096,7 +3166,8 @@ Object.assign(api, {
     );
     const available = ctx.user.courierAvailable
       ? db.state.deliveries.filter(
-          (delivery) => delivery.status === "searching" && !delivery.courierId,
+          (delivery) =>
+            delivery.status === "offered" && delivery.courierId === ctx.user.id,
         )
       : [];
     const withdrawals = db.state.courierPayouts.filter(
@@ -3169,13 +3240,65 @@ Object.assign(api, {
         status: 400,
         body: { error: "Preencha os dados obrigatórios do cadastro." },
       };
+    const minimumAge = vehicle === "Moto" ? 21 : 18;
     const minimumBirth = new Date();
-    minimumBirth.setFullYear(minimumBirth.getFullYear() - 18);
+    minimumBirth.setFullYear(minimumBirth.getFullYear() - minimumAge);
     if (Date.parse(`${birthDate}T12:00:00Z`) > minimumBirth.getTime())
       return {
         status: 400,
-        body: { error: "É necessário ter pelo menos 18 anos." },
+        body: {
+          error: `É necessário ter pelo menos ${minimumAge} anos para esta modalidade.`,
+        },
       };
+    const identityImage = String(body.identityImage || "");
+    const selfieImage = String(body.selfieImage || "");
+    if (
+      !/^data:image\/(jpeg|png|webp);base64,/.test(identityImage) ||
+      !/^data:image\/(jpeg|png|webp);base64,/.test(selfieImage)
+    )
+      return {
+        status: 400,
+        body: { error: "Envie o documento de identificação e uma selfie." },
+      };
+    const cnhNumber = auth.sanitize(body.cnhNumber).slice(0, 20);
+    const cnhCategory = auth
+      .sanitize(body.cnhCategory)
+      .toUpperCase()
+      .slice(0, 5);
+    const cnhSince = String(body.cnhSince || "");
+    const cnhExpiresAt = String(body.cnhExpiresAt || "");
+    if (
+      ["Moto", "Carro"].includes(vehicle) &&
+      (!cnhNumber ||
+        !cnhExpiresAt ||
+        (vehicle === "Moto" &&
+          (!cnhCategory.includes("A") ||
+            !cnhSince ||
+            body.ear !== "on" ||
+            body.motofreteCourse !== "on")))
+    )
+      return {
+        status: 400,
+        body: {
+          error: "Complete os requisitos da CNH para o veículo informado.",
+        },
+      };
+    if (
+      ["Moto", "Carro"].includes(vehicle) &&
+      Date.parse(`${cnhExpiresAt}T23:59:59Z`) < Date.now()
+    )
+      return { status: 400, body: { error: "A CNH informada está vencida." } };
+    if (vehicle === "Moto") {
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+      if (Date.parse(`${cnhSince}T12:00:00Z`) > twoYearsAgo.getTime())
+        return {
+          status: 400,
+          body: {
+            error: "Para moto, a CNH A precisa ter pelo menos dois anos.",
+          },
+        };
+    }
     let application = db.state.courierApplications.find(
       (item) => item.userId === ctx.user.id,
     );
@@ -3186,6 +3309,14 @@ Object.assign(api, {
       licensePlate: auth.sanitize(body.licensePlate).toUpperCase().slice(0, 10),
       city,
       pixKey,
+      identityImage,
+      selfieImage,
+      cnhNumber,
+      cnhCategory,
+      cnhSince,
+      cnhExpiresAt,
+      ear: body.ear === "on",
+      motofreteCourse: body.motofreteCourse === "on",
       status: "pending",
       updatedAt: platform.now(),
     };
@@ -3196,6 +3327,7 @@ Object.assign(api, {
         userId: ctx.user.id,
         ...values,
         createdAt: platform.now(),
+        reviewDueAt: new Date(Date.now() + 3 * 86400000).toISOString(),
       };
       db.state.courierApplications.unshift(application);
     }
@@ -3242,6 +3374,8 @@ Object.assign(api, {
       id: db.uid("payout"),
       courierId: ctx.user.id,
       amount,
+      platformFee: Math.round(amount * 5) / 100,
+      netAmount: Math.round(amount * 95) / 100,
       pixKey,
       status: "pending",
       requestedAt: platform.now(),
@@ -3279,7 +3413,8 @@ Object.assign(api, {
       return { status: 404, body: { error: "Entrega não encontrada." } };
     const action = String(body.action || "");
     const transitions = {
-      accept: ["searching", "accepted"],
+      accept: ["offered", "accepted"],
+      decline: ["offered", "declined"],
       pickup: ["accepted", "picked_up"],
       start: ["picked_up", "out_for_delivery"],
       deliver: ["out_for_delivery", "delivered"],
@@ -3289,6 +3424,15 @@ Object.assign(api, {
       return {
         status: 409,
         body: { error: "Esta ação não está disponível para a entrega." },
+      };
+    if (
+      ["accept", "decline"].includes(action) &&
+      delivery.courierId !== ctx.user.id &&
+      ctx.user.role !== "admin"
+    )
+      return {
+        status: 403,
+        body: { error: "Este convite pertence a outro entregador." },
       };
     if (action === "accept") {
       if (
@@ -3303,6 +3447,10 @@ Object.assign(api, {
           body: { error: "Conclua sua entrega atual antes de aceitar outra." },
         };
       delivery.courierId = ctx.user.id;
+    } else if (action === "decline") {
+      delivery.courierId = null;
+      delivery.commissionPercent = null;
+      delivery.courierPayout = 0;
     } else if (delivery.courierId !== ctx.user.id && ctx.user.role !== "admin")
       return {
         status: 403,
@@ -3582,7 +3730,7 @@ Object.assign(api, {
       "payment",
       title,
       status === "paid"
-        ? `O Pix de R$ ${payout.amount.toFixed(2).replace(".", ",")} foi marcado como pago.`
+        ? `O Pix líquido de R$ ${(payout.netAmount ?? payout.amount).toFixed(2).replace(".", ",")} foi marcado como pago após a taxa FoodCourt de 5%.`
         : "A solicitação foi recusada e o valor voltou ao saldo disponível.",
     );
     platform.audit(

@@ -269,6 +269,14 @@ test("customer applies to become a courier and admin approves access", async () 
       licensePlate: "ABC1D23",
       city: "Timóteo",
       pixKey: applicant.email,
+      identityImage: "data:image/png;base64,dGVzdGU=",
+      selfieImage: "data:image/png;base64,dGVzdGU=",
+      cnhNumber: "12345678900",
+      cnhCategory: "A",
+      cnhSince: "2020-01-01",
+      cnhExpiresAt: "2030-01-01",
+      ear: "on",
+      motofreteCourse: "on",
     }),
   });
   assert.equal(submission.status, 201);
@@ -320,8 +328,8 @@ test("courier can become available and complete an assigned delivery", async () 
     orderId: "order_delivery_test",
     storeId: "store_real_test",
     customerId: db.findByEmail("joao@foodcourt.com").id,
-    courierId: null,
-    status: "searching",
+    courierId: courier.id,
+    status: "offered",
     pickupAddress: { street: "Rua da Loja", number: "1" },
     dropoffAddress: "Casa — Rua do Cliente, 10",
     courierPayout: 17,
@@ -385,6 +393,8 @@ test("courier can become available and complete an assigned delivery", async () 
   assert.equal(withdrawal.status, 201);
   const payout = (await withdrawal.json()).payout;
   assert.equal(payout.status, "pending");
+  assert.equal(payout.platformFee, 0.5);
+  assert.equal(payout.netAmount, 9.5);
   const afterWithdrawal = await fetch(`${baseUrl}/api/courier-dashboard`, {
     headers: { Cookie: cookie },
   });
@@ -555,6 +565,24 @@ test("merchant follows order transitions and cancellation restores inventory", a
     });
   assert.equal((await update("ready")).status, 409);
   assert.equal((await update("accepted")).status, 200);
+  assert.equal((await update("preparing")).status, 200);
+  assert.equal((await update("ready")).status, 200);
+  const offer = await fetch(`${baseUrl}/api/partner-assign-courier`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      orderId: order.id,
+      courierId: "courier_applicant_test",
+      commissionPercent: 15,
+    }),
+  });
+  assert.equal(offer.status, 200);
+  const offeredDelivery = (await offer.json()).delivery;
+  assert.equal(offeredDelivery.status, "offered");
+  assert.equal(
+    offeredDelivery.courierPayout,
+    Math.round(order.total * 15) / 100,
+  );
   const cancelled = await update("cancelled");
   assert.equal(cancelled.status, 200);
   assert.equal((await cancelled.json()).order.status, "cancelled");
