@@ -104,6 +104,23 @@
   height: 100%;
   object-fit: cover;
 }
+.menu-brand-logo .fc-store-mark {
+  width: 54px;
+  height: 54px;
+  stroke: var(--menu-accent);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rest-logo .fc-store-mark,
+.rcard-logo .fc-store-mark {
+  width: 28px;
+  height: 28px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .menu-brand-panel > div:last-child > span {
   display: block;
   margin-bottom: 5px;
@@ -806,4 +823,8 @@ html[data-theme="dark"] .menu-theme-editor > label {
 }
 html[data-theme="dark"] .menu-theme-swatch {
   color: #17211b;
+}
+html[data-theme="dark"] .menu-brand-logo {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: #151d19;
 }

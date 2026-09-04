@@ -615,7 +615,9 @@ function registeredRestaurant(store) {
       ? `${promotion.type === "fixed" ? "R$ " + Number(promotion.value).toFixed(2).replace(".", ",") : promotion.value + "%"} OFF`
       : null,
     badge: "LOJA FOODCOURT",
-    logo: logoImage ? `<img src="${logoImage}" alt="">` : "🏪",
+    logo: logoImage
+      ? `<img src="${logoImage}" alt="Logo de ${auth.sanitize(store.name)}">`
+      : '<svg class="fc-store-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M9 20v19h30V20"/><path d="M7 9h34l-3 11c-1 3-6 3-7 0-1 3-6 3-7 0-1 3-6 3-7 0-1 3-6 3-7 0L7 9Z"/><path d="M18 39V28h12v11M14 9l2-5h16l2 5"/><path d="M20 15h8"/></svg>',
     cover: coverImage
       ? `url("${coverImage}") center/cover no-repeat`
       : "linear-gradient(135deg,#e9f8ee,#c9ead5 55%,#f7fcf8)",
