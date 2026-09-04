@@ -48,6 +48,19 @@ const EMPTY = () => ({
 let state = EMPTY();
 let emailIndex = new Map();
 let phoneIndex = new Map();
+let domainFingerprint = "";
+let changeRevision = 0;
+const changeListeners = new Set();
+
+function fingerprintDomainState() {
+  const domainState = { ...state };
+  delete domainState.sessions;
+  delete domainState.resetTokens;
+  return crypto
+    .createHash("sha1")
+    .update(JSON.stringify(domainState))
+    .digest("hex");
+}
 
 function rebuildIndexes() {
   emailIndex = new Map(state.users.map((u) => [u.email, u]));
@@ -65,6 +78,7 @@ function load() {
     state = EMPTY();
   }
   rebuildIndexes();
+  domainFingerprint = fingerprintDomainState();
 }
 
 let saveTimer = null;
@@ -79,6 +93,16 @@ function saveNow() {
     const tmp = DB_PATH + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(state, null, 2));
     fs.renameSync(tmp, DB_PATH);
+    const nextFingerprint = fingerprintDomainState();
+    if (nextFingerprint !== domainFingerprint) {
+      domainFingerprint = nextFingerprint;
+      changeRevision += 1;
+      for (const listener of changeListeners) {
+        try {
+          listener({ revision: changeRevision, at: new Date().toISOString() });
+        } catch {}
+      }
+    }
   } catch (e) {
     console.error("[db] falha ao salvar:", e.message);
   }
@@ -92,6 +116,10 @@ module.exports = {
   rebuildIndexes,
   save,
   saveNow,
+  subscribeChanges(listener) {
+    changeListeners.add(listener);
+    return () => changeListeners.delete(listener);
+  },
   uid,
   get state() {
     return state;

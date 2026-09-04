@@ -112,6 +112,37 @@ test("authenticated realtime stream connects without exposing other sessions", a
   controller.abort();
 });
 
+test("persisted platform changes are broadcast to connected clients", async () => {
+  const { cookie } = await loginDemo();
+  const controller = new AbortController();
+  const response = await fetch(`${baseUrl}/api/events`, {
+    headers: { Cookie: cookie },
+    signal: controller.signal,
+  });
+  const reader = response.body.getReader();
+  await reader.read();
+
+  db.state.auditLog.unshift({
+    id: db.uid("audit"),
+    type: "test.realtime",
+    detail: "Plataforma FoodCourt",
+    at: new Date().toISOString(),
+  });
+  db.saveNow();
+
+  const message = await Promise.race([
+    reader.read(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("realtime event timeout")), 2000),
+    ),
+  ]);
+  assert.match(
+    Buffer.from(message.value).toString("utf8"),
+    /"type":"system-change"/,
+  );
+  controller.abort();
+});
+
 test("loyalty redemption creates a personal coupon exactly once", async () => {
   const { cookie } = await loginDemo();
   const payload = {

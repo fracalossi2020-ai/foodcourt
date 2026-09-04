@@ -54,6 +54,23 @@ let handlingUnauthorized = false;
 let realtimeSource = null;
 let realtimeRefreshTimer = null;
 
+function scheduleRealtimeRefresh() {
+  clearTimeout(realtimeRefreshTimer);
+  const refresh = () => {
+    const active = document.activeElement;
+    if (
+      active?.matches(
+        'input, textarea, select, [contenteditable="true"], [role="textbox"]',
+      )
+    ) {
+      realtimeRefreshTimer = setTimeout(refresh, 800);
+      return;
+    }
+    navigate();
+  };
+  realtimeRefreshTimer = setTimeout(refresh, 250);
+}
+
 function stopRealtime() {
   realtimeSource?.close();
   realtimeSource = null;
@@ -72,6 +89,8 @@ function startRealtime() {
       return;
     }
     if (detail.type === "connected") return;
+    api.invalidate();
+    bootPromise = null;
     if (
       detail.notification &&
       !store.notifications.some((item) => item.id === detail.notification.id)
@@ -81,14 +100,8 @@ function startRealtime() {
     }
     window.dispatchEvent(new CustomEvent("fc:realtime", { detail }));
     const path = (location.hash.replace(/^#/, "") || "/").split("?")[0];
-    if (
-      !/^\/(parceiro|entregador|admin|pedido\/|conversa\/|notificacoes|suporte)/.test(
-        path,
-      )
-    )
-      return;
-    clearTimeout(realtimeRefreshTimer);
-    realtimeRefreshTimer = setTimeout(() => navigate(), 250);
+    if (path === "/" || isAuthPath(path)) return;
+    scheduleRealtimeRefresh();
   };
   source.onerror = () => {
     if (!authUser) stopRealtime();

@@ -704,6 +704,21 @@ function emitRealtime(userId, event) {
   if (!clients.size) realtimeClients.delete(userId);
 }
 
+let realtimeBroadcastTimer = null;
+let pendingRealtimeRevision = 0;
+db.subscribeChanges(({ revision }) => {
+  pendingRealtimeRevision = revision;
+  clearTimeout(realtimeBroadcastTimer);
+  realtimeBroadcastTimer = setTimeout(() => {
+    for (const userId of realtimeClients.keys()) {
+      emitRealtime(userId, {
+        type: "system-change",
+        revision: pendingRealtimeRevision,
+      });
+    }
+  }, 100);
+});
+
 function pushNotification(userId, type, title, text, orderId = null) {
   if (!userId) return;
   const notification = {

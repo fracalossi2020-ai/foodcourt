@@ -58,6 +58,7 @@ async function post(path, payload) {
 }
 
 export const api = {
+  invalidate: () => cache.clear(),
   bootstrap: () => get("/api/bootstrap", { ttl: 60000 }),
   home: () => get("/api/home", { ttl: 30000 }),
   restaurant: (id) => get(`/api/restaurants/${id}`),
