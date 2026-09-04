@@ -198,6 +198,7 @@ async function navigate() {
       enhanceInternalView(view);
     }
     updateNav(path, query);
+    playPageMotion(view);
   } catch (error) {
     console.error("[navigation]", error);
     const target = location.hash.replace(/^#/, "") || "/";
@@ -220,6 +221,14 @@ async function navigate() {
       queueMicrotask(navigate);
     }
   }
+}
+
+function playPageMotion(view) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  view.classList.remove("view-entering");
+  void view.offsetWidth;
+  view.classList.add("view-entering");
+  setTimeout(() => view.classList.remove("view-entering"), 760);
 }
 
 let bootPromise = null;
@@ -517,6 +526,23 @@ function wireGlobalHelp() {
 }
 
 function wireVisualFeedback() {
+  document.addEventListener("pointerdown", (event) => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const target = event.target.closest(
+      "button,.btn,.chip,.desktop-links a,.bottomnav a,.plist-item",
+    );
+    if (!target || target.matches(":disabled")) return;
+    const rect = target.getBoundingClientRect();
+    const ripple = document.createElement("span");
+    ripple.className = "fc-ripple";
+    ripple.style.left = `${event.clientX - rect.left}px`;
+    ripple.style.top = `${event.clientY - rect.top}px`;
+    target.appendChild(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove(), {
+      once: true,
+    });
+  });
+
   if (!matchMedia("(hover:hover) and (pointer:fine)").matches) return;
   const interactive =
     ".rcard,.pcard,.mitem,.profile-option,.plist-item,.order-card,.notif-item,.support-ticket,.mission-card,.partner-metric,.partner-product,.partner-feature-card";

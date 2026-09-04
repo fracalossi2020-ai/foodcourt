@@ -33,6 +33,42 @@ body,
   animation: fcPageArrive 440ms var(--motion-spring) both;
 }
 
+/* Reativada explicitamente a cada navegação, inclusive em navegadores sem
+   suporte à View Transitions API. */
+#view.view-entering > * {
+  animation: fcPageArriveVisible 660ms var(--motion-spring) both !important;
+}
+
+#view.view-entering
+  > *
+  > :is(section, header, main, aside, form):not([hidden]) {
+  animation: fcContentArrive 620ms var(--motion-spring) both !important;
+}
+
+#view.view-entering > * > :is(section, header, main, aside, form):nth-child(2) {
+  animation-delay: 80ms !important;
+}
+
+#view.view-entering > * > :is(section, header, main, aside, form):nth-child(3) {
+  animation-delay: 145ms !important;
+}
+
+@keyframes fcPageArriveVisible {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0) scale(0.985);
+    filter: blur(5px);
+  }
+  55% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
 #view > * > :is(section, header, main, aside, form):not([hidden]) {
   animation: fcContentArrive 520ms var(--motion-spring) both;
 }
@@ -147,6 +183,48 @@ html.theme-transition::view-transition-new(root) {
   a[class*="button"]
 ):active {
   transform: scale(0.965);
+}
+
+:is(button, .btn, .chip, .desktop-links a, .bottomnav a, .plist-item) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.fc-ripple {
+  position: absolute !important;
+  z-index: 20;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.2;
+  pointer-events: none;
+  animation: fcRipple 560ms ease-out forwards;
+}
+
+@keyframes fcRipple {
+  to {
+    opacity: 0;
+    transform: scale(22);
+  }
+}
+
+.desktop-links a.active::after,
+.bottomnav a.active::before {
+  animation: fcNavIndicator 420ms var(--motion-spring) both;
+}
+
+@keyframes fcNavIndicator {
+  from {
+    opacity: 0;
+    transform: scaleX(0.25);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
 }
 
 :is(.card, .rcard, .pcard, .stat-card, .admin-card, .partner-card) {
