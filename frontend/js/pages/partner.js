@@ -167,8 +167,19 @@ function head(kicker, title, sub, action = "") {
       : "";
   return `<header class="partner-head"><div><span>${kicker}</span><h1>${title}</h1><p>${sub}</p></div>${pdf || action ? `<div class="partner-head-actions">${pdf}${action}</div>` : ""}</header>`;
 }
-function metric(icon, label, value, sub) {
-  return `<article class="partner-metric"><i>${icon}</i><span>${label}</span><b>${value}</b><small>${sub}</small></article>`;
+function metric(symbol, label, value, sub) {
+  const modern = {
+    "📦": "package",
+    "🧾": "receipt",
+    "💰": "money",
+    "💵": "money",
+    "📉": "percent",
+    "✅": "check",
+    "🎯": "dashboard",
+    "⭐": "star",
+    "📅": "calendar",
+  }[symbol];
+  return `<article class="partner-metric"><i>${modern ? icon(modern) : symbol}</i><span>${label}</span><b>${value}</b><small>${sub}</small></article>`;
 }
 function storeContent(data) {
   const days = [

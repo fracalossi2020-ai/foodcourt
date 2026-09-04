@@ -1,0 +1,248 @@
+:root {
+  --icon-size: 20px;
+  --icon-stroke: 1.85;
+  --icon-radius: 13px;
+  --icon-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fc-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: block;
+  flex: none;
+  overflow: visible;
+  stroke-width: var(--icon-stroke);
+  vector-effect: non-scaling-stroke;
+  transition:
+    transform 0.2s var(--icon-ease),
+    stroke-width 0.2s;
+}
+:where(button, a, [role="button"]):hover > .fc-icon,
+:where(button, a, [role="button"]):hover > span > .fc-icon {
+  transform: scale(1.06);
+}
+.header-actions .icon-btn,
+.header-actions .avatar-btn {
+  position: relative;
+  display: grid !important;
+  place-items: center;
+  overflow: visible;
+  border: 1px solid
+    color-mix(in srgb, var(--consumer-green, #07883f) 18%, #dfe6e2) !important;
+  border-radius: 14px !important;
+  background: color-mix(
+    in srgb,
+    #fff 94%,
+    var(--consumer-green, #07883f)
+  ) !important;
+  color: #26382e !important;
+  box-shadow: 0 5px 16px rgba(11, 48, 28, 0.055) !important;
+  transition:
+    transform 0.2s var(--icon-ease),
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s,
+    box-shadow 0.2s !important;
+}
+.header-actions .icon-btn:before,
+.header-actions .avatar-btn:before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 9px;
+  background: color-mix(
+    in srgb,
+    var(--consumer-green, #07883f) 8%,
+    transparent
+  );
+  opacity: 0;
+  transform: scale(0.75);
+  transition: 0.2s var(--icon-ease);
+}
+.header-actions .icon-btn:hover,
+.header-actions .avatar-btn:hover {
+  transform: translateY(-2px) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--consumer-green, #07883f) 48%,
+    #dfe6e2
+  ) !important;
+  color: var(--consumer-green, #07883f) !important;
+  box-shadow: 0 10px 25px rgba(7, 136, 63, 0.13) !important;
+}
+.header-actions .icon-btn:hover:before,
+.header-actions .avatar-btn:hover:before {
+  opacity: 1;
+  transform: none;
+}
+.header-actions .icon-btn svg,
+.header-actions .avatar-btn svg {
+  position: relative;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+}
+.header-actions .avatar-btn {
+  color: #5d2b86 !important;
+}
+.header-actions .avatar-btn:before {
+  background: rgba(101, 50, 145, 0.08);
+}
+.admin-header-link {
+  min-height: 44px !important;
+  gap: 8px !important;
+  padding: 0 14px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 5px 15px rgba(7, 136, 63, 0.06);
+  transition: 0.2s var(--icon-ease) !important;
+}
+.admin-header-link > span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.admin-header-link svg {
+  width: 18px;
+  height: 18px;
+}
+.admin-header-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(7, 136, 63, 0.18);
+}
+.badge-dot {
+  z-index: 3;
+  display: grid !important;
+  place-items: center;
+  min-width: 19px !important;
+  height: 19px !important;
+  padding: 0 4px !important;
+  border: 2px solid #fff !important;
+  border-radius: 99px !important;
+  background: #079447 !important;
+  color: #fff !important;
+  font-size: 0.57rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  box-shadow: 0 4px 10px rgba(7, 148, 71, 0.3) !important;
+}
+.badge-dot[hidden] {
+  display: none !important;
+}
+.partner-sidebar nav a > span,
+.admin-sidebar nav a > i {
+  display: grid;
+  place-items: center;
+}
+.partner-sidebar nav .fc-icon,
+.admin-sidebar nav svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.partner-metric > i {
+  display: grid !important;
+  place-items: center !important;
+  width: 42px !important;
+  height: 42px !important;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 13px !important;
+  background: color-mix(in srgb, currentColor 7%, transparent) !important;
+  font-style: normal;
+}
+.partner-metric > i .fc-icon {
+  width: 22px;
+  height: 22px;
+}
+.chip:has(.fc-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.chip .fc-icon {
+  width: 17px;
+  height: 17px;
+}
+.notif-emoji .fc-icon {
+  width: 22px;
+  height: 22px;
+}
+.admin-row > span,
+.destination-icon,
+.state-emoji,
+.empty-modern > span,
+.courier-signup-card > span {
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid rgba(7, 136, 63, 0.13) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(145deg, #eff9f3, #fff) !important;
+  color: #087c3b !important;
+  font-style: normal !important;
+  box-shadow: 0 5px 14px rgba(10, 70, 38, 0.06);
+}
+.admin-row > span {
+  width: 42px !important;
+  height: 42px !important;
+  font-size: 1.05rem !important;
+}
+.admin-row > span .fc-icon,
+.destination-icon .fc-icon,
+.state-emoji .fc-icon {
+  width: 22px;
+  height: 22px;
+}
+.menu-camera-button b,
+.menu-gallery-button b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.product-photo-picker > i {
+  color: #087c3b;
+}
+.digital-product-photo > button {
+  display: grid;
+  place-items: center;
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+}
+html[data-theme="dark"] .header-actions .icon-btn,
+html[data-theme="dark"] .header-actions .avatar-btn {
+  border-color: #304039 !important;
+  background: #18211c !important;
+  color: #dce7e0 !important;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2) !important;
+}
+html[data-theme="dark"] .header-actions .avatar-btn {
+  color: #b58cda !important;
+}
+html[data-theme="dark"] .badge-dot {
+  border-color: #131c17 !important;
+}
+html[data-theme="dark"]
+  :is(
+    .admin-row > span,
+    .destination-icon,
+    .state-emoji,
+    .empty-modern > span,
+    .courier-signup-card > span
+  ) {
+  border-color: #2d4236 !important;
+  background: linear-gradient(145deg, #19271f, #121b16) !important;
+  color: #49d080 !important;
+  box-shadow: none;
+}
+@media (max-width: 899px) {
+  .header-actions .icon-btn {
+    display: none !important;
+  }
+  .header-actions .avatar-btn {
+    display: grid !important;
+  }
+}

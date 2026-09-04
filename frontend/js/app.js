@@ -2,6 +2,7 @@ import { api } from "./core/api.js";
 import { store, hydrateBootstrap, setAuthUser } from "./core/store.js";
 import { esc, toast } from "./core/ui.js";
 import { openCart, closeAllDrawers, hide, renderCartUI } from "./core/cart.js";
+import { icon } from "./core/icons.js";
 
 window.FC = { store };
 
@@ -298,8 +299,7 @@ function syncHeader() {
   const addr = store.address;
   document.getElementById("locEmoji").textContent = addr.emoji;
   document.getElementById("locLabel").textContent = addr.label;
-  if (store.user)
-    document.getElementById("avatarBtn").textContent = store.user.avatarEmoji;
+  if (store.user) document.getElementById("avatarBtn").innerHTML = icon("user");
   const adminPortalButton = document.getElementById("adminPortalBtn");
   if (adminPortalButton)
     adminPortalButton.hidden =
@@ -321,7 +321,7 @@ function renderLocDrawer() {
   drawer.innerHTML = `
     <div class="drawer-head location-popover-head">
       <h3><span class="location-pin" aria-hidden="true">●</span><span><small>LOCAL DE ENTREGA</small>Entregar em</span></h3>
-      <button class="icon-btn" data-close aria-label="Fechar">✕</button>
+      <button class="icon-btn" data-close aria-label="Fechar">${icon("close")}</button>
     </div>
     <div class="drawer-body location-popover-body">
       ${store.addresses
