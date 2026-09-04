@@ -6,6 +6,27 @@ body.admin-mode .app-global-help {
 body.admin-mode .main {
   padding: 0 !important;
 }
+.admin-header-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid #a9dbc0;
+  border-radius: 13px;
+  background: #e9f8ef;
+  color: #06783a;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+.admin-header-link[hidden] {
+  display: none !important;
+}
+.admin-header-link:hover {
+  border-color: #078c43;
+  background: #078c43;
+  color: #fff;
+}
 .admin-shell {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
@@ -230,6 +251,14 @@ body.admin-mode .main {
   }
 }
 @media (max-width: 650px) {
+  .admin-header-link {
+    width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+  .admin-header-link b {
+    display: none;
+  }
   .admin-page {
     padding: 16px 12px 50px;
   }
