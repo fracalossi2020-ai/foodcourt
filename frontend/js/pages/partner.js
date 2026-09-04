@@ -311,7 +311,12 @@ function catalogContent(data) {
     ),
     {},
   );
+  const menuTheme = data.store.menuTheme || {
+    background: "#f4f8f5",
+    accent: "#07883f",
+  };
   return `${head("CATÁLOGO", "Cardápio e estoque", "Monte, importe e publique seu cardápio em um só lugar.", `<div class="partner-head-actions"><button class="btn btn-outline" data-import-menu>Importar foto</button><button class="btn btn-primary" data-new-product>+ Novo produto</button></div>`)}
+  <form class="menu-theme-editor" data-menu-theme-form style="--preview-bg:${menuTheme.background};--preview-accent:${menuTheme.accent}"><div><span>IDENTIDADE AUTOMÁTICA</span><h2>Seu cardápio, suas cores</h2><p>O layout já está pronto e funciona em celular e computador. Escolha somente as duas cores da sua marca.</p></div><label><input type="color" name="background" value="${menuTheme.background}"><span><b>Cor de fundo</b><small>Base de todo o cardápio</small></span></label><label><input type="color" name="accent" value="${menuTheme.accent}"><span><b>Cor de destaque</b><small>Botões, preços e detalhes</small></span></label><div class="menu-theme-swatch"><i></i><b>${esc(data.store.name)}</b><small>Prévia instantânea</small></div><button class="btn btn-primary">Salvar cores</button><a class="btn btn-outline" href="#/restaurante/${data.store.id}">Ver cardápio publicado ↗</a></form>
   <section class="menu-smart-start"><div><span>PERFIL IDENTIFICADO PELO CADASTRO</span><h2>${esc(data.profile.label)}</h2><p>Usamos a categoria <b>${esc(data.profile.source)}</b> para preparar a estrutura inicial. Você pode ajustar tudo antes de publicar.</p><div class="menu-smart-actions"><button class="btn btn-primary" data-use-template ${data.products.length ? "hidden" : ""}>Criar rascunho sugerido</button><button class="btn btn-outline" data-import-menu>Enviar foto do cardápio</button></div></div><div class="menu-ai-seal"><b>Leitura inteligente</b><span>Foto → revisão → rascunho</span><small>Nada é publicado sem sua confirmação.</small></div></section>
   <div class="partner-legend"><span><i class="on"></i> Disponível: cliente pode pedir</span><span><i></i> Rascunho ou pausado: cliente não vê</span></div>
   <div class="menu-workspace"><section><div class="partner-product-grid">${data.products.map(productCard).join("") || emptyState(icon("menu"), "Seu cardápio está pronto para começar", "Use o modelo sugerido, envie uma foto ou crie o primeiro produto.")}</div></section><aside class="menu-phone-preview"><header><span>PRÉVIA DO CLIENTE</span><b>${esc(data.store.name)}</b><small>${esc(data.profile.label)}</small></header><div class="menu-preview-scroll">${Object.entries(
@@ -325,7 +330,7 @@ function catalogContent(data) {
       "",
     )}</div><footer>${data.products.length ? "Prévia baseada no seu cardápio" : "Estrutura sugerida, ainda não publicada"}</footer></aside></div>
   <div class="partner-modal menu-import-modal" data-menu-import-modal hidden><section class="menu-import-card"><button type="button" class="partner-modal-x" data-close-import aria-label="Fechar">×</button><span>IMPORTAÇÃO INTELIGENTE</span><h2>Transforme uma foto em cardápio</h2><p>Fotografe o cardápio inteiro, com boa luz. A IA identifica nomes, categorias, descrições e preços; depois você revisa antes de salvar.</p><div class="menu-photo-actions"><input type="file" accept="image/jpeg,image/png,image/webp" data-menu-file hidden><button class="menu-camera-button" type="button" data-open-camera><b>📷 Tirar foto</b><small>Abrir a câmera</small></button><button class="menu-gallery-button" type="button" data-open-gallery><b>🖼️ Escolher da galeria</b><small>JPG, PNG ou WebP</small></button></div><div class="menu-camera-preview" data-camera-preview hidden><video data-camera-video autoplay playsinline muted></video><div><button class="btn btn-primary" type="button" data-capture-camera>📷 Capturar foto</button><button class="btn btn-outline" type="button" data-cancel-camera>Cancelar</button></div></div><div data-menu-analysis></div></section></div>
-  <div class="partner-modal" data-product-modal hidden><form class="partner-product-form"><input type="hidden" name="id"><span>PRODUTO DO CARDÁPIO</span><h2 data-product-form-title>Novo produto</h2><p>Preencha os campos abaixo. Você poderá editar tudo depois.</p><label>Nome do produto<input class="input" name="name" placeholder="Ex.: Hambúrguer artesanal" required></label><label>Categoria<input class="input" name="category" placeholder="Ex.: Lanches" required></label><label>Preço em reais<input class="input" name="price" type="number" min="0" step="0.01" placeholder="0,00" required></label><label>Quantidade em estoque<input class="input" name="stock" type="number" min="0" placeholder="0" required></label><div><button class="btn btn-ghost" type="button" data-close-modal>Cancelar</button><button class="btn btn-primary">Salvar produto</button></div></form></div>`;
+  <div class="partner-modal" data-product-modal hidden><form class="partner-product-form"><input type="hidden" name="id"><input type="hidden" name="image"><span>PRODUTO DO CARDÁPIO</span><h2 data-product-form-title>Novo produto</h2><p>Adicione a foto e os dados principais. O FoodCourt cuida do restante do visual.</p><label class="product-photo-picker"><input type="file" accept="image/jpeg,image/png,image/webp" data-product-image hidden><i data-product-image-preview>📷</i><span><b>Foto do produto</b><small>Toque para escolher uma imagem</small></span></label><label>Nome do produto<input class="input" name="name" placeholder="Ex.: Hambúrguer artesanal" required></label><label>Categoria<input class="input" name="category" placeholder="Ex.: Lanches" required></label><label class="wide">Descrição<textarea class="input" name="description" maxlength="500" placeholder="Ingredientes, tamanho e diferenciais"></textarea></label><label>Preço em reais<input class="input" name="price" type="number" min="0" step="0.01" placeholder="0,00" required></label><label>Quantidade em estoque<input class="input" name="stock" type="number" min="0" placeholder="0" required></label><div><button class="btn btn-ghost" type="button" data-close-modal>Cancelar</button><button class="btn btn-primary">Salvar produto</button></div></form></div>`;
 }
 
 function analysisReview(analysis) {
@@ -498,9 +503,41 @@ function orderAction(o, couriers) {
   return `<div class="partner-order-actions">${next ? `<button class="btn btn-primary btn-sm" data-order="${o.id}" data-status="${next}">${next === "accepted" ? "Aceitar" : next === "preparing" ? "Preparar" : "Marcar pronto"}</button>` : ""}${invite}${o.status === "pending" ? `<button class="btn btn-ghost btn-sm" data-order="${o.id}" data-status="cancelled">Recusar</button>` : ""}<a class="btn btn-outline btn-sm" href="#/conversa/${o.id}">Conversar</a></div>`;
 }
 function productCard(p) {
-  return `<article class="partner-product"><div class="partner-product-image">🍔<span>${p.stock} un.</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${money(p.promoPrice ?? p.price)}</b><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button data-edit-product="${p.id}">Editar</button></article>`;
+  return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : "🍔"}<span>${p.stock} un.</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${money(p.promoPrice ?? p.price)}</b><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button data-edit-product="${p.id}">Editar</button></article>`;
 }
 function bind(view, section, data) {
+  const themeForm = view.querySelector("[data-menu-theme-form]");
+  if (themeForm) {
+    const refreshThemePreview = () => {
+      themeForm.style.setProperty(
+        "--preview-bg",
+        themeForm.elements.background.value,
+      );
+      themeForm.style.setProperty(
+        "--preview-accent",
+        themeForm.elements.accent.value,
+      );
+    };
+    themeForm.addEventListener("input", refreshThemePreview);
+    themeForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = themeForm.querySelector('button[type="submit"],button');
+      button.disabled = true;
+      try {
+        await api.updatePartnerStore({
+          menuTheme: {
+            background: themeForm.elements.background.value,
+            accent: themeForm.elements.accent.value,
+          },
+        });
+        toast("Cores do cardápio publicadas.", "success");
+      } catch (error) {
+        toast(error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
   view
     .querySelector("[data-toggle-guide]")
     ?.addEventListener("click", (event) => {
@@ -1060,14 +1097,38 @@ function bind(view, section, data) {
     productForm.elements.id.value = product?.id || "";
     productForm.elements.name.value = product?.name || "";
     productForm.elements.category.value = product?.category || "";
+    productForm.elements.description.value = product?.description || "";
     productForm.elements.price.value = product?.price ?? "";
     productForm.elements.stock.value = product?.stock ?? "";
+    productForm.elements.image.value = product?.image || "";
+    const preview = productForm.querySelector("[data-product-image-preview]");
+    preview.textContent = product?.image ? "" : "📷";
+    preview.style.backgroundImage = product?.image
+      ? `url('${product.image}')`
+      : "none";
     productForm.querySelector("[data-product-form-title]").textContent = product
       ? "Editar produto"
       : "Novo produto";
     modal.hidden = false;
     setTimeout(() => productForm.elements.name.focus(), 50);
   };
+  productForm
+    ?.querySelector("[data-product-image]")
+    ?.addEventListener("change", async (event) => {
+      const file = event.currentTarget.files?.[0];
+      if (!file) return;
+      try {
+        const image = await imageToDataUrl(file);
+        productForm.elements.image.value = image;
+        const preview = productForm.querySelector(
+          "[data-product-image-preview]",
+        );
+        preview.textContent = "";
+        preview.style.backgroundImage = `url('${image}')`;
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    });
   view
     .querySelector("[data-new-product]")
     ?.addEventListener("click", () => openProduct());
@@ -1098,8 +1159,10 @@ function bind(view, section, data) {
         id: form.get("id") || undefined,
         name: form.get("name"),
         category: form.get("category"),
+        description: form.get("description"),
         price: form.get("price"),
         stock: form.get("stock"),
+        image: form.get("image"),
         active: existing?.active ?? true,
       });
       toast(existing ? "Produto atualizado." : "Produto criado.", "success");

@@ -1,150 +1,167 @@
-import { api } from '../core/api.js'
-import { store } from '../core/store.js'
-import { esc, money, toast, skeletonCards, errorState, ratingPill } from '../core/ui.js'
-import { openProduct } from '../core/product.js'
-import { setFeeContext, renderCartUI } from '../core/cart.js'
+import { api } from "../core/api.js";
+import { store } from "../core/store.js";
+import {
+  esc,
+  money,
+  toast,
+  skeletonCards,
+  errorState,
+  ratingPill,
+} from "../core/ui.js";
+import { openProduct } from "../core/product.js";
+import { setFeeContext, renderCartUI } from "../core/cart.js";
+
+const normalize = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
 export async function render(view, boot, params) {
-  view.innerHTML = `<div class="page">${skeletonCards(2, false)}</div>`
-  let data
+  view.innerHTML = `<div class="page">${skeletonCards(4, false)}</div>`;
+  let data;
   try {
-    data = await api.restaurant(params.id)
+    data = await api.restaurant(params.id);
   } catch {
-    view.innerHTML = `<div class="page">${errorState(() => render(view, boot, params))}</div>`
-    return
+    view.innerHTML = `<div class="page">${errorState(() => render(view, boot, params))}</div>`;
+    return;
   }
 
-  const r = data.restaurant
-  setFeeContext(r.deliveryFee, r.freeShippingMin)
-  renderCartUI()
+  const r = data.restaurant;
+  const theme = r.menuTheme || { background: "#f4f8f5", accent: "#07883f" };
+  const products = r.menu.flatMap((section) => section.items);
+  const productIndex = new Map(
+    products.map((product) => [product.id, product]),
+  );
+  const free = r.deliveryFee === 0;
+  const isFav = store.isFavoriteRestaurant(r.id);
+  setFeeContext(r.deliveryFee, r.freeShippingMin);
+  renderCartUI();
 
-  const isFav = store.isFavoriteRestaurant(r.id)
-  const free = r.deliveryFee === 0
-
-  const sectionsHtml = r.menu.map((section, si) => `
-    <section class="section" id="menu-${si}" data-menu-section>
-      <div class="section-head"><h2 style="font-size:1.15rem">${esc(section.name)}</h2></div>
-      <div class="card" style="overflow:hidden">
-        ${section.items.map(p => `
-          <div class="mitem" data-product="${p.id}" role="button" tabindex="0" aria-label="${esc(p.name)}, ${money(p.promoPrice ?? p.price)}">
-            <div class="mitem-info">
-              <div class="mitem-name">
-                ${esc(p.name)}
-                ${p.popular ? '<span class="badge badge-brand">🔥 Mais pedido</span>' : ''}
-                ${p.discount ? `<span class="badge badge-green">-${p.discount}%</span>` : ''}
-              </div>
-              <div class="mitem-desc">${esc(p.description)}</div>
-              <div class="product-food-info"><span>🔥 ${p.calories || '—'} kcal</span>${(p.dietary||[]).map(tag=>`<span>✓ ${esc(tag)}</span>`).join('')}${(p.allergens||[]).length?`<span class="allergen">Contém: ${esc(p.allergens.join(', '))}</span>`:''}</div>
-              <div class="mitem-price">
-                <span class="now">${money(p.promoPrice ?? p.price)}</span>
-                ${p.promoPrice ? `<span class="old">${money(p.price)}</span>` : ''}
-              </div>
+  const sectionsHtml = r.menu
+    .map(
+      (section, index) => `
+    <section class="digital-menu-section" id="menu-${index}" data-menu-section>
+      <header><div><span>${String(index + 1).padStart(2, "0")}</span><h2>${esc(section.name)}</h2></div><small>${section.items.length} ${section.items.length === 1 ? "opção" : "opções"}</small></header>
+      <div class="digital-product-grid">
+        ${
+          section.items
+            .map(
+              (product) => `
+          <article class="digital-product" data-product="${product.id}" data-search="${esc(normalize(`${product.name} ${product.description} ${section.name}`))}" role="button" tabindex="0" aria-label="${esc(product.name)}, ${money(product.promoPrice ?? product.price)}">
+            <div class="digital-product-photo" ${product.image ? `style="background-image:url('${esc(product.image)}')"` : ""}>
+              ${product.image ? "" : `<span>${product.emoji || "🍽️"}</span>`}
+              ${product.discount ? `<b>-${product.discount}%</b>` : ""}<button type="button" tabindex="-1" aria-hidden="true">+</button>
             </div>
-            <div class="mitem-thumb">${p.emoji}</div>
-          </div>`).join('')}
+            <div class="digital-product-info">
+              <div class="digital-product-flags">${product.popular ? "<span>🔥 Mais pedido</span>" : ""}${(
+                product.dietary || []
+              )
+                .slice(0, 2)
+                .map((tag) => `<span>✓ ${esc(tag)}</span>`)
+                .join("")}</div>
+              <h3>${esc(product.name)}</h3><p>${esc(product.description || "Preparado especialmente para você.")}</p>
+              ${(product.allergens || []).length ? `<small>Contém: ${esc(product.allergens.join(", "))}</small>` : ""}
+              <footer><strong>${money(product.promoPrice ?? product.price)}</strong>${product.promoPrice ? `<del>${money(product.price)}</del>` : ""}<i>Personalizar →</i></footer>
+            </div>
+          </article>`,
+            )
+            .join("") ||
+          '<div class="digital-menu-empty">Novidades desta categoria serão publicadas em breve.</div>'
+        }
       </div>
-    </section>`).join('')
+    </section>`,
+    )
+    .join("");
 
   view.innerHTML = `
-  <div class="page">
-    <div class="rest-hero" style="background:${r.cover}">
-      <div class="rest-hero-actions">
-        <button class="fav-btn" id="restFav" aria-label="Favoritar">${isFav ? '❤️' : '🤍'}</button>
-        <button class="fav-btn" id="restShare" aria-label="Compartilhar">↗</button>
-      </div>
-      ${r.logo}
-    </div>
+    <div class="page menu-experience" style="--menu-bg:${theme.background};--menu-accent:${theme.accent};--menu-cover:${r.cover}">
+      <section class="menu-hero"><div class="menu-hero-cover"></div>
+        <div class="menu-hero-actions"><button id="restFav" aria-label="Favoritar">${isFav ? "♥" : "♡"}</button><button id="restShare" aria-label="Compartilhar">↗</button></div>
+        <div class="menu-brand-panel"><div class="menu-brand-logo">${r.logo}</div><div><span>${esc(r.category)} · Cardápio digital</span><h1>${esc(r.name)}</h1><div class="menu-store-status ${r.open ? "open" : ""}"><i></i>${r.open ? "Aceitando pedidos agora" : `Fechado${r.opensAt ? ` · abre ${r.opensAt}` : ""}`}</div></div></div>
+      </section>
+      <section class="menu-service-strip">
+        <div>${ratingPill(r)}<small>Avaliação dos clientes</small></div><div><b>${r.deliveryTime[0]}–${r.deliveryTime[1]} min</b><small>Tempo estimado</small></div>
+        <div><b>${free ? "Frete grátis" : money(r.deliveryFee)}</b><small>${!free && r.freeShippingMin ? `Grátis acima de ${money(r.freeShippingMin)}` : "Taxa de entrega"}</small></div><div><b>${r.priceRange}</b><small>Faixa de preço</small></div>
+      </section>
+      ${r.promo ? `<aside class="menu-promo"><span>OFERTA ATIVA</span><b>${esc(r.promo)}</b><small>Aproveite enquanto estiver disponível</small></aside>` : ""}
+      ${!r.open ? '<aside class="menu-closed">O cardápio continua disponível para consulta. Você poderá pedir quando a loja abrir.</aside>' : ""}
+      <div class="menu-toolbar"><label><span>⌕</span><input id="menuSearch" type="search" placeholder="Buscar neste cardápio..." autocomplete="off"></label>
+        <nav class="menu-tabs no-scrollbar" id="menuTabs">${r.menu.map((section, index) => `<button class="${index === 0 ? "active" : ""}" data-tab="${index}">${esc(section.name)}</button>`).join("")}</nav></div>
+      <div id="menuNoResults" class="digital-menu-empty" hidden>Nenhum produto encontrado com esse nome.</div><main class="digital-menu">${sectionsHtml}</main>
+    </div>`;
 
-    <div class="rest-summary">
-      <div class="rest-logo">${r.logo}</div>
-      <div class="rest-info">
-        <div class="pair">
-          <h1>${esc(r.name)}</h1>
-          ${r.open ? '<span class="badge badge-green">● Aberto agora</span>' : `<span class="badge badge-red">● Fechado${r.opensAt ? ` — abre ${r.opensAt}` : ''}</span>`}
-        </div>
-        <div class="rest-meta-row">
-          ${ratingPill(r)}
-          <span>${esc(r.category)} • ${r.priceRange}</span>
-          <span>🕐 ${r.deliveryTime[0]}–${r.deliveryTime[1]} min</span>
-          <span class="${free ? 'brand-text' : ''}">${free ? '🚴 Frete grátis' : `🚴 ${money(r.deliveryFee)}`}</span>
-          ${!free && r.freeShippingMin ? `<span>Grátis acima de ${money(r.freeShippingMin)}</span>` : ''}
-          <span>📍 ${r.distance.toFixed(1)} km</span>
-        </div>
-        ${r.promo ? `<div style="margin-top:10px"><span class="badge badge-brand">🏷️ ${esc(r.promo)}</span></div>` : ''}
-      </div>
-    </div>
-
-    ${!r.open ? `
-    <div class="closed-banner">
-      <span class="emoji">🌙</span>
-      <div style="flex:1">
-        <b>Restaurante fechado agora</b>
-        <div class="muted text-sm">${r.opensAt ? `Abre às ${r.opensAt}. ` : ''}Você pode ver o cardápio e agendar seu pedido para a abertura.</div>
-      </div>
-    </div>` : ''}
-
-    <nav class="menu-tabs no-scrollbar" id="menuTabs">
-      ${r.menu.map((s, i) => `<button class="chip ${i === 0 ? 'active' : ''}" data-tab="${i}">${esc(s.name)}</button>`).join('')}
-    </nav>
-
-    ${sectionsHtml}
-    <div style="height:30px"></div>
-  </div>`
-
-  const productIndex = new Map()
-  r.menu.forEach(s => s.items.forEach(p => productIndex.set(p.id, p)))
-
-  view.querySelectorAll('[data-product]').forEach(node => {
-    const open = () => {
-      if (!r.open) { toast('Restaurante fechado — agende na abertura', 'error', '🌙'); return }
-      openProduct(r, productIndex.get(node.dataset.product))
+  const openItem = (node) => {
+    if (!r.open) {
+      toast("A loja está fechada no momento.", "error", "◷");
+      return;
     }
-    node.addEventListener('click', open)
-    node.addEventListener('keydown', e => { if (e.key === 'Enter') open() })
-  })
-
-  document.getElementById('restFav').addEventListener('click', (e) => {
-    const btn = e.currentTarget
-    const on = store.toggleFavoriteRestaurant(r.id)
-    btn.textContent = on ? '❤️' : '🤍'
-    btn.classList.add('on')
-    setTimeout(() => btn.classList.remove('on'), 400)
-    toast(on ? 'Restaurante favoritado ❤️' : 'Removido dos favoritos', 'info', on ? '❤️' : '🤍')
-  })
-
-  document.getElementById('restShare').addEventListener('click', async () => {
-    const url = location.href
+    openProduct(r, productIndex.get(node.dataset.product));
+  };
+  view.querySelectorAll("[data-product]").forEach((node) => {
+    node.addEventListener("click", () => openItem(node));
+    node.addEventListener("keydown", (event) => {
+      if (["Enter", " "].includes(event.key)) openItem(node);
+    });
+  });
+  view.querySelector("#restFav").addEventListener("click", (event) => {
+    const enabled = store.toggleFavoriteRestaurant(r.id);
+    event.currentTarget.textContent = enabled ? "♥" : "♡";
+    toast(
+      enabled ? "Adicionado aos favoritos" : "Removido dos favoritos",
+      "info",
+    );
+  });
+  view.querySelector("#restShare").addEventListener("click", async () => {
     try {
-      if (navigator.share) await navigator.share({ title: r.name, url })
-      else { await navigator.clipboard.writeText(url); toast('Link copiado!', 'success', '🔗') }
-    } catch { }
-  })
-
-  const tabs = [...document.querySelectorAll('#menuTabs .chip')]
-  tabs.forEach(t => t.addEventListener('click', () => {
-    tabs.forEach(x => x.classList.remove('active'))
-    t.classList.add('active')
-    document.getElementById(`menu-${t.dataset.tab}`).scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }))
-
-  const sectionEls = [...view.querySelectorAll('[data-menu-section]')]
+      if (navigator.share)
+        await navigator.share({ title: r.name, url: location.href });
+      else {
+        await navigator.clipboard.writeText(location.href);
+        toast("Link do cardápio copiado!", "success");
+      }
+    } catch {}
+  });
+  const tabs = [...view.querySelectorAll("#menuTabs button")];
+  tabs.forEach((tab) =>
+    tab.addEventListener("click", () => {
+      tabs.forEach((item) => item.classList.remove("active"));
+      tab.classList.add("active");
+      view
+        .querySelector(`#menu-${tab.dataset.tab}`)
+        .scrollIntoView({ behavior: "smooth", block: "start" });
+    }),
+  );
+  view.querySelector("#menuSearch").addEventListener("input", (event) => {
+    const query = normalize(event.currentTarget.value.trim());
+    let visible = 0;
+    view.querySelectorAll("[data-product]").forEach((node) => {
+      node.hidden = Boolean(query) && !node.dataset.search.includes(query);
+      if (!node.hidden) visible += 1;
+    });
+    view.querySelectorAll("[data-menu-section]").forEach((section) => {
+      section.hidden = !section.querySelector("[data-product]:not([hidden])");
+    });
+    view.querySelector("#menuNoResults").hidden = visible > 0;
+  });
+  const sections = [...view.querySelectorAll("[data-menu-section]")];
   const onScroll = () => {
-    const y = scrollY + 180
-    let active = 0
-    sectionEls.forEach((s, i) => { if (s.offsetTop <= y) active = i })
-    if (!tabs[active].classList.contains('active')) {
-      tabs.forEach(x => x.classList.remove('active'))
-      tabs[active].classList.add('active')
-      tabs[active].scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
-    }
-  }
-  window.__menuScrollHandler = onScroll
-  window.addEventListener('scroll', onScroll, { passive: true })
+    const position = scrollY + 210;
+    let active = 0;
+    sections.forEach((section, index) => {
+      if (!section.hidden && section.offsetTop <= position) active = index;
+    });
+    tabs.forEach((tab, index) =>
+      tab.classList.toggle("active", index === active),
+    );
+  };
+  window.__menuScrollHandler = onScroll;
+  window.addEventListener("scroll", onScroll, { passive: true });
 }
 
 export function cleanup() {
   if (window.__menuScrollHandler) {
-    window.removeEventListener('scroll', window.__menuScrollHandler)
-    window.__menuScrollHandler = null
+    window.removeEventListener("scroll", window.__menuScrollHandler);
+    window.__menuScrollHandler = null;
   }
 }

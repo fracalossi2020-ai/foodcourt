@@ -183,6 +183,75 @@ test("partner demo account has merchant role", async () => {
   assert.equal((await response.json()).user.role, "merchant");
 });
 
+test("partner customizes the menu theme and publishes product photos", async () => {
+  const testStore = {
+    id: "store_menu_theme_test",
+    name: "Loja visual",
+    slug: "loja-visual",
+    category: "Restaurante",
+    status: "active",
+    open: true,
+    preparationMinutes: 25,
+    products: [],
+  };
+  db.state.stores.unshift(testStore);
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "admin@foodcourt.com",
+      password: "foodcourt123",
+    }),
+  });
+  const cookie = login.headers.get("set-cookie")?.split(";")[0];
+  const catalogResponse = await fetch(`${baseUrl}/api/partner-catalog`, {
+    headers: { Cookie: cookie },
+  });
+  const catalog = await catalogResponse.json();
+  const productImage =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+  const themeResponse = await fetch(`${baseUrl}/api/partner-store`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      menuTheme: { background: "#f7efe5", accent: "#9b2c2c" },
+    }),
+  });
+  assert.equal(themeResponse.status, 200);
+
+  const productResponse = await fetch(`${baseUrl}/api/partner-product`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Produto visual",
+      category: "Destaques",
+      description: "Descrição publicada",
+      price: 24.9,
+      stock: 10,
+      active: true,
+      image: productImage,
+    }),
+  });
+  assert.equal(productResponse.status, 200);
+
+  const publicMenu = await fetch(
+    `${baseUrl}/api/restaurants/${catalog.store.id}`,
+    { headers: { Cookie: cookie } },
+  );
+  const restaurant = (await publicMenu.json()).restaurant;
+  assert.deepEqual(restaurant.menuTheme, {
+    background: "#f7efe5",
+    accent: "#9b2c2c",
+  });
+  const published = restaurant.menu
+    .flatMap((section) => section.items)
+    .find((item) => item.name === "Produto visual");
+  assert.equal(published.description, "Descrição publicada");
+  assert.equal(published.image, productImage);
+  db.state.stores = db.state.stores.filter((store) => store !== testStore);
+});
+
 test("registered establishments automatically appear in the customer marketplace", async () => {
   const { cookie } = await loginDemo();
   const store = {

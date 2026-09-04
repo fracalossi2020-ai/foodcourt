@@ -507,6 +507,7 @@ const LOYALTY_REWARDS = [
 function restaurantCard(r) {
   return {
     id: r.id,
+    slug: r.slug,
     name: r.name,
     category: r.category,
     categoryId: r.categoryId,
@@ -525,6 +526,7 @@ function restaurantCard(r) {
     logo: r.logo,
     cover: r.cover,
     benefits: r.benefits || [],
+    menuTheme: r.menuTheme,
     demo: Boolean(r.demo),
   };
 }
@@ -563,6 +565,7 @@ function registeredRestaurant(store) {
       promoPrice:
         product.promoPrice == null ? null : Number(product.promoPrice),
       emoji: product.emoji || "🍽️",
+      image: safeUploadedImage(product.image),
       popular: Number(product.sold || 0) > 0,
       options: [],
     });
@@ -589,6 +592,11 @@ function registeredRestaurant(store) {
     : 0;
   return {
     id: store.id,
+    slug:
+      store.slug ||
+      normalize(store.name)
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
     name: store.name,
     category: store.category || "Restaurante",
     categoryId: storeCategoryId(store),
@@ -612,6 +620,14 @@ function registeredRestaurant(store) {
       ? `url("${coverImage}") center/cover no-repeat`
       : "linear-gradient(135deg,#e9f8ee,#c9ead5 55%,#f7fcf8)",
     benefits: [],
+    menuTheme: {
+      background: /^#[0-9a-f]{6}$/i.test(store.menuTheme?.background || "")
+        ? store.menuTheme.background
+        : "#f4f8f5",
+      accent: /^#[0-9a-f]{6}$/i.test(store.menuTheme?.accent || "")
+        ? store.menuTheme.accent
+        : "#07883f",
+    },
     menu: grouped.size
       ? [...grouped].map(([name, items]) => ({ name, items }))
       : [{ name: "Cardápio", items: [] }],
@@ -1320,7 +1336,12 @@ const api = {
   },
 
   "GET /api/restaurants/:id": (params) => {
-    const r = marketplaceRestaurants().find((x) => x.id === params.id);
+    const r = marketplaceRestaurants().find(
+      (item) =>
+        item.id === params.id ||
+        item.slug === params.id ||
+        normalize(item.name).replace(/[^a-z0-9]+/g, "-") === params.id,
+    );
     if (!r)
       return { status: 404, body: { error: "Restaurante não encontrado" } };
     const menu = r.menu.map((section) => ({
@@ -2743,6 +2764,10 @@ Object.assign(api, {
         category: store.category,
         logo: store.logo,
         cover: store.cover,
+        menuTheme: store.menuTheme || {
+          background: "#f4f8f5",
+          accent: "#07883f",
+        },
       },
       profile: menuProfileForStore(store),
       products: store.products,
@@ -2755,21 +2780,28 @@ Object.assign(api, {
     let product = store.products.find((item) => item.id === body.id);
     if (product)
       Object.assign(product, {
-        name: body.name,
-        category: body.category,
+        name: auth.sanitize(body.name).slice(0, 100),
+        category: auth.sanitize(body.category).slice(0, 80),
+        description: auth.sanitize(body.description).slice(0, 500),
         price: Number(body.price),
         stock: Number(body.stock),
         active: Boolean(body.active),
+        image: safeUploadedImage(body.image),
+        updatedAt: platform.now(),
       });
     else {
       product = {
         id: db.uid("product"),
-        name: String(body.name || "Novo produto"),
-        category: String(body.category || "Geral"),
+        name: auth.sanitize(body.name || "Novo produto").slice(0, 100),
+        category: auth.sanitize(body.category || "Geral").slice(0, 80),
+        description: auth.sanitize(body.description).slice(0, 500),
         price: Number(body.price || 0),
         stock: Number(body.stock || 0),
         active: true,
+        image: safeUploadedImage(body.image),
         sold: 0,
+        createdAt: platform.now(),
+        updatedAt: platform.now(),
       };
       store.products.push(product);
     }
@@ -2918,6 +2950,19 @@ Object.assign(api, {
     platform.applyStoreSchedule(store);
     if (typeof body.orderNotifications === "boolean")
       store.orderNotifications = body.orderNotifications;
+    if (body.menuTheme && typeof body.menuTheme === "object") {
+      const background = String(body.menuTheme.background || "").trim();
+      const accent = String(body.menuTheme.accent || "").trim();
+      if (
+        !/^#[0-9a-f]{6}$/i.test(background) ||
+        !/^#[0-9a-f]{6}$/i.test(accent)
+      )
+        return {
+          status: 400,
+          body: { error: "Escolha cores válidas para o cardápio." },
+        };
+      store.menuTheme = { background, accent };
+    }
     store.updatedAt = platform.now();
     platform.audit(ctx.user, "store.update", "store", store.id);
     return { store };
