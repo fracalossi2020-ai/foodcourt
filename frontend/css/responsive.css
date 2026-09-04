@@ -217,3 +217,61 @@ body.app-mode .steps{display:flex!important;grid-template-columns:none!important
 @media(max-width:899px){body.app-mode .logo{flex:none;width:128px;height:46px}body.app-mode .logo .brand-logo-image{width:100%;height:auto}}
 @media(max-width:768px){.fcv2-logo{width:150px!important;height:58px!important}.fcv2-logo .brand-logo-image{width:100%!important;height:auto!important}.auth-logo,.signup-logo{width:176px!important;min-height:58px}.mobile-brand{width:158px}}
 @media(max-width:390px){body.app-mode .logo{width:116px;height:42px}.fcv2-logo{width:132px!important}}
+
+/* Mantém todas as ações do topo dentro da largura disponível. */
+@media (max-width: 899px) {
+  body.app-mode .header-inner {
+    grid-template-columns: minmax(88px, 1fr) 42px auto;
+  }
+  body.app-mode .header .logo {
+    width: min(132px, 100%) !important;
+    min-width: 0;
+  }
+  body.app-mode .header .logo .brand-logo-image {
+    width: 100% !important;
+    max-width: 132px;
+  }
+  body.app-mode .header-actions {
+    width: auto;
+    min-width: 42px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px !important;
+  }
+  body.app-mode .admin-header-link:not([hidden]) {
+    width: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    display: grid !important;
+    place-items: center;
+    padding: 0 !important;
+    border-radius: 13px !important;
+  }
+  body.app-mode .admin-header-link b {
+    display: none !important;
+  }
+  body.app-mode .admin-header-link > span {
+    width: 20px;
+    height: 20px;
+  }
+  body.app-mode .admin-header-link svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 370px) {
+  body.app-mode .header-inner {
+    grid-template-columns: minmax(78px, 1fr) 40px auto;
+  }
+  body.app-mode .header .logo {
+    width: min(116px, 100%) !important;
+  }
+  body.app-mode .search-trigger,
+  body.app-mode .admin-header-link:not([hidden]),
+  body.app-mode .header-actions .avatar-btn {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+  }
+}
