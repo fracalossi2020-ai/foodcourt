@@ -28,6 +28,27 @@ const labels = {
   refund_pending: "Estorno pendente",
   rejected: "Rejeitado",
 };
+const iconPaths = {
+  overview: '<path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/>',
+  users:
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  stores:
+    '<path d="M3 9l2-6h14l2 6M5 13v8h14v-8M9 21v-6h6v6M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/>',
+  courier:
+    '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M9 17.5h6M15 17.5l-3-8H8M12 9.5l4-3M17 6.5h3"/>',
+  orders: '<path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h8"/>',
+  delivery:
+    '<path d="M3 6h11v11H3zM14 10h4l3 4v3h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/>',
+  payments:
+    '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+  support:
+    '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>',
+  audit: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  settings:
+    '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.18.37.39.69.6 1 .27.4.61.6 1 .6h.09v4H21c-.4 0-.73.2-1 .4z"/>',
+};
+const adminIcon = (name) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true">${iconPaths[name]}</svg>`;
 const empty = (text) => `<p class="partner-empty">${text}</p>`;
 const storeRows = (data) =>
   data.stores
@@ -103,7 +124,7 @@ export async function render(view) {
     const section = tabs.some(([id]) => id === query.get("secao"))
       ? query.get("secao")
       : "visao";
-    const metrics = `<section class="partner-metrics admin-kpis"><article class="partner-metric"><i>👥</i><span>Usuários</span><b>${data.metrics.users}</b><small>${data.metrics.customers} clientes · ${data.metrics.merchants} donos</small></article><article class="partner-metric"><i>🏪</i><span>Estabelecimentos</span><b>${data.metrics.stores}</b><small>${data.metrics.pendingStores} aguardando análise</small></article><article class="partner-metric"><i>🛵</i><span>Entregadores</span><b>${data.metrics.couriers}</b><small>${data.metrics.pendingCourierApplications} cadastros pendentes</small></article><article class="partner-metric"><i>🧾</i><span>Pedidos</span><b>${data.metrics.orders}</b><small>${data.metrics.activeDeliveries} entregas ativas</small></article><article class="partner-metric"><i>💰</i><span>Volume bruto</span><b>${money(data.metrics.gross)}</b><small>movimentado em pedidos</small></article><article class="partner-metric"><i>🏦</i><span>Receita FoodCourt</span><b>${money(data.metrics.platformRevenue)}</b><small>taxas de saque confirmadas</small></article></section>`;
+    const metrics = `<section class="admin-kpis"><article><i>${adminIcon("users")}</i><span>Usuários</span><b>${data.metrics.users}</b><small>${data.metrics.customers} clientes · ${data.metrics.merchants} donos</small></article><article><i>${adminIcon("stores")}</i><span>Estabelecimentos</span><b>${data.metrics.stores}</b><small>${data.metrics.pendingStores} aguardando análise</small></article><article><i>${adminIcon("courier")}</i><span>Entregadores</span><b>${data.metrics.couriers}</b><small>${data.metrics.pendingCourierApplications} cadastros pendentes</small></article><article><i>${adminIcon("orders")}</i><span>Pedidos</span><b>${data.metrics.orders}</b><small>${data.metrics.activeDeliveries} entregas ativas</small></article><article><i>${adminIcon("payments")}</i><span>Volume bruto</span><b>${money(data.metrics.gross)}</b><small>movimentado em pedidos</small></article><article><i>${adminIcon("audit")}</i><span>Receita FoodCourt</span><b>${money(data.metrics.platformRevenue)}</b><small>taxas confirmadas</small></article></section>`;
     const audit =
       data.audit
         .map(
@@ -130,8 +151,20 @@ export async function render(view) {
                       ? `<section class="partner-panel"><header><h2>Auditoria recente</h2></header>${audit}</section>`
                       : section === "sistema"
                         ? `<section class="admin-system-grid"><article class="partner-panel"><header><h2>Infraestrutura</h2></header><div class="admin-check"><b>Banco persistente</b><em>${data.system.persistentStorage ? "✓ Ativo" : "⚠ Verificar"}</em></div><div class="admin-check"><b>Mercado Pago</b><em>${data.system.mercadoPagoConfigured ? "✓ Configurado" : "⚠ Sem credenciais"}</em></div><div class="admin-check"><b>Envio de e-mail</b><em>${data.system.mailConfigured ? "✓ Configurado" : "⚠ Sem credenciais"}</em></div><div class="admin-check"><b>Duração da sessão</b><em>${data.system.sessionHours} hora(s)</em></div></article><article class="partner-panel"><header><h2>Segurança operacional</h2></header><p class="admin-system-copy">Alterações de contas, estabelecimentos, entregadores, pagamentos e suporte ficam registradas na auditoria. Credenciais e segredos devem ser gerenciados nas variáveis protegidas do Railway.</p><a class="btn btn-outline" href="#/admin?secao=auditoria">Abrir auditoria</a></article></section>`
-                        : `${metrics}<div class="partner-columns"><section class="partner-panel"><header><h2>Lojas que precisam de análise</h2><a href="#/admin?secao=lojas">Ver todas →</a></header>${storeRows({ ...data, stores: data.stores.filter((store) => store.status === "pending").slice(0, 5) })}</section><section class="partner-panel"><header><h2>Auditoria recente</h2><a href="#/admin?secao=auditoria">Abrir →</a></header>${audit}</section></div>`;
-    view.innerHTML = `<div class="admin-shell"><aside class="admin-sidebar"><a class="admin-brand" href="#/admin"><span>FC</span><b>FoodCourt<small>Administração geral</small></b></a><nav aria-label="Seções administrativas">${tabs.map(([id, label]) => `<a class="${section === id ? "active" : ""}" href="#/admin?secao=${id}"><i>${{ visao: "⌂", usuarios: "♙", lojas: "▣", entregadores: "♜", pedidos: "▤", entregas: "➜", pagamentos: "$", suporte: "?", auditoria: "◎", sistema: "⚙" }[id]}</i>${label}${id === "entregadores" && data.metrics.pendingCourierApplications ? `<b>${data.metrics.pendingCourierApplications}</b>` : ""}</a>`).join("")}</nav><a class="admin-account-link" href="#/perfil">Minha conta →</a></aside><main class="admin-page"><header class="admin-head"><div><span>FOODCOURT CONTROL</span><h1>${tabs.find(([id]) => id === section)?.[1]}</h1><p>Controle centralizado de toda a operação FoodCourt.</p></div><span class="admin-live">● Sistema online</span></header>${content}</main></div>`;
+                        : `${metrics}<section class="admin-action-strip"><div><b>Central de operações</b><span>Gerencie rapidamente o que precisa da sua atenção.</span></div><a href="#/admin?secao=lojas"><strong>${data.metrics.pendingStores}</strong>Lojas pendentes</a><a href="#/admin?secao=entregadores"><strong>${data.metrics.pendingCourierApplications}</strong>Entregadores em análise</a><a href="#/admin?secao=suporte"><strong>${data.metrics.openTickets}</strong>Chamados abertos</a></section><div class="admin-overview-grid"><section class="partner-panel"><header><div><small>REDE FOODCOURT</small><h2>Estabelecimentos</h2></div><a href="#/admin?secao=lojas">Gerenciar todos →</a></header>${storeRows({ ...data, stores: data.stores.slice(0, 5) })}</section><section class="partner-panel"><header><div><small>ATIVIDADE</small><h2>Auditoria recente</h2></div><a href="#/admin?secao=auditoria">Ver histórico →</a></header>${audit}</section></div>`;
+    const navIcons = {
+      visao: "overview",
+      usuarios: "users",
+      lojas: "stores",
+      entregadores: "courier",
+      pedidos: "orders",
+      entregas: "delivery",
+      pagamentos: "payments",
+      suporte: "support",
+      auditoria: "audit",
+      sistema: "settings",
+    };
+    view.innerHTML = `<div class="admin-shell"><aside class="admin-sidebar"><a class="admin-brand" href="#/admin"><span>FC</span><b>FoodCourt<small>Administração geral</small></b></a><nav aria-label="Seções administrativas">${tabs.map(([id, label]) => `<a class="${section === id ? "active" : ""}" href="#/admin?secao=${id}"><i>${adminIcon(navIcons[id])}</i><span>${label}</span>${id === "entregadores" && data.metrics.pendingCourierApplications ? `<b>${data.metrics.pendingCourierApplications}</b>` : ""}</a>`).join("")}</nav><a class="admin-account-link" href="#/perfil">← Voltar ao FoodCourt</a></aside><main class="admin-page"><header class="admin-head"><div><span>ADMINISTRAÇÃO GERAL</span><h1>${tabs.find(([id]) => id === section)?.[1]}</h1><p>Controle centralizado de toda a operação FoodCourt.</p></div><span class="admin-live"><i></i>Sistema online</span></header>${content}</main></div>`;
     view.querySelectorAll("[data-store-status]").forEach((select) =>
       select.addEventListener("change", async () => {
         select.disabled = true;
