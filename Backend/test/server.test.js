@@ -648,6 +648,7 @@ test("admin manages store approval and courier access", async () => {
   assert.ok(Array.isArray(adminData.orders));
   assert.ok(adminData.stores.some((item) => item.owner?.email));
   assert.equal(typeof adminData.system.persistentStorage, "boolean");
+  assert.ok(adminData.audit.every((item) => item.actorName && item.entityName));
 
   const candidate = db.findByEmail("candidato@foodcourt.test");
   const suspendUser = await fetch(`${baseUrl}/api/admin-user-status`, {

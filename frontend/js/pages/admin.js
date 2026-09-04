@@ -28,6 +28,44 @@ const labels = {
   refund_pending: "Estorno pendente",
   rejected: "Rejeitado",
 };
+const auditActions = {
+  "store.update": "Estabelecimento atualizado",
+  "store.active": "Estabelecimento aprovado",
+  "store.pending": "Estabelecimento enviado para análise",
+  "store.suspended": "Estabelecimento suspenso",
+  "order.create": "Pedido criado",
+  "order.status": "Status do pedido alterado",
+  "order.cancel": "Pedido cancelado",
+  "support.create": "Chamado de suporte aberto",
+  "support.reply": "Resposta enviada no suporte",
+  "support.resolve": "Chamado de suporte resolvido",
+  "user.active": "Conta reativada",
+  "user.suspended": "Conta suspensa",
+  "courier.application.submit": "Cadastro de entregador enviado",
+  "courier.application.approved": "Entregador aprovado",
+  "courier.application.rejected": "Cadastro de entregador recusado",
+  "courier.withdrawal.request": "Saque solicitado",
+  "courier.payout.paid": "Saque do entregador pago",
+  "courier.payout.rejected": "Saque do entregador recusado",
+  "delivery.offer": "Entrega oferecida ao entregador",
+  "delivery.accept": "Entrega aceita",
+  "delivery.pickup": "Pedido coletado",
+  "delivery.start": "Entrega iniciada",
+  "delivery.deliver": "Entrega concluída",
+};
+const entityLabels = {
+  store: "Estabelecimento",
+  user: "Usuário",
+  order: "Pedido",
+  delivery: "Entrega",
+  ticket: "Atendimento",
+  payout: "Pagamento",
+  product: "Produto",
+  promotion: "Promoção",
+  review: "Avaliação",
+  member: "Equipe",
+  coupon: "Cupom",
+};
 const iconPaths = {
   overview: '<path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/>',
   users:
@@ -127,10 +165,18 @@ export async function render(view) {
     const metrics = `<section class="admin-kpis"><article><i>${adminIcon("users")}</i><span>Usuários</span><b>${data.metrics.users}</b><small>${data.metrics.customers} clientes · ${data.metrics.merchants} donos</small></article><article><i>${adminIcon("stores")}</i><span>Estabelecimentos</span><b>${data.metrics.stores}</b><small>${data.metrics.pendingStores} aguardando análise</small></article><article><i>${adminIcon("courier")}</i><span>Entregadores</span><b>${data.metrics.couriers}</b><small>${data.metrics.pendingCourierApplications} cadastros pendentes</small></article><article><i>${adminIcon("orders")}</i><span>Pedidos</span><b>${data.metrics.orders}</b><small>${data.metrics.activeDeliveries} entregas ativas</small></article><article><i>${adminIcon("payments")}</i><span>Volume bruto</span><b>${money(data.metrics.gross)}</b><small>movimentado em pedidos</small></article><article><i>${adminIcon("audit")}</i><span>Receita FoodCourt</span><b>${money(data.metrics.platformRevenue)}</b><small>taxas confirmadas</small></article></section>`;
     const audit =
       data.audit
-        .map(
-          (item) =>
-            `<div class="audit-row"><i>${item.role === "admin" ? "🛡️" : "•"}</i><div><b>${esc(item.action)}</b><small>${esc(item.entityType)} · ${new Date(item.at).toLocaleString("pt-BR")}</small></div></div>`,
-        )
+        .map((item) => {
+          const label =
+            auditActions[item.action] || item.action.split(".").join(" ");
+          const entity = entityLabels[item.entityType] || item.entityType;
+          const initials = (item.actorName || "FC")
+            .split(" ")
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join("")
+            .toUpperCase();
+          return `<article class="admin-audit-item"><span>${esc(initials)}</span><div><b>${esc(label)}</b><p><strong>${esc(entity)}</strong> · ${esc(item.entityName || item.entityId)}</p><small>Por ${esc(item.actorName || "Sistema FoodCourt")} · ${new Date(item.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</small></div><i></i></article>`;
+        })
         .join("") || empty("As ações operacionais aparecerão aqui.");
     const content =
       section === "usuarios"

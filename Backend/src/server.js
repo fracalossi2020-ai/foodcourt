@@ -3701,7 +3701,24 @@ Object.assign(api, {
           : db.state.stores.find((store) => store.id === ticket.storeId)
               ?.name || "Estabelecimento",
       })),
-      audit: db.state.auditLog.slice(0, 30),
+      audit: db.state.auditLog.slice(0, 50).map((entry) => {
+        const actor = db.state.users.find((user) => user.id === entry.userId);
+        const entityName =
+          entry.entityType === "store"
+            ? db.state.stores.find((store) => store.id === entry.entityId)?.name
+            : entry.entityType === "user"
+              ? db.state.users.find((user) => user.id === entry.entityId)
+                  ?.fullName
+              : entry.entityType === "order"
+                ? entry.entityId
+                : entry.detail;
+        return {
+          ...entry,
+          actorName: actor?.fullName || "Sistema FoodCourt",
+          actorEmail: actor?.email || null,
+          entityName: entityName || entry.entityId,
+        };
+      }),
       system: {
         persistentStorage: Boolean(
           process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.FC_DB_PATH,

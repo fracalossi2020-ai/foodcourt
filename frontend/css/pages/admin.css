@@ -329,6 +329,64 @@ body.admin-mode .app {
   color: #91a097;
   font-size: 0.72rem;
 }
+.admin-audit-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 15px 2px;
+  border-bottom: 1px solid #e7efea;
+}
+.admin-audit-item:last-child {
+  border-bottom: 0;
+}
+.admin-audit-item > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #cce7d7;
+  border-radius: 11px;
+  background: #edf9f2;
+  color: #078943;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+.admin-audit-item > div {
+  min-width: 0;
+}
+.admin-audit-item b {
+  color: #18241d;
+  font-size: 0.74rem;
+}
+.admin-audit-item p {
+  margin: 5px 0 3px;
+  overflow: hidden;
+  color: #66776e;
+  font-size: 0.65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-audit-item p strong {
+  color: #078943;
+  font-weight: 800;
+}
+.admin-audit-item small {
+  color: #98a59e;
+  font-size: 0.6rem;
+}
+.admin-audit-item > i {
+  position: absolute;
+  left: 18px;
+  top: 53px;
+  bottom: -8px;
+  width: 1px;
+  background: #dcebe2;
+}
+.admin-audit-item:last-child > i {
+  display: none;
+}
 .admin-action {
   width: 130px;
   min-height: 36px;
