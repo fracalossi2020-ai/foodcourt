@@ -91,7 +91,7 @@
       href="/css/themes/refinement.css?v=20260823-autofill-fix-2"
     />
     <link rel="stylesheet" href="/css/themes/tech.css?v=20260818-3" />
-    <link rel="stylesheet" href="/css/themes/modern-icons.css?v=20260904-3" />
+    <link rel="stylesheet" href="/css/themes/modern-icons.css?v=20260904-4" />
     <link
       rel="stylesheet"
       href="/css/responsive.css?v=20260904-mobile-header-2"
@@ -134,12 +134,38 @@
             id="locBtn"
             aria-label="Alterar endereço de entrega"
           >
-            <span class="loc-emoji" id="locEmoji">📍</span>
+            <span class="loc-emoji" id="locEmoji">
+              <svg
+                class="fc-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+            </span>
             <span class="loc-full" style="text-align: left">
               <span class="text-xs dim">Entregar em</span>
               <b id="locLabel">Casa</b>
             </span>
-            <span class="chev dim">▾</span>
+            <span class="chev dim" aria-hidden="true">
+              <svg
+                class="fc-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m9 10 3 3 3-3" />
+              </svg>
+            </span>
           </button>
           <button
             class="search-trigger"
@@ -444,6 +470,6 @@
       </section>
     </div>
 
-    <script type="module" src="/js/app.js?v=20260904-motion-2"></script>
+    <script type="module" src="/js/app.js?v=20260904-location-icon-1"></script>
   </body>
 </html>

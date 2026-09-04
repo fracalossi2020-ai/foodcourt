@@ -17,6 +17,50 @@
     stroke-width 0.2s;
 }
 
+body.app-mode .header-loc .loc-emoji {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border: 1px solid rgba(7, 136, 63, 0.12);
+  border-radius: 9px;
+  background: #eaf8ef;
+  color: #087c3b;
+  font-size: 0 !important;
+}
+
+body.app-mode .header-loc .loc-emoji::after {
+  display: none !important;
+  content: none !important;
+}
+
+body.app-mode .header-loc .loc-emoji .fc-icon {
+  width: 16px;
+  height: 16px;
+  overflow: hidden;
+  stroke-width: 1.8;
+}
+
+body.app-mode .header-loc .chev {
+  width: 20px;
+  height: 20px;
+  display: inline-grid !important;
+  place-items: center;
+  font-size: 0;
+}
+
+body.app-mode .header-loc .chev .fc-icon {
+  width: 15px;
+  height: 15px;
+}
+
+html[data-theme="dark"] body.app-mode .header-loc .loc-emoji {
+  border-color: #2d4938;
+  background: #183024;
+  color: #4ad17f;
+}
+
 /* Ícones de estados vazios precisam de uma caixa real. Aplicar padding no
    SVG de 20px fazia o desenho escapar do fundo e sobrepor o texto. */
 body.app-mode :is(.empty-inline, .empty-modern) > .fc-icon {

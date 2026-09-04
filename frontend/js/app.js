@@ -304,7 +304,7 @@ function enhanceInternalView(view) {
 
 function syncHeader() {
   const addr = store.address;
-  document.getElementById("locEmoji").textContent = addr.emoji;
+  document.getElementById("locEmoji").innerHTML = icon("pin");
   document.getElementById("locLabel").textContent = addr.label;
   if (store.user) document.getElementById("avatarBtn").innerHTML = icon("user");
   const adminPortalButton = document.getElementById("adminPortalBtn");
