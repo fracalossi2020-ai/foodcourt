@@ -30,74 +30,29 @@ body,
 /* Entrada de qualquer tela, incluindo cliente, autenticação e portais. */
 #view > * {
   transform-origin: 50% 12%;
-  animation: fcPageArrive 440ms var(--motion-spring) both;
+  animation: fcPageArrive 340ms var(--motion-spring) both;
 }
 
-/* Reativada explicitamente a cada navegação, inclusive em navegadores sem
-   suporte à View Transitions API. */
+/* Reativada explicitamente a cada navegação direta sem View Transitions. */
 #view.view-entering > * {
-  animation: fcPageArriveVisible 660ms var(--motion-spring) both !important;
-}
-
-#view.view-entering
-  > *
-  > :is(section, header, main, aside, form):not([hidden]) {
-  animation: fcContentArrive 620ms var(--motion-spring) both !important;
-}
-
-#view.view-entering > * > :is(section, header, main, aside, form):nth-child(2) {
-  animation-delay: 80ms !important;
-}
-
-#view.view-entering > * > :is(section, header, main, aside, form):nth-child(3) {
-  animation-delay: 145ms !important;
+  animation: fcPageArriveVisible 380ms var(--motion-spring) both;
 }
 
 @keyframes fcPageArriveVisible {
   from {
     opacity: 0;
-    transform: translate3d(0, 22px, 0) scale(0.985);
-    filter: blur(5px);
-  }
-  55% {
-    opacity: 1;
+    transform: translate3d(0, 10px, 0);
   }
   to {
     opacity: 1;
     transform: none;
-    filter: none;
   }
-}
-
-#view > * > :is(section, header, main, aside, form):not([hidden]) {
-  animation: fcContentArrive 520ms var(--motion-spring) both;
-}
-
-#view > * > :is(section, header, main, aside, form):nth-child(2) {
-  animation-delay: 45ms;
-}
-
-#view > * > :is(section, header, main, aside, form):nth-child(3) {
-  animation-delay: 90ms;
 }
 
 @keyframes fcPageArrive {
   from {
     opacity: 0;
-    transform: translate3d(0, 12px, 0) scale(0.992);
-    filter: blur(3px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-}
-
-@keyframes fcContentArrive {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 16px, 0);
+    transform: translate3d(0, 8px, 0);
   }
   to {
     opacity: 1;
@@ -107,26 +62,28 @@ body,
 
 /* Troca de rota com a View Transitions API. */
 html.route-transition::view-transition-old(root) {
-  animation: fcRouteOut 160ms ease-in both;
+  animation: fcRouteOut 180ms ease-in both;
 }
 
 html.route-transition::view-transition-new(root) {
-  animation: fcRouteIn 410ms var(--motion-spring) both;
+  animation: fcRouteIn 320ms var(--motion-spring) both;
 }
 
 @keyframes fcRouteOut {
   to {
     opacity: 0;
-    transform: translate3d(-10px, 0, 0) scale(0.995);
-    filter: blur(2px);
+    transform: translate3d(-6px, 0, 0);
   }
 }
 
 @keyframes fcRouteIn {
   from {
     opacity: 0;
-    transform: translate3d(18px, 0, 0) scale(0.994);
-    filter: blur(3px);
+    transform: translate3d(8px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

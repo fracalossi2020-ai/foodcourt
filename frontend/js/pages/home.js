@@ -74,11 +74,26 @@ function bindHomeSlider(view) {
   const dots = [...view.querySelectorAll('.home-hero-dots i')]
   if (slides.length < 2) return
   let active = 0
-  homeSliderTimer = setInterval(() => {
-    active = (active + 1) % slides.length
-    slides.forEach((slide, index) => slide.classList.toggle('active', index === active))
-    dots.forEach((dot, index) => dot.classList.toggle('active', index === active))
-  }, 4500)
+  const setSlide = (index) => {
+    active = index
+    slides.forEach((slide, i) => slide.classList.toggle('active', i === active))
+    dots.forEach((dot, i) => dot.classList.toggle('active', i === active))
+  }
+  const startTimer = () => {
+    clearInterval(homeSliderTimer)
+    homeSliderTimer = setInterval(() => {
+      setSlide((active + 1) % slides.length)
+    }, 4500)
+  }
+  dots.forEach((dot, index) => {
+    dot.setAttribute('role', 'button')
+    dot.setAttribute('aria-label', `Slide ${index + 1}`)
+    dot.addEventListener('click', () => {
+      setSlide(index)
+      startTimer()
+    })
+  })
+  startTimer()
 }
 
 function bindHomeEffects(view){cleanup();const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches,root=view.querySelector('.home-effects-root'),hero=view.querySelector('.home-visual-hero'),progress=view.querySelector('.home-scroll-progress i'),help=document.querySelector('.app-global-help');const onScroll=()=>{if(!root||!progress)return;const distance=Math.max(1,root.scrollHeight-innerHeight),value=Math.min(1,Math.max(0,-root.getBoundingClientRect().top/distance));progress.style.transform=`scaleX(${value})`};addEventListener('scroll',onScroll,{passive:true});onScroll();let helpTimer=null;if(!reduce&&hero){hero.addEventListener('pointermove',event=>{const rect=hero.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;hero.style.setProperty('--home-x',`${x*100}%`);hero.style.setProperty('--home-y',`${y*100}%`);hero.style.setProperty('--home-shift-x',`${(x-.5)*8}px`);hero.style.setProperty('--home-shift-y',`${(y-.5)*6}px`)});hero.addEventListener('pointerleave',()=>{hero.style.setProperty('--home-shift-x','0px');hero.style.setProperty('--home-shift-y','0px')})}const cards=view.querySelectorAll('.rcard,.pcard,.offer-card');if(!reduce)cards.forEach(card=>{card.addEventListener('pointermove',event=>{const rect=card.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;card.style.setProperty('--card-rx',`${(y-.5)*-2.2}deg`);card.style.setProperty('--card-ry',`${(x-.5)*3}deg`)});card.addEventListener('pointerleave',()=>{card.style.setProperty('--card-rx','0deg');card.style.setProperty('--card-ry','0deg')})});if(help&&!sessionStorage.getItem('fc:home-help-seen'))helpTimer=setTimeout(()=>{if(!document.body.classList.contains('app-mode'))return;help.classList.add('help-nudge');const bubble=document.createElement('button');bubble.type='button';bubble.className='home-help-bubble';bubble.textContent='Precisa de ajuda para pedir?';bubble.onclick=()=>{help.querySelector('.fcv2-help-button')?.click();bubble.remove()};help.appendChild(bubble);sessionStorage.setItem('fc:home-help-seen','1');setTimeout(()=>bubble.remove(),7000)},3800);homeEffectsCleanup=()=>{removeEventListener('scroll',onScroll);clearTimeout(helpTimer);help?.querySelector('.home-help-bubble')?.remove()}}

@@ -186,9 +186,15 @@ async function navigate() {
       }
     }
 
+    const isSamePage =
+      currentPage?.pageName === route.page && currentPage?.pagePath === path;
     const mod = await import(`./pages/${route.page}.js?v=20260904-motion-1`);
     currentPage = mod;
-    window.scrollTo(0, 0);
+    currentPage.pageName = route.page;
+    currentPage.pagePath = path;
+    if (!isSamePage) {
+      window.scrollTo(0, 0);
+    }
 
     if (route.public) {
       await mod.render(view, null, { mode: route.mode }, query);
@@ -225,10 +231,11 @@ async function navigate() {
 
 function playPageMotion(view) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (document.documentElement.classList.contains("route-transition")) return;
   view.classList.remove("view-entering");
   void view.offsetWidth;
   view.classList.add("view-entering");
-  setTimeout(() => view.classList.remove("view-entering"), 760);
+  setTimeout(() => view.classList.remove("view-entering"), 420);
 }
 
 let bootPromise = null;
@@ -290,13 +297,18 @@ function enhanceInternalView(view) {
         entry.target.classList.add("reveal-visible");
         observer.unobserve(entry.target);
       }),
-    { threshold: 0.06, rootMargin: "0px 0px -24px" },
+    { threshold: 0.04, rootMargin: "0px 0px -20px" },
   );
   targets.forEach((node, index) => {
+    const rect = node.getBoundingClientRect();
+    if (rect.top < window.innerHeight + 40 && rect.bottom > -40) {
+      node.classList.add("reveal-visible");
+      return;
+    }
     node.classList.add("premium-reveal");
     node.style.setProperty(
       "--reveal-delay",
-      `${Math.min(index % 5, 4) * 55}ms`,
+      `${Math.min(index % 4, 3) * 50}ms`,
     );
     observer.observe(node);
   });
