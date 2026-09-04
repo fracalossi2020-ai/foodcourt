@@ -326,8 +326,18 @@ function catalogContent(data) {
     background: "#f4f8f5",
     accent: "#07883f",
   };
+  const studioProducts = previewProducts.slice(0, 4);
   return `${head("CATÁLOGO", "Cardápio e estoque", "Monte, importe e publique seu cardápio em um só lugar.", `<div class="partner-head-actions"><button class="btn btn-outline" data-import-menu>Importar foto</button><button class="btn btn-primary" data-new-product>+ Novo produto</button></div>`)}
   <form class="menu-theme-editor" data-menu-theme-form style="--preview-bg:${menuTheme.background};--preview-accent:${menuTheme.accent}"><div><span>IDENTIDADE AUTOMÁTICA</span><h2>Seu cardápio, suas cores</h2><p>O layout já está pronto e funciona em celular e computador. Escolha somente as duas cores da sua marca.</p></div><label><input type="color" name="background" value="${menuTheme.background}"><span><b>Cor de fundo</b><small>Base de todo o cardápio</small></span></label><label><input type="color" name="accent" value="${menuTheme.accent}"><span><b>Cor de destaque</b><small>Botões, preços e detalhes</small></span></label><div class="menu-theme-swatch"><i></i><b>${esc(data.store.name)}</b><small>Prévia instantânea</small></div><button class="btn btn-primary">Salvar cores</button><a class="btn btn-outline" href="#/restaurante/${data.store.id}">Ver cardápio publicado ↗</a></form>
+  <section class="menu-live-studio" data-menu-studio style="--studio-bg:${menuTheme.background};--studio-accent:${menuTheme.accent}"><header><div><span>PRÉVIA AO VIVO</span><h2>Veja exatamente como seu cliente verá</h2><p>Fotos, títulos e descrições entram automaticamente neste modelo.</p></div><nav><button class="active" type="button" data-preview-device="desktop">${icon("dashboard")} Computador</button><button type="button" data-preview-device="mobile">${icon("user")} Celular</button><a href="#/restaurante/${data.store.id}">Abrir versão pública ↗</a></nav></header><div class="menu-studio-stage"><div class="menu-studio-browser"><div class="menu-studio-browserbar"><i></i><i></i><i></i><span>foodcourt.com.br/cardapio/${esc(data.store.slug || data.store.id)}</span></div><div class="menu-studio-screen"><section class="studio-hero" ${data.store.cover ? `style="background-image:linear-gradient(90deg,rgba(5,15,9,.88),rgba(5,15,9,.16)),url('${esc(data.store.cover)}')"` : ""}><div>${data.store.logo ? `<img src="${esc(data.store.logo)}" alt="">` : icon("store")}</div><span>CARDÁPIO DIGITAL</span><h3>${esc(data.store.name)}</h3><small>${esc(data.profile.label)} · ${data.products.filter((item) => item.active).length} itens disponíveis</small></section><nav class="studio-categories">${
+    Object.keys(grouped)
+      .slice(0, 5)
+      .map(
+        (category, index) =>
+          `<span class="${index ? "" : "active"}">${esc(category)}</span>`,
+      )
+      .join("") || '<span class="active">Cardápio</span>'
+  }</nav><div class="studio-products">${studioProducts.map((item) => `<article><div class="studio-product-photo" ${item.image ? `style="background-image:url('${esc(item.image)}')"` : ""}>${item.image ? "" : icon("menu")}<b>+</b></div><section><small>${esc(item.category || "Cardápio")}</small><h4>${esc(item.name)}</h4><p>${esc(item.description || "Adicione uma descrição curta e atraente para este produto.")}</p><strong>${item.price ? money(item.price) : "Defina o preço"}</strong></section></article>`).join("") || `<div class="studio-empty">${icon("camera")}<b>Seu modelo está pronto</b><p>Importe a foto do cardápio ou adicione o primeiro produto para preencher esta prévia.</p><button type="button" data-new-product>Adicionar produto</button></div>`}</div></div></div></div><footer><span>${icon("check")} Layout, alinhamento e responsividade são automáticos.</span><span>${icon("image")} Você controla fotos, textos, preços e cores.</span><span>${icon("truck")} O cliente já pode adicionar produtos ao pedido.</span></footer></section>
   <section class="menu-smart-start"><div><span>PERFIL IDENTIFICADO PELO CADASTRO</span><h2>${esc(data.profile.label)}</h2><p>Usamos a categoria <b>${esc(data.profile.source)}</b> para preparar a estrutura inicial. Você pode ajustar tudo antes de publicar.</p><div class="menu-smart-actions"><button class="btn btn-primary" data-use-template ${data.products.length ? "hidden" : ""}>Criar rascunho sugerido</button><button class="btn btn-outline" data-import-menu>Enviar foto do cardápio</button></div></div><div class="menu-ai-seal"><b>Leitura inteligente</b><span>Foto → revisão → rascunho</span><small>Nada é publicado sem sua confirmação.</small></div></section>
   <div class="partner-legend"><span><i class="on"></i> Disponível: cliente pode pedir</span><span><i></i> Rascunho ou pausado: cliente não vê</span></div>
   <div class="menu-workspace"><section><div class="partner-product-grid">${data.products.map(productCard).join("") || emptyState(icon("menu"), "Seu cardápio está pronto para começar", "Use o modelo sugerido, envie uma foto ou crie o primeiro produto.")}</div></section><aside class="menu-phone-preview"><header><span>PRÉVIA DO CLIENTE</span><b>${esc(data.store.name)}</b><small>${esc(data.profile.label)}</small></header><div class="menu-preview-scroll">${Object.entries(
@@ -528,6 +538,15 @@ function bind(view, section, data) {
         "--preview-accent",
         themeForm.elements.accent.value,
       );
+      const studio = view.querySelector("[data-menu-studio]");
+      studio?.style.setProperty(
+        "--studio-bg",
+        themeForm.elements.background.value,
+      );
+      studio?.style.setProperty(
+        "--studio-accent",
+        themeForm.elements.accent.value,
+      );
     };
     themeForm.addEventListener("input", refreshThemePreview);
     themeForm.addEventListener("submit", async (event) => {
@@ -549,6 +568,18 @@ function bind(view, section, data) {
       }
     });
   }
+  view.querySelectorAll("[data-preview-device]").forEach((button) =>
+    button.addEventListener("click", () => {
+      const studio = button.closest("[data-menu-studio]");
+      studio.classList.toggle(
+        "mobile-preview",
+        button.dataset.previewDevice === "mobile",
+      );
+      studio
+        .querySelectorAll("[data-preview-device]")
+        .forEach((item) => item.classList.toggle("active", item === button));
+    }),
+  );
   view
     .querySelector("[data-toggle-guide]")
     ?.addEventListener("click", (event) => {
@@ -1141,8 +1172,8 @@ function bind(view, section, data) {
       }
     });
   view
-    .querySelector("[data-new-product]")
-    ?.addEventListener("click", () => openProduct());
+    .querySelectorAll("[data-new-product]")
+    .forEach((button) => button.addEventListener("click", () => openProduct()));
   view
     .querySelectorAll("[data-edit-product]")
     .forEach((button) =>
