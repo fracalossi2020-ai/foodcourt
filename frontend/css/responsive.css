@@ -70,6 +70,149 @@ body.app-mode .steps{display:flex!important;grid-template-columns:none!important
 
 /* Official Food Court visual identity */
 .brand-logo-image{display:block;width:auto;height:50px;max-width:100%;object-fit:contain;object-position:left center}.header .logo{width:158px;height:52px;overflow:visible}.header .logo .brand-logo-image{width:100%;height:auto}.fcv2-logo{width:205px;height:70px}.fcv2-logo .brand-logo-image{width:100%;height:auto}.auth-logo,.signup-logo{width:205px!important;min-height:68px;padding:7px 11px;border-radius:15px;background:rgba(255,255,255,.94);box-shadow:0 10px 30px rgba(0,0,0,.12)}.auth-logo .brand-logo-image,.signup-logo .brand-logo-image{width:100%;height:auto}.mobile-brand{width:172px}.mobile-brand .brand-logo-image{width:100%;height:auto}.footer-brand-logo{display:flex;width:190px;padding:8px 11px;border-radius:14px;background:rgba(255,255,255,.96)}.footer-brand-logo .brand-logo-image{width:100%;height:auto}
+
+/* Cabeçalho móvel completo: marca e navegação continuam visíveis no topo. */
+@media (max-width: 899px) {
+  body.app-mode {
+    --mobile-header-h: 116px;
+  }
+  body.app-mode .header {
+    height: var(--mobile-header-h) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-bottom: 1px solid rgba(7, 136, 63, 0.11) !important;
+    box-shadow: 0 7px 24px rgba(18, 67, 39, 0.07) !important;
+    backdrop-filter: blur(18px) saturate(1.25);
+  }
+  body.app-mode .header-inner {
+    width: 100%;
+    height: var(--mobile-header-h) !important;
+    display: grid;
+    grid-template-columns: minmax(118px, 1fr) 42px 42px;
+    grid-template-rows: 62px 46px;
+    gap: 0 8px !important;
+    padding: 4px 14px 4px !important;
+  }
+  body.app-mode .header .logo {
+    grid-column: 1;
+    grid-row: 1;
+    width: 132px;
+    height: 48px;
+    align-self: center;
+  }
+  body.app-mode .header .logo .brand-logo-image {
+    width: 132px;
+    height: auto;
+  }
+  body.app-mode .search-trigger {
+    grid-column: 2;
+    grid-row: 1;
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    margin: 0 !important;
+    align-self: center;
+    border-color: rgba(7, 136, 63, 0.12) !important;
+    border-radius: 13px !important;
+    background: rgba(247, 251, 248, 0.96) !important;
+  }
+  body.app-mode .header-actions {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+  }
+  body.app-mode .header-actions .avatar-btn {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 13px !important;
+  }
+  body.app-mode .desktop-links {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+    display: flex !important;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 5px !important;
+    margin: 0;
+    padding: 3px 0 2px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+  body.app-mode .desktop-links::-webkit-scrollbar {
+    display: none;
+  }
+  body.app-mode .desktop-links a,
+  body.app-mode .desktop-links a:nth-last-child(-n + 2) {
+    min-width: max-content;
+    min-height: 40px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex: 1 0 auto;
+    padding: 0 12px !important;
+    border: 0 !important;
+    border-radius: 11px;
+    color: #58675f;
+    font-family: "Plus Jakarta Sans", Inter, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+  body.app-mode .desktop-links a::after {
+    left: 12px;
+    right: 12px;
+    bottom: 1px;
+    height: 2px;
+    opacity: 0;
+    transform: scaleX(0.45);
+    transition: opacity 180ms ease, transform 240ms ease;
+  }
+  body.app-mode .desktop-links a.active {
+    background: #eaf8ef;
+    color: #087c3b !important;
+  }
+  body.app-mode .desktop-links a.active::after {
+    left: 12px;
+    right: 12px;
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  html[data-theme="dark"] body.app-mode .header {
+    background: rgba(17, 24, 20, 0.95) !important;
+    border-color: #29372f !important;
+  }
+  html[data-theme="dark"] body.app-mode .search-trigger {
+    border-color: #2d4035 !important;
+    background: #18221c !important;
+  }
+  html[data-theme="dark"] body.app-mode .desktop-links a {
+    color: #aebbb4;
+  }
+  html[data-theme="dark"] body.app-mode .desktop-links a.active {
+    background: #183024;
+    color: #4ad17f !important;
+  }
+}
+
+@media (max-width: 370px) {
+  body.app-mode .header-inner {
+    grid-template-columns: minmax(104px, 1fr) 40px 40px;
+    padding-inline: 10px !important;
+    gap: 6px !important;
+  }
+  body.app-mode .header .logo,
+  body.app-mode .header .logo .brand-logo-image {
+    width: 118px;
+  }
+  body.app-mode .desktop-links a,
+  body.app-mode .desktop-links a:nth-last-child(-n + 2) {
+    padding-inline: 10px !important;
+    font-size: 0.68rem;
+  }
+}
 .phone-screen>b,.delivery-pack>b{display:block;width:145px;height:58px;font-size:0!important;background:url('/assets/images/foodcourt-logo.png') left center/contain no-repeat}.delivery-pack>b{width:140px;height:62px}.card-visual>span:first-child{display:block;width:118px;height:42px;font-size:0;background:url('/assets/images/foodcourt-logo.png') left center/contain no-repeat}
 @media(max-width:899px){body.app-mode .logo{flex:none;width:128px;height:46px}body.app-mode .logo .brand-logo-image{width:100%;height:auto}}
 @media(max-width:768px){.fcv2-logo{width:150px!important;height:58px!important}.fcv2-logo .brand-logo-image{width:100%!important;height:auto!important}.auth-logo,.signup-logo{width:176px!important;min-height:58px}.mobile-brand{width:158px}}
