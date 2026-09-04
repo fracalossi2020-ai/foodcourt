@@ -1,30 +1,31 @@
 import { store } from "../core/store.js";
 import { api } from "../core/api.js";
 import { esc, toast } from "../core/ui.js";
+import { icon } from "../core/icons.js";
 
 const sections = {
   conta: {
-    icon: "👤",
+    icon: "user",
     title: "Minha conta",
     subtitle: "Nome, e-mail e telefone",
   },
   enderecos: {
-    icon: "📍",
+    icon: "pin",
     title: "Endereços",
     subtitle: "Escolha onde deseja receber seus pedidos",
   },
   pagamentos: {
-    icon: "💳",
+    icon: "wallet",
     title: "Pagamentos",
     subtitle: "Defina sua forma de pagamento preferida",
   },
   beneficios: {
-    icon: "🏅",
+    icon: "star",
     title: "Programa de benefícios",
     subtitle: "Acompanhe seus pontos e vantagens",
   },
   configuracoes: {
-    icon: "⚙️",
+    icon: "settings",
     title: "Configurações",
     subtitle: "Privacidade, aparência e preferências",
   },
@@ -57,18 +58,18 @@ function renderOverview(view) {
     </div>
     <div class="profile-stats"><div class="stat-box"><b>${orderCount}</b><span>PEDIDOS</span></div><div class="stat-box"><b>${u.points}</b><span>PONTOS FC</span></div><div class="stat-box"><b>${couponCount}</b><span>CUPONS</span></div></div>
     <section class="section account-menu-section"><div class="section-head"><div><h2>Sua conta</h2><div class="sub">Acesse rapidamente tudo que você precisa</div></div></div><div class="profile-menu-card"><div class="plist">
-      ${item("👤", "Minha conta", "Nome, e-mail e telefone", "#/perfil?secao=conta")}
-      ${item("📦", "Meus pedidos", "Em andamento e anteriores", "#/pedidos")}
-      ${item("❤️", "Favoritos", "Restaurantes e produtos", "#/favoritos")}
-      ${item("📍", "Endereços", `${store.addresses.length} salvos`, "#/perfil?secao=enderecos")}
-      ${item("💳", "Pagamentos", "Cartões, Pix e carteira", "#/perfil?secao=pagamentos")}
-      ${item("🎟️", "Cupons", `${couponCount} na carteira`, "#/ofertas")}
-      ${item("🏅", "Programa de benefícios", `${u.cashback}% cashback ativo`, "#/fidelidade")}
-      ${item("🔔", "Notificações", "Alertas e novidades", "#/notificacoes")}
-      ${item("💬", "Ajuda e suporte", "Pedidos, pagamentos e atendimento", "#/suporte")}
-      ${u.email?.toLowerCase() === "fracalossi2020@gmail.com" ? item("🛡️", "Administração geral", "Gerenciar toda a plataforma FoodCourt", "#/admin") : ""}
-      ${u.role === "courier" ? item("🚴", "Portal do Entregador", "Corridas, rotas e ganhos", "#/entregador") : u.role === "merchant" || u.role === "admin" ? item("▦", "Portal do Parceiro", "Administrar estabelecimento", "#/parceiro") : `${item("🛵", "Quero ser entregador", "Cadastre-se para realizar entregas", "#/quero-ser-entregador")}${item("↗", "Venda no FoodCourt", "Tem um estabelecimento? Seja parceiro.", "#/para-estabelecimentos")}`}
-      ${item("⚙️", "Configurações", "Privacidade e preferências", "#/perfil?secao=configuracoes")}
+      ${item("user", "Minha conta", "Nome, e-mail e telefone", "#/perfil?secao=conta")}
+      ${item("package", "Meus pedidos", "Em andamento e anteriores", "#/pedidos")}
+      ${item("heart", "Favoritos", "Restaurantes e produtos", "#/favoritos")}
+      ${item("pin", "Endereços", `${store.addresses.length} salvos`, "#/perfil?secao=enderecos")}
+      ${item("wallet", "Pagamentos", "Cartões, Pix e carteira", "#/perfil?secao=pagamentos")}
+      ${item("tag", "Cupons", `${couponCount} na carteira`, "#/ofertas")}
+      ${item("star", "Programa de benefícios", `${u.cashback}% cashback ativo`, "#/fidelidade")}
+      ${item("bell", "Notificações", "Alertas e novidades", "#/notificacoes")}
+      ${item("chat", "Ajuda e suporte", "Pedidos, pagamentos e atendimento", "#/suporte")}
+      ${u.email?.toLowerCase() === "fracalossi2020@gmail.com" ? item("shield", "Administração geral", "Gerenciar toda a plataforma FoodCourt", "#/admin") : ""}
+      ${u.role === "courier" ? item("bike", "Portal do Entregador", "Corridas, rotas e ganhos", "#/entregador") : u.role === "merchant" || u.role === "admin" ? item("shop", "Portal do Parceiro", "Administrar estabelecimento", "#/parceiro") : `${item("bike", "Quero ser entregador", "Cadastre-se para realizar entregas", "#/quero-ser-entregador")}${item("store", "Venda no FoodCourt", "Tem um estabelecimento? Seja parceiro.", "#/para-estabelecimentos")}`}
+      ${item("settings", "Configurações", "Privacidade e preferências", "#/perfil?secao=configuracoes")}
     </div></div></section>
     <button class="btn btn-dark btn-block" id="logoutBtn">Sair da conta</button>
   </div>`;
@@ -80,7 +81,7 @@ function renderSection(view, boot, sectionId) {
   const section = sections[sectionId];
   view.innerHTML = `<div class="page profile-page profile-detail-page">
     <a class="profile-back" href="#/perfil" aria-label="Voltar ao perfil">← <span>Voltar ao perfil</span></a>
-    <header class="profile-detail-head"><span class="profile-detail-icon">${section.icon}</span><div><span class="account-kicker">MINHA CONTA</span><h1>${esc(section.title)}</h1><p>${esc(section.subtitle)}</p></div></header>
+    <header class="profile-detail-head"><span class="profile-detail-icon">${icon(section.icon)}</span><div><span class="account-kicker">MINHA CONTA</span><h1>${esc(section.title)}</h1><p>${esc(section.subtitle)}</p></div></header>
     ${accountSubnav(sectionId)}
     ${sectionContent(sectionId, boot)}
   </div>`;
@@ -240,13 +241,13 @@ function accountSubnav(active) {
   </nav>`;
 }
 
-function item(emoji, label, sub, href) {
+function item(iconName, label, sub, href) {
   const opensPartnerTab =
     href === "#/parceiro" || href.startsWith("#/para-estabelecimentos");
   const externalTab = opensPartnerTab
     ? ' target="_blank" rel="noopener noreferrer"'
     : "";
-  return `<a class="plist-item" href="${href}"${externalTab}><span class="plist-emoji">${emoji}</span><span class="pl-label">${label}<span class="pl-sub">${sub}</span></span><span class="chev">→</span></a>`;
+  return `<a class="plist-item" data-profile-icon="${iconName}" href="${href}"${externalTab}><span class="plist-emoji">${icon(iconName)}</span><span class="pl-label">${label}<span class="pl-sub">${sub}</span></span><span class="chev">${icon("chevron")}</span></a>`;
 }
 
 async function logout(event) {
