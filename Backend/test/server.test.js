@@ -13,6 +13,7 @@ process.env.APP_URL = "http://127.0.0.1";
 process.env.DEV_EXPOSE_RESET_LINK = "0";
 process.env.SEED_DEMO_DATA = "1";
 process.env.SESSION_TTL_HOURS = "1";
+process.env.PLATFORM_ADMIN_EMAIL = "admin@foodcourt.com";
 
 const { server, start } = require("../src/server");
 const db = require("../src/lib/db");
@@ -600,6 +601,32 @@ test("admin manages store approval and courier access", async () => {
     headers: { Cookie: customer.cookie },
   });
   assert.equal(denied.status, 403);
+
+  const unauthorizedAdmin = db.addUser({
+    id: "unauthorized_admin_test",
+    fullName: "Administrador não autorizado",
+    email: "outro-admin@foodcourt.test",
+    phone: "(11) 90000-0001",
+    passwordHash: require("../src/lib/auth").hashPassword("admin123"),
+    status: "active",
+    role: "admin",
+    createdAt: new Date().toISOString(),
+  });
+  const unauthorizedLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: unauthorizedAdmin.email,
+      password: "admin123",
+    }),
+  });
+  const unauthorizedCookie = unauthorizedLogin.headers
+    .get("set-cookie")
+    ?.split(";")[0];
+  const unauthorizedDashboard = await fetch(`${baseUrl}/api/admin-dashboard`, {
+    headers: { Cookie: unauthorizedCookie },
+  });
+  assert.equal(unauthorizedDashboard.status, 403);
 
   const login = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",

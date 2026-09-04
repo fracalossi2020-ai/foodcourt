@@ -15,6 +15,13 @@ const QRCode = require("qrcode");
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "..", "..", "frontend");
+const PLATFORM_ADMIN_EMAIL = String(
+  process.env.PLATFORM_ADMIN_EMAIL || "fracalossi2020@gmail.com",
+)
+  .trim()
+  .toLowerCase();
+const isPlatformAdmin = (user) =>
+  Boolean(user && user.email?.toLowerCase() === PLATFORM_ADMIN_EMAIL);
 
 /* ============ BANCO + CONTAS INICIAIS ============ */
 
@@ -671,7 +678,7 @@ function searchProducts(q, restaurants = marketplaceRestaurants()) {
 
 function canAccessOrder(user, order) {
   if (!user || !order) return false;
-  if (user.role === "admin" || order.customerId === user.id) return true;
+  if (isPlatformAdmin(user) || order.customerId === user.id) return true;
   if (user.role === "merchant")
     return platform.storeForUser(user)?.id === order.storeId;
   if (user.role === "courier")
@@ -3573,7 +3580,7 @@ Object.assign(api, {
     return { message };
   },
   "GET /api/admin-dashboard": (params, query, body, ctx) => {
-    if (ctx.user.role !== "admin") return forbidden("administradores");
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
     const couriers = db.state.users
       .filter((user) => user.role === "courier")
       .map((user) => ({
@@ -3708,7 +3715,7 @@ Object.assign(api, {
     };
   },
   "POST /api/admin-user-status": (params, query, body, ctx) => {
-    if (ctx.user.role !== "admin") return forbidden("administradores");
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
     const user = db.state.users.find((item) => item.id === body.userId);
     const status = String(body.status || "");
     if (!user || !["active", "suspended"].includes(status))
@@ -3729,7 +3736,7 @@ Object.assign(api, {
     return { user: auth.publicUser(user) };
   },
   "POST /api/admin-support-ticket": (params, query, body, ctx) => {
-    if (ctx.user.role !== "admin") return forbidden("administradores");
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
     const ticket = db.state.supportTickets.find(
       (item) => item.id === body.ticketId,
     );
@@ -3776,7 +3783,7 @@ Object.assign(api, {
     return { ticket };
   },
   "POST /api/admin-courier-payout": (params, query, body, ctx) => {
-    if (ctx.user.role !== "admin") return forbidden("administradores");
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
     const payout = db.state.courierPayouts.find(
       (item) => item.id === body.payoutId,
     );
@@ -3815,7 +3822,7 @@ Object.assign(api, {
     return { payout };
   },
   "POST /api/admin-store-status": (params, query, body, ctx) => {
-    if (ctx.user.role !== "admin") return forbidden("administradores");
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
     const store = db.state.stores.find((item) => item.id === body.storeId);
     const status = String(body.status || "");
     if (!store || !["active", "pending", "suspended"].includes(status))
@@ -3831,7 +3838,7 @@ Object.assign(api, {
     return { store };
   },
   "POST /api/admin-courier": (params, query, body, ctx) => {
-    if (ctx.user.role !== "admin") return forbidden("administradores");
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
     const email = auth.validEmail(body.email);
     if (!email.ok) return { status: 400, body: { error: email.error } };
     const user = db.findByEmail(email.value);
@@ -3885,7 +3892,7 @@ Object.assign(api, {
     return { user: auth.publicUser(user) };
   },
   "POST /api/admin-courier-application": (params, query, body, ctx) => {
-    if (ctx.user.role !== "admin") return forbidden("administradores");
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
     const application = db.state.courierApplications.find(
       (item) => item.id === body.applicationId,
     );
