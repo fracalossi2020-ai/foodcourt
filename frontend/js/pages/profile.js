@@ -51,12 +51,12 @@ function renderOverview(view) {
   const couponCount = store.coupons.length;
 
   view.innerHTML = `<div class="page profile-page">
-    <header class="account-page-heading"><div><span class="account-kicker">CENTRAL DO CLIENTE</span><h1>Olá, ${esc(u.fullName.split(" ")[0])}</h1><p>Gerencie sua conta e deixe o FoodCourt com a sua cara.</p></div><span class="account-security">✓ Conta protegida</span></header>
+    <header class="account-page-heading"><div><span class="account-kicker"><i></i>CENTRAL DO CLIENTE</span><h1>Olá, <strong>${esc(u.fullName.split(" ")[0])}</strong></h1><p>Gerencie sua conta e deixe o FoodCourt com a sua cara.</p></div><span class="account-security">${icon("shield")}<b>Conta protegida</b></span></header>
     <div class="profile-head">
-      <div class="profile-avatar">${u.avatarEmoji}</div>
-      <div class="profile-user-copy"><h2>${esc(u.fullName)}</h2><div class="muted text-sm">${esc(u.email)}</div><div class="muted text-sm">${esc(u.phone)}</div><div class="pair profile-badges"><span class="badge badge-brand">🏅 Nível ${esc(u.level)}</span><span class="badge badge-dark">Membro desde ${esc(u.memberSince)}</span></div></div>
+      <div class="profile-avatar">${icon("user")}</div>
+      <div class="profile-user-copy"><h2>${esc(u.fullName)}</h2><div class="profile-contact">${icon("message")}<span>${esc(u.email)}</span></div>${u.phone ? `<div class="profile-contact">${icon("phone")}<span>${esc(u.phone)}</span></div>` : ""}<div class="pair profile-badges"><span class="badge badge-brand">${icon("star")} Nível ${esc(u.level)}</span><span class="badge badge-dark">${icon("calendar")} Membro desde ${esc(u.memberSince)}</span></div></div>
     </div>
-    <div class="profile-stats"><div class="stat-box"><b>${orderCount}</b><span>PEDIDOS</span></div><div class="stat-box"><b>${u.points}</b><span>PONTOS FC</span></div><div class="stat-box"><b>${couponCount}</b><span>CUPONS</span></div></div>
+    <div class="profile-stats"><div class="stat-box"><i>${icon("receipt")}</i><div><b>${orderCount}</b><span>PEDIDOS</span></div></div><div class="stat-box"><i>${icon("star")}</i><div><b>${u.points}</b><span>PONTOS FC</span></div></div><div class="stat-box"><i>${icon("tag")}</i><div><b>${couponCount}</b><span>CUPONS</span></div></div></div>
     <section class="section account-menu-section"><div class="section-head"><div><h2>Sua conta</h2><div class="sub">Acesse rapidamente tudo que você precisa</div></div></div><div class="profile-menu-card"><div class="plist">
       ${item("user", "Minha conta", "Nome, e-mail e telefone", "#/perfil?secao=conta")}
       ${item("package", "Meus pedidos", "Em andamento e anteriores", "#/pedidos")}
