@@ -180,6 +180,51 @@ html[data-theme="dark"]
   transform: translateY(-2px);
   box-shadow: 0 10px 24px rgba(7, 136, 63, 0.18);
 }
+
+.partner-header-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid rgba(7, 136, 63, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #087c3b, #06a04a);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  box-shadow: 0 7px 18px rgba(7, 124, 59, 0.18);
+  transition: 0.2s var(--icon-ease);
+}
+
+.partner-header-link[hidden] {
+  display: none !important;
+}
+
+.partner-header-link > span {
+  width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.partner-header-link svg {
+  width: 17px;
+  height: 17px;
+}
+
+.partner-header-link:hover {
+  color: #fff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 11px 25px rgba(7, 124, 59, 0.25);
+}
+
+html[data-theme="dark"] .partner-header-link {
+  border-color: #3a9e62;
+  background: linear-gradient(135deg, #126c39, #07883f);
+}
 .badge-dot {
   z-index: 3;
   display: grid !important;

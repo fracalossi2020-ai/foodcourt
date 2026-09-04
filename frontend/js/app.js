@@ -311,6 +311,11 @@ function syncHeader() {
   if (adminPortalButton)
     adminPortalButton.hidden =
       store.user?.email?.toLowerCase() !== "fracalossi2020@gmail.com";
+  const partnerPortalButton = document.getElementById("partnerPortalBtn");
+  if (partnerPortalButton)
+    partnerPortalButton.hidden = !["merchant", "admin"].includes(
+      store.user?.role,
+    );
   updateNotifBadge();
   renderCartUI();
 }
@@ -567,6 +572,7 @@ function wireAuthEvents() {
     bootPromise = null;
     stopRealtime();
     startRealtime();
+    syncHeader();
   });
 
   window.addEventListener("fc:unauthorized", () => {

@@ -247,6 +247,23 @@ body.app-mode .steps{display:flex!important;grid-template-columns:none!important
     padding: 0 !important;
     border-radius: 13px !important;
   }
+  body.app-mode .partner-header-link:not([hidden]) {
+    width: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    display: grid !important;
+    place-items: center;
+    padding: 0 !important;
+    border-radius: 13px !important;
+  }
+  body.app-mode .partner-header-link b {
+    display: none !important;
+  }
+  body.app-mode .partner-header-link > span {
+    width: 21px;
+    height: 21px;
+    background: transparent;
+  }
   body.app-mode .admin-header-link b {
     display: none !important;
   }
@@ -269,6 +286,7 @@ body.app-mode .steps{display:flex!important;grid-template-columns:none!important
   }
   body.app-mode .search-trigger,
   body.app-mode .admin-header-link:not([hidden]),
+  body.app-mode .partner-header-link:not([hidden]),
   body.app-mode .header-actions .avatar-btn {
     width: 40px !important;
     min-width: 40px !important;
