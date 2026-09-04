@@ -186,9 +186,7 @@ async function navigate() {
       }
     }
 
-    const mod = await import(
-      `./pages/${route.page}.js?v=20260904-theme-live-1`
-    );
+    const mod = await import(`./pages/${route.page}.js?v=20260904-motion-1`);
     currentPage = mod;
     window.scrollTo(0, 0);
 
@@ -389,11 +387,46 @@ function wireTheme() {
   apply(saved, false);
 
   btn.addEventListener("click", () => {
-    apply(
-      document.documentElement.dataset.theme === "light" ? "dark" : "light",
-      true,
+    const nextTheme =
+      document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const rect = btn.getBoundingClientRect();
+    document.documentElement.style.setProperty(
+      "--theme-x",
+      `${rect.left + rect.width / 2}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--theme-y",
+      `${rect.top + rect.height / 2}px`,
+    );
+
+    if (!document.startViewTransition || reduceMotion) {
+      apply(nextTheme, true);
+      return;
+    }
+
+    document.documentElement.classList.add("theme-transition");
+    const transition = document.startViewTransition(() =>
+      apply(nextTheme, false),
+    );
+    transition.finished.finally(() =>
+      document.documentElement.classList.remove("theme-transition"),
     );
   });
+}
+
+function navigateWithMotion() {
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!document.startViewTransition || reduceMotion || navigating) {
+    return navigate();
+  }
+
+  document.documentElement.classList.add("route-transition");
+  const transition = document.startViewTransition(() => navigate());
+  transition.finished.finally(() =>
+    document.documentElement.classList.remove("route-transition"),
+  );
+  return transition.updateCallbackDone;
 }
 
 function wireHeader() {
@@ -543,7 +576,7 @@ wireHeader();
 wireGlobalHelp();
 wireVisualFeedback();
 wireAuthEvents();
-window.addEventListener("hashchange", navigate);
+window.addEventListener("hashchange", navigateWithMotion);
 navigate();
 
 // Nunca mantém a aplicação em branco caso uma extensão, cache antigo ou falha

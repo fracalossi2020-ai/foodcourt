@@ -1,0 +1,224 @@
+/* FoodCourt Motion System — movimento consistente em todos os portais. */
+:root {
+  --motion-spring: cubic-bezier(0.2, 0.85, 0.25, 1);
+  --motion-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-fast: 180ms;
+  --motion-base: 360ms;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body,
+.header,
+.bottomnav,
+.drawer,
+.modal,
+.page,
+.partner-shell,
+.admin-shell,
+.courier-shell {
+  transition:
+    color 320ms var(--motion-smooth),
+    background-color 420ms var(--motion-smooth),
+    border-color 320ms var(--motion-smooth),
+    box-shadow 320ms var(--motion-smooth);
+}
+
+/* Entrada de qualquer tela, incluindo cliente, autenticação e portais. */
+#view > * {
+  transform-origin: 50% 12%;
+  animation: fcPageArrive 440ms var(--motion-spring) both;
+}
+
+#view > * > :is(section, header, main, aside, form):not([hidden]) {
+  animation: fcContentArrive 520ms var(--motion-spring) both;
+}
+
+#view > * > :is(section, header, main, aside, form):nth-child(2) {
+  animation-delay: 45ms;
+}
+
+#view > * > :is(section, header, main, aside, form):nth-child(3) {
+  animation-delay: 90ms;
+}
+
+@keyframes fcPageArrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.992);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes fcContentArrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Troca de rota com a View Transitions API. */
+html.route-transition::view-transition-old(root) {
+  animation: fcRouteOut 160ms ease-in both;
+}
+
+html.route-transition::view-transition-new(root) {
+  animation: fcRouteIn 410ms var(--motion-spring) both;
+}
+
+@keyframes fcRouteOut {
+  to {
+    opacity: 0;
+    transform: translate3d(-10px, 0, 0) scale(0.995);
+    filter: blur(2px);
+  }
+}
+
+@keyframes fcRouteIn {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, 0, 0) scale(0.994);
+    filter: blur(3px);
+  }
+}
+
+/* O novo tema nasce no botão de sol/lua e se espalha pela interface. */
+html.theme-transition::view-transition-old(root),
+html.theme-transition::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.theme-transition::view-transition-old(root) {
+  z-index: 1;
+}
+
+html.theme-transition::view-transition-new(root) {
+  z-index: 9999;
+  animation: fcThemeReveal 620ms var(--motion-spring) both;
+}
+
+@keyframes fcThemeReveal {
+  from {
+    clip-path: circle(0 at var(--theme-x, 92%) var(--theme-y, 42px));
+  }
+  to {
+    clip-path: circle(150vmax at var(--theme-x, 92%) var(--theme-y, 42px));
+  }
+}
+
+#themeBtn :is(svg, .icon) {
+  transition: transform 420ms var(--motion-spring);
+}
+
+#themeBtn:hover :is(svg, .icon) {
+  transform: rotate(18deg) scale(1.08);
+}
+
+/* Microinterações compartilhadas. */
+:is(button, .btn, .chip, [role="button"], .icon-btn, a[class*="button"]) {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--motion-fast) var(--motion-spring),
+    box-shadow 240ms var(--motion-smooth),
+    color 220ms ease,
+    background-color 220ms ease,
+    border-color 220ms ease;
+}
+
+:is(
+  button,
+  .btn,
+  .chip,
+  [role="button"],
+  .icon-btn,
+  a[class*="button"]
+):active {
+  transform: scale(0.965);
+}
+
+:is(.card, .rcard, .pcard, .stat-card, .admin-card, .partner-card) {
+  transition:
+    transform 260ms var(--motion-spring),
+    box-shadow 260ms ease,
+    border-color 260ms ease,
+    background-color 320ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(.card, .rcard, .pcard, .stat-card, .admin-card, .partner-card):hover {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+:is(.tabs, .segmented, [role="tablist"]) :is(.active, [aria-selected="true"]) {
+  animation: fcTabSelect 300ms var(--motion-spring) both;
+}
+
+@keyframes fcTabSelect {
+  50% {
+    transform: scale(1.035);
+  }
+}
+
+dialog[open],
+.modal.open,
+.drawer.open,
+.fcv2-help-panel:not([hidden]) {
+  animation: fcOverlayArrive 340ms var(--motion-spring) both;
+}
+
+@keyframes fcOverlayArrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.975);
+  }
+}
+
+details[open] > :not(summary) {
+  animation: fcDetailsOpen 280ms var(--motion-spring) both;
+}
+
+@keyframes fcDetailsOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  transition:
+    border-color 180ms ease,
+    box-shadow 220ms ease,
+    background-color 220ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
