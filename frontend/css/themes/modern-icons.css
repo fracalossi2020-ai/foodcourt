@@ -16,6 +16,33 @@
     transform 0.2s var(--icon-ease),
     stroke-width 0.2s;
 }
+
+/* Ícones de estados vazios precisam de uma caixa real. Aplicar padding no
+   SVG de 20px fazia o desenho escapar do fundo e sobrepor o texto. */
+body.app-mode :is(.empty-inline, .empty-modern) > .fc-icon {
+  box-sizing: border-box;
+  width: 44px !important;
+  height: 44px !important;
+  padding: 10px !important;
+  overflow: hidden;
+  border: 1px solid rgba(7, 136, 63, 0.1);
+  border-radius: 14px;
+  background: #eaf7ef;
+  color: #087c3b;
+}
+
+body.app-mode .empty-inline > .fc-icon {
+  margin-right: 2px;
+}
+
+html[data-theme="dark"]
+  body.app-mode
+  :is(.empty-inline, .empty-modern)
+  > .fc-icon {
+  border-color: #2d4236;
+  background: #19271f;
+  color: #49d080;
+}
 :where(button, a, [role="button"]):hover > .fc-icon,
 :where(button, a, [role="button"]):hover > span > .fc-icon {
   transform: scale(1.06);
