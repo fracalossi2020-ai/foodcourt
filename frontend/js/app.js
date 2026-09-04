@@ -323,15 +323,8 @@ function syncHeader() {
 function updateNotifBadge() {
   const dot = document.getElementById("notifDot");
   const n = store.unreadNotifs();
-  const prev = dot.textContent;
   dot.hidden = n === 0;
   dot.textContent = n > 9 ? "9+" : n;
-  if (n > 0 && prev !== String(dot.textContent)) {
-    dot.classList.remove("badge-bump");
-    void dot.offsetWidth;
-    dot.classList.add("badge-bump");
-    setTimeout(() => dot.classList.remove("badge-bump"), 450);
-  }
 }
 
 function renderLocDrawer() {
@@ -562,30 +555,10 @@ function wireVisualFeedback() {
     "pointermove",
     (event) => {
       const card = event.target.closest(interactive);
-      if (card) {
-        const rect = card.getBoundingClientRect();
-        card.style.setProperty("--mx", `${event.clientX - rect.left}px`);
-        card.style.setProperty("--my", `${event.clientY - rect.top}px`);
-      }
-      const btn = event.target.closest(
-        ".btn-primary, .primary-cta, .fcv2-submit, .home-hero-actions .btn-primary",
-      );
-      if (btn) {
-        const brect = btn.getBoundingClientRect();
-        btn.style.setProperty("--btn-x", `${event.clientX - brect.left}px`);
-        btn.style.setProperty("--btn-y", `${event.clientY - brect.top}px`);
-      }
-    },
-    { passive: true },
-  );
-
-  window.addEventListener(
-    "scroll",
-    () => {
-      const header = document.querySelector(".header");
-      if (header) {
-        header.classList.toggle("scrolled-header", window.scrollY > 14);
-      }
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty("--mx", `${event.clientX - rect.left}px`);
+      card.style.setProperty("--my", `${event.clientY - rect.top}px`);
     },
     { passive: true },
   );

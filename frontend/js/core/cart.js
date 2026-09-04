@@ -207,10 +207,8 @@ export function renderCartUI() {
   if (n > 0) {
     dot.hidden = false;
     dot.textContent = n;
-    dot.classList.remove("badge-bump");
-    void dot.offsetWidth;
-    dot.classList.add("badge-bump");
-    setTimeout(() => dot.classList.remove("badge-bump"), 450);
+    dot.style.animation = "none";
+    requestAnimationFrame(() => (dot.style.animation = ""));
   } else dot.hidden = true;
 
   let bar = document.getElementById("cartbar");
