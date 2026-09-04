@@ -3,6 +3,9 @@
   --menu-accent: #07883f;
   max-width: 1280px !important;
   padding-bottom: 80px;
+  border-radius: 30px;
+  background: var(--menu-bg);
+  transition: background-color 0.25s ease;
 }
 .menu-experience:before {
   content: "";

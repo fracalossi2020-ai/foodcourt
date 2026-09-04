@@ -187,7 +187,7 @@ async function navigate() {
     }
 
     const mod = await import(
-      `./pages/${route.page}.js?v=20260904-admin-audit-1`
+      `./pages/${route.page}.js?v=20260904-theme-live-1`
     );
     currentPage = mod;
     window.scrollTo(0, 0);

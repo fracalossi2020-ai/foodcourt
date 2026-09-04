@@ -328,7 +328,7 @@ function catalogContent(data) {
   };
   const studioProducts = previewProducts.slice(0, 4);
   return `${head("CATÁLOGO", "Cardápio e estoque", "Monte, importe e publique seu cardápio em um só lugar.", `<div class="partner-head-actions"><button class="btn btn-outline" data-import-menu>Importar foto</button><button class="btn btn-primary" data-new-product>+ Novo produto</button></div>`)}
-  <form class="menu-theme-editor" data-menu-theme-form style="--preview-bg:${menuTheme.background};--preview-accent:${menuTheme.accent}"><div><span>IDENTIDADE AUTOMÁTICA</span><h2>Seu cardápio, suas cores</h2><p>O layout já está pronto e funciona em celular e computador. Escolha somente as duas cores da sua marca.</p></div><label><input type="color" name="background" value="${menuTheme.background}"><span><b>Cor de fundo</b><small>Base de todo o cardápio</small></span></label><label><input type="color" name="accent" value="${menuTheme.accent}"><span><b>Cor de destaque</b><small>Botões, preços e detalhes</small></span></label><div class="menu-theme-swatch"><i></i><b>${esc(data.store.name)}</b><small>Prévia instantânea</small></div><button class="btn btn-primary">Salvar cores</button><a class="btn btn-outline" href="#/restaurante/${data.store.id}">Ver cardápio publicado ↗</a></form>
+  <form class="menu-theme-editor" data-menu-theme-form style="--preview-bg:${menuTheme.background};--preview-accent:${menuTheme.accent}"><div><span>IDENTIDADE AUTOMÁTICA</span><h2>Seu cardápio, suas cores</h2><p>O layout já está pronto e funciona em celular e computador. Escolha somente as duas cores da sua marca.</p></div><label><input type="color" name="background" value="${menuTheme.background}"><span><b>Cor de fundo</b><small data-color-value="background">${menuTheme.background}</small></span></label><label><input type="color" name="accent" value="${menuTheme.accent}"><span><b>Cor de destaque</b><small data-color-value="accent">${menuTheme.accent}</small></span></label><div class="menu-theme-swatch"><i></i><b>${esc(data.store.name)}</b><small>Prévia instantânea</small></div><button class="btn btn-primary" type="submit" data-save-menu-theme>Salvar cores</button><a class="btn btn-outline" href="#/restaurante/${data.store.id}">Ver cardápio publicado ↗</a></form>
   <section class="menu-live-studio" data-menu-studio style="--studio-bg:${menuTheme.background};--studio-accent:${menuTheme.accent}"><header><div><span>PRÉVIA AO VIVO</span><h2>Veja exatamente como seu cliente verá</h2><p>Fotos, títulos e descrições entram automaticamente neste modelo.</p></div><nav><button class="active" type="button" data-preview-device="desktop">${icon("dashboard")} Computador</button><button type="button" data-preview-device="mobile">${icon("user")} Celular</button><a href="#/restaurante/${data.store.id}">Abrir versão pública ↗</a></nav></header><div class="menu-studio-stage"><div class="menu-studio-browser"><div class="menu-studio-browserbar"><i></i><i></i><i></i><span>foodcourt.com.br/cardapio/${esc(data.store.slug || data.store.id)}</span></div><div class="menu-studio-screen"><section class="studio-hero" ${data.store.cover ? `style="background-image:linear-gradient(90deg,rgba(5,15,9,.88),rgba(5,15,9,.16)),url('${esc(data.store.cover)}')"` : ""}><div>${data.store.logo ? `<img src="${esc(data.store.logo)}" alt="">` : icon("store")}</div><span>CARDÁPIO DIGITAL</span><h3>${esc(data.store.name)}</h3><small>${esc(data.profile.label)} · ${data.products.filter((item) => item.active).length} itens disponíveis</small></section><nav class="studio-categories">${
     Object.keys(grouped)
       .slice(0, 5)
@@ -547,8 +547,15 @@ function bind(view, section, data) {
         "--studio-accent",
         themeForm.elements.accent.value,
       );
+      themeForm.querySelector('[data-color-value="background"]').textContent =
+        themeForm.elements.background.value.toUpperCase();
+      themeForm.querySelector('[data-color-value="accent"]').textContent =
+        themeForm.elements.accent.value.toUpperCase();
+      const save = themeForm.querySelector("[data-save-menu-theme]");
+      if (!save.disabled) save.textContent = "Salvar novas cores";
     };
     themeForm.addEventListener("input", refreshThemePreview);
+    themeForm.addEventListener("change", refreshThemePreview);
     themeForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const button = themeForm.querySelector('button[type="submit"],button');
@@ -560,6 +567,7 @@ function bind(view, section, data) {
             accent: themeForm.elements.accent.value,
           },
         });
+        button.textContent = "Cores salvas ✓";
         toast("Cores do cardápio publicadas.", "success");
       } catch (error) {
         toast(error.message, "error");
