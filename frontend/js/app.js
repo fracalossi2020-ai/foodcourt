@@ -50,6 +50,8 @@ const routes = [
 ];
 
 let currentPage = null;
+let currentRoutePage = null;
+let currentRoutePath = null;
 let authUser = null;
 let handlingUnauthorized = false;
 let realtimeSource = null;
@@ -187,11 +189,11 @@ async function navigate() {
     }
 
     const isSamePage =
-      currentPage?.pageName === route.page && currentPage?.pagePath === path;
-    const mod = await import(`./pages/${route.page}.js?v=20260904-motion-1`);
+      currentRoutePage === route.page && currentRoutePath === path;
+    const mod = await import(`./pages/${route.page}.js?v=20260904-route-fix-1`);
     currentPage = mod;
-    currentPage.pageName = route.page;
-    currentPage.pagePath = path;
+    currentRoutePage = route.page;
+    currentRoutePath = path;
     if (!isSamePage) {
       window.scrollTo(0, 0);
     }
