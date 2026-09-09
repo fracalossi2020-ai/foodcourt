@@ -324,7 +324,7 @@ function content(section, data) {
 }
 
 function catalogContent(data) {
-  const previewProducts = data.products.filter((product) => product.active !== false);
+  const previewProducts = data.products;
   const grouped = previewProducts.reduce(
     (all, item) => (
       (all[item.category] = all[item.category] || []).push(item),
@@ -336,10 +336,10 @@ function catalogContent(data) {
     background: "#f4f8f5",
     accent: "#07883f",
   };
-  const studioProducts = previewProducts.slice(0, 4);
+  const studioProducts = previewProducts;
   return `${head("CATÁLOGO", "Cardápio e estoque", "Monte, importe e publique seu cardápio em um só lugar.", `<div class="partner-head-actions"><button class="btn btn-outline" data-import-menu>Importar foto</button><button class="btn btn-primary" data-new-product>+ Novo produto</button></div>`)}
   <form class="menu-theme-editor" data-menu-theme-form style="--preview-bg:${menuTheme.background};--preview-accent:${menuTheme.accent}"><div><span>IDENTIDADE AUTOMÁTICA</span><h2>Seu cardápio, suas cores</h2><p>O layout já está pronto e funciona em celular e computador. Escolha somente as duas cores da sua marca.</p></div><label><input type="color" name="background" value="${menuTheme.background}"><span><b>Cor de fundo</b><small data-color-value="background">${menuTheme.background}</small></span></label><label><input type="color" name="accent" value="${menuTheme.accent}"><span><b>Cor de destaque</b><small data-color-value="accent">${menuTheme.accent}</small></span></label><div class="menu-theme-swatch"><i></i><b>${esc(data.store.name)}</b><small>Prévia instantânea</small></div><button class="btn btn-primary" type="submit" data-save-menu-theme>Salvar cores</button><a class="btn btn-outline" href="#/restaurante/${data.store.id}">Ver cardápio publicado ↗</a></form>
-  <section class="menu-live-studio" data-menu-studio style="--studio-bg:${menuTheme.background};--studio-accent:${menuTheme.accent}"><header><div><span>PRÉVIA AO VIVO</span><h2>Confira os produtos publicados</h2><p>Fotos, títulos e descrições entram automaticamente neste modelo.</p></div><nav><button class="active" type="button" data-preview-device="desktop">${icon("dashboard")} Computador</button><button type="button" data-preview-device="mobile">${icon("user")} Celular</button><a href="#/restaurante/${data.store.id}">Abrir versão pública ↗</a></nav></header><div class="menu-studio-stage"><div class="menu-studio-browser"><div class="menu-studio-browserbar"><i></i><i></i><i></i><span>foodcourt.com.br/cardapio/${esc(data.store.slug || data.store.id)}</span></div><div class="menu-studio-screen"><section class="studio-hero" ${data.store.cover ? `style="background-image:linear-gradient(90deg,rgba(5,15,9,.88),rgba(5,15,9,.16)),url('${esc(data.store.cover)}')"` : ""}><div>${data.store.logo ? `<img src="${esc(data.store.logo)}" alt="">` : icon("store")}</div><span>CARDÁPIO DIGITAL</span><h3>${esc(data.store.name)}</h3><small>${esc(data.profile.label)} · ${data.products.filter((item) => item.active).length} itens disponíveis</small></section><nav class="studio-categories">${
+  <section class="menu-live-studio" data-menu-studio style="--studio-bg:${menuTheme.background};--studio-accent:${menuTheme.accent}"><header><div><span>PRÉVIA AO VIVO</span><h2>Confira suas alterações</h2><p>A prévia inclui rascunhos. Salve suas edições para atualizar fotos, textos e preços.</p></div><nav><button class="active" type="button" data-preview-device="desktop">${icon("dashboard")} Computador</button><button type="button" data-preview-device="mobile">${icon("user")} Celular</button><a href="#/restaurante/${data.store.id}">Abrir versão pública ↗</a></nav></header><div class="menu-studio-stage"><div class="menu-studio-browser"><div class="menu-studio-browserbar"><i></i><i></i><i></i><span>foodcourt.com.br/cardapio/${esc(data.store.slug || data.store.id)}</span></div><div class="menu-studio-screen"><section class="studio-hero" ${data.store.cover ? `style="background-image:linear-gradient(90deg,rgba(5,15,9,.88),rgba(5,15,9,.16)),url('${esc(data.store.cover)}')"` : ""}><div>${data.store.logo ? `<img src="${esc(data.store.logo)}" alt="">` : icon("store")}</div><span>CARDÁPIO DIGITAL</span><h3>${esc(data.store.name)}</h3><small>${esc(data.profile.label)} · ${data.products.filter((item) => item.active).length} itens disponíveis</small></section><nav class="studio-categories">${
     Object.keys(grouped)
       .slice(0, 5)
       .map(
@@ -347,7 +347,7 @@ function catalogContent(data) {
           `<span class="${index ? "" : "active"}">${esc(category)}</span>`,
       )
       .join("") || '<span class="active">Cardápio</span>'
-  }</nav><div class="studio-products">${studioProducts.map((item) => `<article><div class="studio-product-photo" ${item.image ? `style="background-image:url('${esc(item.image)}')"` : ""}>${item.image ? "" : icon("menu")}<b>+</b></div><section><small>${esc(item.category || "Cardápio")}</small><h4>${esc(item.name)}</h4><p>${esc(item.description || "Adicione uma descrição curta e atraente para este produto.")}</p><strong>${item.price ? money(item.price) : "Defina o preço"}</strong></section></article>`).join("") || `<div class="studio-empty">${icon("camera")}<b>Nenhum produto publicado</b><p>Edite os produtos abaixo e marque Disponível para publicar.</p><button type="button" data-new-product>Adicionar produto</button></div>`}</div></div></div></div><footer><span>${icon("check")} Layout, alinhamento e responsividade são automáticos.</span><span>${icon("image")} Você controla fotos, textos, preços e cores.</span><span>${icon("truck")} Somente produtos publicados aparecem nesta prévia.</span></footer></section>
+  }</nav><div class="studio-products">${studioProducts.map((item) => `<article><div class="studio-product-photo" ${item.image ? `style="background-image:url('${esc(item.image)}')"` : ""}>${item.image ? "" : icon("menu")}<b>+</b></div><section><small>${esc(item.category || "Cardápio")}</small><h4>${esc(item.name)}</h4>${item.active === false ? '<em class="studio-draft">Rascunho · não publicado</em>' : ""}<p>${esc(item.description || "Adicione uma descrição curta e atraente para este produto.")}</p><strong>${item.price ? money(item.price) : "Defina o preço"}</strong></section></article>`).join("") || `<div class="studio-empty">${icon("camera")}<b>Nenhum produto cadastrado</b><p>Adicione um produto para visualizar seu cardápio.</p><button type="button" data-new-product>Adicionar produto</button></div>`}</div></div></div></div><footer><span>${icon("check")} Layout, alinhamento e responsividade são automáticos.</span><span>${icon("image")} Você controla fotos, textos, preços e cores.</span><span>${icon("truck")} Rascunhos aparecem só aqui. Marque Disponível para publicar.</span></footer></section>
   <section class="menu-smart-start"><div><span>PERFIL IDENTIFICADO PELO CADASTRO</span><h2>${esc(data.profile.label)}</h2><p>Usamos a categoria <b>${esc(data.profile.source)}</b> para preparar a estrutura inicial. Você pode ajustar tudo antes de publicar.</p><div class="menu-smart-actions"><button class="btn btn-primary" data-use-template ${data.products.length ? "hidden" : ""}>Criar rascunho sugerido</button><button class="btn btn-outline" data-import-menu>Enviar foto do cardápio</button></div></div><div class="menu-ai-seal"><b>Leitura inteligente</b><span>Foto → revisão → rascunho</span><small>Nada é publicado sem sua confirmação.</small></div></section>
   <div class="partner-legend"><span><i class="on"></i> Disponível: cliente pode pedir</span><span><i></i> Rascunho ou pausado: cliente não vê</span></div>
   <div class="menu-workspace"><section><div class="partner-product-grid">${data.products.map(productCard).join("") || emptyState(icon("menu"), "Seu cardápio está pronto para começar", "Use o modelo sugerido, envie uma foto ou crie o primeiro produto.")}</div></section><aside class="menu-phone-preview"><header><span>PRÉVIA DO CLIENTE</span><b>${esc(data.store.name)}</b><small>${esc(data.profile.label)}</small></header><div class="menu-preview-scroll">${Object.entries(
@@ -355,11 +355,11 @@ function catalogContent(data) {
   )
     .map(
       ([category, items]) =>
-        `<section><h3>${esc(category)}</h3>${items.map((item) => `<article><div><b>${esc(item.name)}</b><p>${esc(item.description || "Descrição a definir")}</p></div><strong>${item.price ? money(item.price) : "Preço a definir"}</strong></article>`).join("")}</section>`,
+        `<section><h3>${esc(category)}</h3>${items.map((item) => `<article><div><b>${esc(item.name)}</b>${item.active === false ? '<small class="studio-draft">Rascunho</small>' : ""}<p>${esc(item.description || "Descrição a definir")}</p></div><strong>${item.price ? money(item.price) : "Preço a definir"}</strong></article>`).join("")}</section>`,
     )
     .join(
       "",
-    )} ${previewProducts.length ? "" : '<p class="menu-preview-empty">Seus produtos ainda estão em rascunho. Edite e disponibilize para exibi-los aqui.</p>'}</div><footer>${previewProducts.length ? "Prévia dos produtos publicados" : "Nenhum produto publicado"}</footer></aside></div>
+    )} ${previewProducts.length ? "" : '<p class="menu-preview-empty">Adicione um produto para preencher esta prévia.</p>'}</div><footer>${previewProducts.length ? "Prévia de edição, incluindo rascunhos" : "Nenhum produto publicado"}</footer></aside></div>
   <div class="partner-modal menu-import-modal" data-menu-import-modal hidden><section class="menu-import-card"><button type="button" class="partner-modal-x" data-close-import aria-label="Fechar">×</button><span>IMPORTAÇÃO INTELIGENTE</span><h2>Transforme uma foto em cardápio</h2><p>Fotografe o cardápio inteiro, com boa luz. A IA identifica nomes, categorias, descrições e preços; depois você revisa antes de salvar.</p><div class="menu-photo-actions"><input type="file" accept="image/jpeg,image/png,image/webp" data-menu-file hidden><button class="menu-camera-button" type="button" data-open-camera><b>📷 Tirar foto</b><small>Abrir a câmera</small></button><button class="menu-gallery-button" type="button" data-open-gallery><b>🖼️ Escolher da galeria</b><small>JPG, PNG ou WebP</small></button></div><div class="menu-camera-preview" data-camera-preview hidden><video data-camera-video autoplay playsinline muted></video><div><button class="btn btn-primary" type="button" data-capture-camera>📷 Capturar foto</button><button class="btn btn-outline" type="button" data-cancel-camera>Cancelar</button></div></div><div data-menu-analysis></div></section></div>
   <div class="partner-modal" data-product-modal hidden><form class="partner-product-form"><input type="hidden" name="id"><input type="hidden" name="image"><span>PRODUTO DO CARDÁPIO</span><h2 data-product-form-title>Novo produto</h2><p>Adicione a foto e os dados principais. O FoodCourt cuida do restante do visual.</p><label class="product-photo-picker"><input type="file" accept="image/jpeg,image/png,image/webp" data-product-image hidden><i data-product-image-preview>📷</i><span><b>Foto do produto</b><small>Toque para escolher uma imagem</small></span></label><label>Nome do produto<input class="input" name="name" placeholder="Ex.: Hambúrguer artesanal" required></label><label>Categoria<input class="input" name="category" placeholder="Ex.: Lanches" required></label><label class="wide">Descrição<textarea class="input" name="description" maxlength="500" placeholder="Ingredientes, tamanho e diferenciais"></textarea></label><label>Preço em reais<input class="input" name="price" type="number" min="0" step="0.01" placeholder="0,00" required></label><label>Quantidade em estoque<input class="input" name="stock" type="number" min="0" placeholder="0" required></label><div><button class="btn btn-ghost" type="button" data-close-modal>Cancelar</button><button class="btn btn-primary">Salvar produto</button></div></form></div>`;
 }
@@ -538,9 +538,31 @@ function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
+  const refreshCatalog = async () => {
+    const updated = await api.partnerCatalog();
+    if (!view.isConnected) return;
+    const main = view.matches('.partner-main') ? view : view.querySelector('.partner-main');
+    if (!main) return;
+    const scroll = window.scrollY;
+    const mobile = Boolean(view.querySelector('.menu-live-studio.mobile-preview'));
+    main.innerHTML = catalogContent(updated);
+    bind(main, 'cardapio', updated);
+    if (mobile) main.querySelector('[data-preview-device="mobile"]')?.click();
+    window.scrollTo({ top: scroll, behavior: 'instant' });
+  };
   const themeForm = view.querySelector("[data-menu-theme-form]");
   if (themeForm) {
+    const updateContrast = () => {
+      const channels = themeForm.elements.accent.value.match(/[a-f0-9]{2}/gi).map(value => {
+        const channel = parseInt(value, 16) / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      const luminance = channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+      view.querySelector('[data-menu-studio]')?.style.setProperty('--studio-on-accent', luminance > .179 ? '#111111' : '#ffffff');
+    };
+    updateContrast();
     const refreshThemePreview = () => {
+      updateContrast();
       themeForm.style.setProperty(
         "--preview-bg",
         themeForm.elements.background.value,
@@ -991,7 +1013,7 @@ function bind(view, section, data) {
           input.checked ? "Produto disponível." : "Produto pausado.",
           "success",
         );
-        location.hash = "#/parceiro?secao=cardapio&at=" + Date.now();
+        await refreshCatalog();
       } catch (e) {
         input.checked = !input.checked;
         toast(e.message, "error");
@@ -1019,7 +1041,7 @@ function bind(view, section, data) {
           `${result.count} produtos sugeridos foram criados como rascunho.`,
           "success",
         );
-        location.hash = "#/parceiro?secao=cardapio&at=" + Date.now();
+        await refreshCatalog();
       } catch (error) {
         toast(error.message, "error");
         button.disabled = false;
@@ -1147,7 +1169,7 @@ function bind(view, section, data) {
               `${saved.count} produtos importados. Revise e ative quando estiver pronto.`,
               "success",
             );
-            location.hash = "#/parceiro?secao=cardapio&at=" + Date.now();
+            await refreshCatalog();
           } catch (error) {
             toast(error.message, "error");
             button.disabled = false;
@@ -1235,7 +1257,7 @@ function bind(view, section, data) {
         active: existing?.active ?? true,
       });
       toast(existing ? "Produto atualizado." : "Produto criado.", "success");
-      location.hash = "#/parceiro?secao=cardapio&at=" + Date.now();
+      await refreshCatalog();
     } catch (error) {
       toast(error.message || "Não foi possível salvar o produto.", "error");
       submit.disabled = false;

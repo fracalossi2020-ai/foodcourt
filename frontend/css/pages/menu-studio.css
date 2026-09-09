@@ -417,3 +417,11 @@ html[data-theme="dark"] .menu-studio-stage {
     padding-inline: 12px;
   }
 }
+/* Readable preview controls even with a pale custom accent. */
+.menu-live-studio .studio-categories span.active,
+.menu-live-studio .studio-empty button,
+.menu-live-studio .studio-product-photo > b { color: var(--studio-on-accent, #fff); }
+.menu-live-studio .studio-empty { background: #fff; color: #17211b; }
+.menu-live-studio .studio-empty > .fc-icon { color: #526159; }
+.menu-live-studio .studio-empty p { color: #526159; }
+.studio-draft { display: block; margin: 6px 0; padding: 4px 7px; width: fit-content; border-radius: 6px; background: #fff2d5; color: #755000; font-size: .65rem; font-style: normal; }
