@@ -17,7 +17,41 @@ const normalize = (value) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+function luminance(color) {
+  const values = color.match(/[a-f0-9]{2}/gi).map((value) => {
+    const channel = parseInt(value, 16) / 255;
+    return channel <= 0.04045
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+}
+
+function readableAccent(color, surface) {
+  const background = luminance(surface);
+  let channels = color
+    .match(/[a-f0-9]{2}/gi)
+    .map((value) => parseInt(value, 16));
+  for (let step = 0; step < 30; step++) {
+    const result =
+      "#" +
+      channels.map((value) => value.toString(16).padStart(2, "0")).join("");
+    const foreground = luminance(result);
+    if (
+      (Math.max(foreground, background) + 0.05) /
+        (Math.min(foreground, background) + 0.05) >=
+      4.5
+    )
+      return result;
+    channels = channels.map((value) =>
+      Math.round(value * 0.8 + (background < 0.5 ? 255 : 0) * 0.2),
+    );
+  }
+  return background < 0.5 ? "#ffffff" : "#17211b";
+}
+
 export async function render(view, boot, params) {
+  cleanup();
   view.innerHTML = `<div class="page">${skeletonCards(4, false)}</div>`;
   let data;
   try {
@@ -28,8 +62,14 @@ export async function render(view, boot, params) {
   }
 
   const r = data.restaurant;
-  const theme = r.menuTheme || { background: "#f4f8f5", accent: "#07883f" };
-  const products = r.menu.flatMap((section) => section.items);
+  const color = (value, fallback) =>
+    /^#[a-f0-9]{6}$/i.test(value || "") ? value : fallback;
+  const theme = {
+    background: color(r.menuTheme?.background, "#f4f8f5"),
+    accent: color(r.menuTheme?.accent, "#07883f"),
+  };
+  const menu = (r.menu || []).filter((section) => section.items?.length);
+  const products = menu.flatMap((section) => section.items);
   const productIndex = new Map(
     products.map((product) => [product.id, product]),
   );
@@ -38,7 +78,7 @@ export async function render(view, boot, params) {
   setFeeContext(r.deliveryFee, r.freeShippingMin);
   renderCartUI();
 
-  const sectionsHtml = r.menu
+  const sectionsHtml = menu
     .map(
       (section, index) => `
     <section class="digital-menu-section" id="menu-${index}" data-menu-section>
@@ -75,8 +115,8 @@ export async function render(view, boot, params) {
     .join("");
 
   view.innerHTML = `
-    <div class="page menu-experience" style="--menu-bg:${theme.background};--menu-accent:${theme.accent};--menu-cover:${r.cover}">
-      <section class="menu-hero"><div class="menu-hero-cover"></div>
+    <div class="page menu-experience">
+      <section class="menu-hero ${/url\(/i.test(r.cover || "") ? "" : "menu-hero--plain"}"><div class="menu-hero-cover"></div>
         <div class="menu-hero-actions"><button id="restFav" aria-label="Favoritar">${isFav ? "♥" : "♡"}</button><button id="restShare" aria-label="Compartilhar">↗</button></div>
         <div class="menu-brand-panel"><div class="menu-brand-logo">${r.logo}</div><div><span>${esc(r.category)} · Cardápio digital</span><h1>${esc(r.name)}</h1><div class="menu-store-status ${r.open ? "open" : ""}"><i></i>${r.open ? "Aceitando pedidos agora" : `Fechado${r.opensAt ? ` · abre ${r.opensAt}` : ""}`}</div></div></div>
       </section>
@@ -86,10 +126,38 @@ export async function render(view, boot, params) {
       </section>
       ${r.promo ? `<aside class="menu-promo"><span>OFERTA ATIVA</span><b>${esc(r.promo)}</b><small>Aproveite enquanto estiver disponível</small></aside>` : ""}
       ${!r.open ? '<aside class="menu-closed">O cardápio continua disponível para consulta. Você poderá pedir quando a loja abrir.</aside>' : ""}
-      <div class="menu-toolbar"><label><span>⌕</span><input id="menuSearch" type="search" placeholder="Buscar neste cardápio..." autocomplete="off"></label>
-        <nav class="menu-tabs no-scrollbar" id="menuTabs">${r.menu.map((section, index) => `<button class="${index === 0 ? "active" : ""}" data-tab="${index}">${esc(section.name)}</button>`).join("")}</nav></div>
-      <div id="menuNoResults" class="digital-menu-empty" hidden>Nenhum produto encontrado com esse nome.</div><main class="digital-menu">${sectionsHtml}</main>
+      ${
+        products.length
+          ? `<div class="menu-toolbar"><label><span aria-hidden="true">⌕</span><input id="menuSearch" type="search" aria-label="Buscar neste cardápio" placeholder="Buscar neste cardápio..." autocomplete="off"></label>
+        <nav class="menu-tabs no-scrollbar" id="menuTabs" aria-label="Categorias do cardápio">${menu.map((section, index) => `<button class="${index === 0 ? "active" : ""}" data-tab="${index}">${esc(section.name)}</button>`).join("")}</nav></div>`
+          : ""
+      }
+      <div id="menuNoResults" class="digital-menu-empty" hidden>Nenhum produto encontrado com esse nome.</div><main class="digital-menu">${products.length ? sectionsHtml : '<div class="digital-menu-empty menu-unpublished"><h2>Cardápio em atualização</h2><p>Este restaurante ainda não tem produtos publicados. Volte em breve ou explore outras lojas.</p><a href="#/buscar">Explorar restaurantes</a></div>'}</main>
     </div>`;
+
+  const pageStyle = view.querySelector(".menu-experience").style;
+  pageStyle.setProperty("--menu-bg", theme.background);
+  pageStyle.setProperty("--menu-accent", theme.accent);
+  pageStyle.setProperty(
+    "--menu-cover",
+    r.cover || "linear-gradient(135deg,#174b2c,#487654)",
+  );
+  pageStyle.setProperty(
+    "--menu-on-accent",
+    luminance(theme.accent) > 0.179 ? "#111111" : "#ffffff",
+  );
+  pageStyle.setProperty(
+    "--menu-on-bg",
+    luminance(theme.background) > 0.179 ? "#111111" : "#ffffff",
+  );
+  pageStyle.setProperty(
+    "--menu-accent-light",
+    readableAccent(theme.accent, "#ffffff"),
+  );
+  pageStyle.setProperty(
+    "--menu-accent-dark",
+    readableAccent(theme.accent, "#18211c"),
+  );
 
   const openItem = (node) => {
     if (!r.open) {
@@ -101,7 +169,10 @@ export async function render(view, boot, params) {
   view.querySelectorAll("[data-product]").forEach((node) => {
     node.addEventListener("click", () => openItem(node));
     node.addEventListener("keydown", (event) => {
-      if (["Enter", " "].includes(event.key)) openItem(node);
+      if (["Enter", " "].includes(event.key)) {
+        event.preventDefault();
+        openItem(node);
+      }
     });
   });
   view.querySelector("#restFav").addEventListener("click", (event) => {
@@ -132,7 +203,7 @@ export async function render(view, boot, params) {
         .scrollIntoView({ behavior: "smooth", block: "start" });
     }),
   );
-  view.querySelector("#menuSearch").addEventListener("input", (event) => {
+  view.querySelector("#menuSearch")?.addEventListener("input", (event) => {
     const query = normalize(event.currentTarget.value.trim());
     let visible = 0;
     view.querySelectorAll("[data-product]").forEach((node) => {
@@ -146,10 +217,10 @@ export async function render(view, boot, params) {
   });
   const sections = [...view.querySelectorAll("[data-menu-section]")];
   const onScroll = () => {
-    const position = scrollY + 210;
     let active = 0;
     sections.forEach((section, index) => {
-      if (!section.hidden && section.offsetTop <= position) active = index;
+      if (!section.hidden && section.getBoundingClientRect().top <= 210)
+        active = index;
     });
     tabs.forEach((tab, index) =>
       tab.classList.toggle("active", index === active),

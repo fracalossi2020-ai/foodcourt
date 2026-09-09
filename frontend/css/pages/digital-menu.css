@@ -1,10 +1,14 @@
 .menu-experience {
   --menu-bg: #f4f8f5;
   --menu-accent: #07883f;
+  --menu-page-bg: var(--menu-bg);
+  --menu-ink: var(--menu-accent-light, #07883f);
+  --menu-on-accent: #fff;
   max-width: 1280px !important;
   padding-bottom: 80px;
   border-radius: 30px;
-  background: var(--menu-bg);
+  background: var(--menu-page-bg);
+  color: var(--menu-on-bg, #17211b);
   transition: background-color 0.25s ease;
 }
 .menu-experience:before {
@@ -33,16 +37,20 @@
 .menu-hero-cover {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(
-      90deg,
-      rgba(4, 15, 9, 0.9) 0%,
-      rgba(4, 15, 9, 0.48) 45%,
-      rgba(4, 15, 9, 0.08) 75%
-    ),
-    var(--menu-cover);
+  background: var(--menu-cover);
   background-size: cover;
   background-position: center;
+}
+.menu-hero-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    rgba(4, 15, 9, 0.9) 0%,
+    rgba(4, 15, 9, 0.48) 45%,
+    rgba(4, 15, 9, 0.08) 75%
+  );
 }
 .menu-hero:after {
   content: "";
@@ -88,8 +96,13 @@
   align-items: center;
   gap: 22px;
   color: #fff;
+  right: 30px;
+}
+.menu-brand-panel > div:last-child {
+  min-width: 0;
 }
 .menu-brand-logo {
+  flex-shrink: 0;
   width: 92px;
   height: 92px;
   display: grid;
@@ -110,7 +123,7 @@
 .menu-brand-logo .fc-store-mark {
   width: 54px;
   height: 54px;
-  stroke: var(--menu-accent);
+  stroke: var(--menu-ink);
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -134,6 +147,7 @@
   text-transform: uppercase;
 }
 .menu-brand-panel h1 {
+  overflow-wrap: anywhere;
   font-size: clamp(2.2rem, 5vw, 4rem);
   line-height: 1;
   letter-spacing: -0.065em;
@@ -234,7 +248,7 @@
   top: 70px;
   margin: 34px 0 22px;
   padding: 14px 0 10px;
-  background: color-mix(in srgb, var(--menu-bg) 92%, transparent);
+  background: color-mix(in srgb, var(--menu-page-bg) 92%, transparent);
   backdrop-filter: blur(18px);
 }
 .menu-toolbar > label {
@@ -282,7 +296,7 @@
 .menu-tabs button:hover {
   border-color: var(--menu-accent);
   background: var(--menu-accent);
-  color: #fff;
+  color: var(--menu-on-accent);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--menu-accent) 25%, transparent);
 }
 .digital-menu {
@@ -382,7 +396,7 @@
   height: 40px;
   border-radius: 13px;
   background: var(--menu-accent);
-  color: #fff;
+  color: var(--menu-on-accent);
   font-size: 1.4rem;
   box-shadow: 0 9px 18px color-mix(in srgb, var(--menu-accent) 32%, transparent);
 }
@@ -493,10 +507,12 @@
     margin-inline: -10px;
     border-radius: 0 0 25px 25px;
   }
-  .menu-hero-cover {
-    background-image:
-      linear-gradient(0deg, rgba(4, 15, 9, 0.94), rgba(4, 15, 9, 0.08) 75%),
-      var(--menu-cover);
+  .menu-hero-cover::before {
+    background-image: linear-gradient(
+      0deg,
+      rgba(4, 15, 9, 0.94),
+      rgba(4, 15, 9, 0.08) 75%
+    );
   }
   .menu-brand-panel {
     left: 20px;
@@ -721,6 +737,8 @@
 
 /* Dark mode keeps the store accent while using accessible dark surfaces. */
 html[data-theme="dark"] .menu-experience {
+  --menu-page-bg: #0c1210;
+  --menu-ink: var(--menu-accent-dark, #49d080);
   color: #f3f7f4;
 }
 html[data-theme="dark"] .menu-experience:before {
@@ -740,8 +758,7 @@ html[data-theme="dark"] .menu-service-strip {
 html[data-theme="dark"] .menu-service-strip > div {
   border-color: #2b352f;
 }
-html[data-theme="dark"] .menu-service-strip b,
-html[data-theme="dark"] .menu-service-strip .rating-pill {
+html[data-theme="dark"] .menu-service-strip b {
   color: #f2f7f4;
 }
 html[data-theme="dark"] .menu-service-strip small {
@@ -775,7 +792,7 @@ html[data-theme="dark"] .menu-tabs button.active,
 html[data-theme="dark"] .menu-tabs button:hover {
   border-color: var(--menu-accent);
   background: var(--menu-accent);
-  color: #fff;
+  color: var(--menu-on-accent);
 }
 html[data-theme="dark"] .digital-menu-section h2 {
   color: #f4f8f5;
@@ -830,4 +847,74 @@ html[data-theme="dark"] .menu-theme-swatch {
 html[data-theme="dark"] .menu-brand-logo {
   border-color: rgba(255, 255, 255, 0.2);
   background: #151d19;
+}
+
+/* Keep custom brand colors without losing readable controls and empty states. */
+.menu-experience .menu-toolbar > label > span,
+.menu-experience .digital-product strong,
+.menu-experience .digital-product footer i,
+.menu-experience .digital-product-flags span {
+  color: var(--menu-ink);
+}
+.menu-experience .menu-promo {
+  color: var(--menu-on-accent);
+}
+.menu-experience .menu-service-strip .rating-pill {
+  color: #8a5700;
+}
+.menu-experience .digital-menu-section > header > div > span,
+.menu-experience .digital-menu-section > header > small {
+  color: inherit;
+}
+.menu-experience .digital-product {
+  color: #17211b;
+}
+html[data-theme="dark"] .menu-experience .digital-product {
+  color: #f4f8f5;
+}
+body.app-mode .menu-experience .menu-tabs {
+  position: static;
+  overflow-x: auto;
+}
+.menu-experience .menu-brand-logo .fc-store-mark {
+  stroke: var(--menu-ink);
+}
+.menu-experience .digital-menu-empty {
+  background: #fff;
+  color: #526159;
+}
+html[data-theme="dark"] .menu-experience .digital-menu-empty {
+  background: #18211c;
+  color: #b7c1bb;
+}
+.menu-unpublished {
+  margin: 32px 24px 0;
+}
+.menu-unpublished h2 {
+  margin-bottom: 10px;
+  color: #17211b;
+}
+html[data-theme="dark"] .menu-unpublished h2 {
+  color: #f4f8f5;
+}
+.menu-unpublished a {
+  display: inline-block;
+  margin-top: 18px;
+  color: var(--menu-ink);
+  font-weight: 700;
+}
+.menu-hero.menu-hero--plain {
+  height: 280px;
+}
+.menu-experience [hidden] {
+  display: none !important;
+}
+@media (max-width: 600px) {
+  .menu-unpublished {
+    margin-inline: 0;
+    padding: 24px 18px;
+  }
+  .menu-hero.menu-hero--plain {
+    height: 260px;
+  }
 }
