@@ -190,7 +190,8 @@ async function navigate() {
 
     const isSamePage =
       currentRoutePage === route.page && currentRoutePath === path;
-    const mod = await import(`./pages/${route.page}.js?v=20260904-route-fix-1`);
+    const release = new URL(import.meta.url).searchParams.get('v') || 'development';
+    const mod = await import(`./pages/${route.page}.js?v=${encodeURIComponent(release)}`);
     currentPage = mod;
     currentRoutePage = route.page;
     currentRoutePath = path;
