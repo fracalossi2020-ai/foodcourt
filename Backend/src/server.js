@@ -11,7 +11,9 @@ const oauth = require("./lib/oauth");
 const turnstile = require("./lib/turnstile");
 const mailer = require("./lib/mailer");
 const platform = require("./lib/platform");
-const QRCode = require("qrcode");
+
+const payments = require("./lib/payments");
+const orderAccess = Symbol("server checkout");
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "..", "..", "frontend");
@@ -1269,7 +1271,7 @@ const api = {
         }),
       })),
     flashDeals: [],
-    paymentMethods: data.paymentMethods,
+    paymentMethods: payments.methods(),
   }),
 
   "GET /api/home": () => {
@@ -1869,7 +1871,6 @@ async function analyzeMenuImage(store, image) {
   return JSON.parse(outputText);
 }
 
-const PIX_KEY = process.env.PIX_KEY || "3ddfdfec-13f0-4a48-8350-1f6d37ba892a";
 const MERCADO_PAGO_API = "https://api.mercadopago.com";
 
 async function refundOrderPayment(order, payment = null) {
@@ -1877,6 +1878,8 @@ async function refundOrderPayment(order, payment = null) {
     ? db.state.paymentEvents.find((item) => item.id === order.paymentIntentId)
     : null;
   if (!payment || order.paymentStatus !== "refund_pending") return false;
+  if (payment.provider === "stripe")
+    return payments.refundStripe(order, payment, db);
   const previous = (payment.refunds || []).find(
     (refund) => refund.orderId === order.id && refund.status === "approved",
   );
@@ -1893,19 +1896,23 @@ async function refundOrderPayment(order, payment = null) {
     !accessToken
   )
     return false;
+  const pendingRefund = (payment.refunds || []).find(refund => refund.orderId === order.id && refund.providerRefundId);
+  const refundUrl = `${MERCADO_PAGO_API}/v1/payments/${encodeURIComponent(payment.providerPaymentId)}/refunds`;
   const response = await fetch(
-    `${MERCADO_PAGO_API}/v1/payments/${encodeURIComponent(payment.providerPaymentId)}/refunds`,
+    pendingRefund ? `${refundUrl}/${encodeURIComponent(pendingRefund.providerRefundId)}` : refundUrl,
     {
-      method: "POST",
+      method: pendingRefund ? "GET" : "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
         "X-Idempotency-Key": `refund-${order.id}`.slice(0, 64),
       },
-      body: JSON.stringify({ amount: Number(order.total) }),
+      ...(pendingRefund ? {} : { body: JSON.stringify({ amount: Number(order.total) }) }),
+      signal: AbortSignal.timeout(15000),
     },
   );
   const providerRefund = await response.json().catch(() => ({}));
+  if (response.ok && !providerRefund.status) providerRefund.status = "approved";
   payment.refunds ||= [];
   if (!response.ok) {
     payment.refunds.push({
@@ -1920,6 +1927,7 @@ async function refundOrderPayment(order, payment = null) {
     db.saveNow();
     return false;
   }
+  payment.refunds = payment.refunds.filter(refund => refund.orderId !== order.id);
   payment.refunds.push({
     orderId: order.id,
     providerRefundId: String(providerRefund.id),
@@ -1927,9 +1935,7 @@ async function refundOrderPayment(order, payment = null) {
     status: providerRefund.status || "approved",
     at: platform.now(),
   });
-  payment.cancelledOrderIds = (payment.cancelledOrderIds || []).filter(
-    (id) => id !== order.id,
-  );
+  if (providerRefund.status === "approved") payment.cancelledOrderIds = (payment.cancelledOrderIds || []).filter((id) => id !== order.id);
   order.paymentStatus =
     providerRefund.status === "approved" ? "refunded" : "refund_pending";
   payment.status = payment.orderIds?.length ? "paid" : order.paymentStatus;
@@ -1946,131 +1952,7 @@ async function refundOrderPayment(order, payment = null) {
   db.saveNow();
   return order.paymentStatus === "refunded";
 }
-function pixField(id, value) {
-  const text = String(value);
-  return `${id}${String(Buffer.byteLength(text, "utf8")).padStart(2, "0")}${text}`;
-}
-function pixCrc(payload) {
-  let crc = 0xffff;
-  for (const byte of Buffer.from(payload, "utf8")) {
-    crc ^= byte << 8;
-    for (let bit = 0; bit < 8; bit += 1)
-      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
-  }
-  return crc.toString(16).toUpperCase().padStart(4, "0");
-}
-function createPixPayload(amount, txid) {
-  const merchantAccount =
-    pixField("00", "br.gov.bcb.pix") +
-    pixField("01", PIX_KEY) +
-    pixField("02", "Pedido FoodCourt");
-  const additional = pixField("05", txid);
-  const base =
-    pixField("00", "01") +
-    pixField("26", merchantAccount) +
-    pixField("52", "0000") +
-    pixField("53", "986") +
-    pixField("54", amount.toFixed(2)) +
-    pixField("58", "BR") +
-    pixField("59", "FOODCOURT") +
-    pixField("60", "SAO PAULO") +
-    pixField("62", additional) +
-    "6304";
-  return base + pixCrc(base);
-}
-api["POST /api/pix-charge"] = async (params, query, body, ctx) => {
-  const amount = Number(body.amount);
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 100000)
-    return { status: 400, body: { error: "Valor do Pix inválido." } };
-  const txid = `FC${Date.now().toString(36).toUpperCase()}`.slice(0, 25);
-  let payload = createPixPayload(amount, txid);
-  let qrCode = await QRCode.toDataURL(payload, {
-    width: 360,
-    margin: 2,
-    errorCorrectionLevel: "M",
-    color: { dark: "#10251A", light: "#FFFFFFFF" },
-  });
-  const charge = {
-    id: db.uid("payment"),
-    userId: ctx.user.id,
-    provider: "pix-manual",
-    method: "pix",
-    txid,
-    amount: +amount.toFixed(2),
-    status: "pending",
-    createdAt: platform.now(),
-    expiresAt: new Date(Date.now() + 420000).toISOString(),
-  };
-  db.state.paymentEvents.unshift(charge);
-  const accessToken = String(
-    process.env.MERCADO_PAGO_ACCESS_TOKEN || "",
-  ).trim();
-  if (accessToken) {
-    const document = String(ctx.user.document || "").replace(/\D/g, "");
-    const paymentResponse = await fetch(`${MERCADO_PAGO_API}/v1/payments`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": charge.id,
-      },
-      body: JSON.stringify({
-        transaction_amount: charge.amount,
-        description: "Pedido FoodCourt",
-        payment_method_id: "pix",
-        external_reference: charge.id,
-        notification_url: `${String(process.env.APP_URL || "").replace(/\/$/, "")}/api/payments/mercadopago/webhook`,
-        payer: {
-          email: ctx.user.email,
-          ...(document
-            ? {
-                identification: {
-                  type: document.length === 11 ? "CPF" : "CNPJ",
-                  number: document,
-                },
-              }
-            : {}),
-        },
-      }),
-    });
-    const providerPayment = await paymentResponse.json().catch(() => ({}));
-    if (!paymentResponse.ok) {
-      charge.status = "failed";
-      charge.providerError =
-        providerPayment.message || "Falha ao criar pagamento Pix.";
-      db.saveNow();
-      return { status: 502, body: { error: charge.providerError } };
-    }
-    const transaction =
-      providerPayment.point_of_interaction?.transaction_data || {};
-    if (!transaction.qr_code) {
-      charge.status = "failed";
-      charge.providerError = "O provedor não retornou o QR Code Pix.";
-      db.saveNow();
-      return { status: 502, body: { error: charge.providerError } };
-    }
-    charge.provider = "mercado-pago";
-    charge.providerPaymentId = String(providerPayment.id);
-    charge.status = providerPayment.status || "pending";
-    charge.expiresAt = providerPayment.date_of_expiration || charge.expiresAt;
-    payload = transaction.qr_code;
-    qrCode = transaction.qr_code_base64
-      ? `data:image/png;base64,${transaction.qr_code_base64}`
-      : await QRCode.toDataURL(payload, { width: 360, margin: 2 });
-  }
-  db.saveNow();
-  return {
-    id: charge.id,
-    payload,
-    qrCode,
-    amount: +amount.toFixed(2),
-    key: PIX_KEY,
-    txid,
-    expiresIn: 420,
-    expiresAt: Date.parse(charge.expiresAt),
-    mode: accessToken ? "provider" : "test",
-  };
-};
+api["POST /api/pix-charge"] = () => ({ status: 410, body: { error: "Use o checkout para gerar um Pix vinculado ao pedido." } });
 
 async function mercadoPagoWebhook(req, res, url) {
   const secret = String(process.env.MERCADO_PAGO_WEBHOOK_SECRET || "").trim();
@@ -2102,7 +1984,7 @@ async function mercadoPagoWebhook(req, res, url) {
   if (!valid) return sendJson(res, 401, { error: "Assinatura inválida." });
   const response = await fetch(
     `${MERCADO_PAGO_API}/v1/payments/${encodeURIComponent(dataId)}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(15000) },
   );
   const providerPayment = await response.json().catch(() => ({}));
   if (!response.ok)
@@ -2115,110 +1997,9 @@ async function mercadoPagoWebhook(req, res, url) {
       item.id === providerPayment.external_reference,
   );
   if (!payment) return sendJson(res, 200, { received: true });
-  payment.status =
-    providerPayment.status === "approved" ? "paid" : providerPayment.status;
-  payment.updatedAt = platform.now();
-  for (const orderId of payment.orderIds || []) {
-    const order = db.state.platformOrders.find((item) => item.id === orderId);
-    if (!order) continue;
-    order.paymentStatus = payment.status;
-    order.updatedAt = platform.now();
-    if (payment.status === "paid") {
-      const store = db.state.stores.find((item) => item.id === order.storeId);
-      if (store?.ownerId)
-        pushNotification(
-          store.ownerId,
-          "payment",
-          "Pagamento confirmado",
-          `O pedido ${order.id} já pode ser aceito.`,
-          order.id,
-        );
-      pushNotification(
-        order.customerId,
-        "payment",
-        "Pagamento aprovado",
-        `Recebemos o pagamento do pedido ${order.id}.`,
-        order.id,
-      );
-    }
-  }
-  if (payment.status === "paid") {
-    for (const orderId of [...(payment.cancelledOrderIds || [])]) {
-      const order = db.state.platformOrders.find(
-        (item) => item.id === orderId && item.status === "cancelled",
-      );
-      if (!order) continue;
-      order.paymentStatus = "refund_pending";
-      await refundOrderPayment(order, payment);
-    }
-  }
-  db.saveNow();
+  await paymentService.applyMercadoPago(payment, providerPayment);
   return sendJson(res, 200, { received: true });
 }
-
-api["POST /api/partner-subscription-pix"] = async (
-  params,
-  query,
-  body,
-  ctx,
-) => {
-  if (!["merchant", "admin"].includes(ctx.user.role))
-    return forbidden("parceiros");
-  const store = platform.storeForUser(ctx.user);
-  if (!store)
-    return { status: 404, body: { error: "Estabelecimento não encontrado." } };
-  const subscription = db.state.subscriptions.find(
-    (item) => item.storeId === store.id,
-  );
-  if (!subscription)
-    return { status: 404, body: { error: "Assinatura não encontrada." } };
-  if (subscription.status === "ACTIVE")
-    return { status: 409, body: { error: "Esta assinatura já está ativa." } };
-  if (["CANCELED", "BLOCKED"].includes(subscription.status))
-    return {
-      status: 409,
-      body: {
-        error: "Esta assinatura não pode receber pagamento no status atual.",
-      },
-    };
-  const amount = 119.9,
-    txid = `FCP${Date.now().toString(36).toUpperCase()}`.slice(0, 25),
-    payload = createPixPayload(amount, txid);
-  const qrCode = await QRCode.toDataURL(payload, {
-    width: 360,
-    margin: 2,
-    errorCorrectionLevel: "M",
-    color: { dark: "#10251A", light: "#FFFFFFFF" },
-  });
-  subscription.status = "PENDING";
-  subscription.pendingCharge = {
-    method: "PIX",
-    txid,
-    amount,
-    expiresAt: Date.now() + 420000,
-    createdAt: platform.now(),
-  };
-  subscription.updatedAt = platform.now();
-  platform.audit(
-    ctx.user,
-    "subscription.pix.create",
-    "subscription",
-    subscription.id,
-    txid,
-  );
-  db.saveNow();
-  return {
-    payload,
-    qrCode,
-    amount,
-    key: PIX_KEY,
-    txid,
-    expiresIn: 420,
-    expiresAt: subscription.pendingCharge.expiresAt,
-    mode: "test",
-    subscriptionStatus: subscription.status,
-  };
-};
 
 function forbidden(role) {
   return { status: 403, body: { error: `Acesso exclusivo para ${role}.` } };
@@ -2639,7 +2420,7 @@ Object.assign(api, {
           error: `A próxima etapa permitida é ${expectedStatus || "nenhuma"}.`,
         },
       };
-    if (order.paymentStatus === "pending" && body.status !== "cancelled")
+    if (order.paymentStatus !== "paid" && body.status !== "cancelled")
       return {
         status: 409,
         body: {
@@ -2708,7 +2489,7 @@ Object.assign(api, {
     );
     const commissionPercent =
       Math.round(Number(body.commissionPercent) * 100) / 100;
-    if (!order || !delivery || order.status !== "ready")
+    if (!order || !delivery || order.status !== "ready" || order.paymentStatus !== "paid")
       return {
         status: 409,
         body: {
@@ -3675,7 +3456,7 @@ Object.assign(api, {
         couriers: couriers.length,
         paidPayments: db.state.paymentEvents
           .filter((payment) => payment.status === "paid")
-          .reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+          .reduce((sum, payment) => sum + Math.max(0, Number(payment.amount || 0) - (payment.refunds || []).filter(refund => refund.status === "approved").reduce((total, refund) => total + Number(refund.amount || 0), 0)), 0),
         pendingPayments: db.state.paymentEvents.filter((payment) =>
           ["pending", "in_process", "refund_pending"].includes(payment.status),
         ).length,
@@ -4048,6 +3829,7 @@ Object.assign(api, {
       : { status: 404, body: { error: "Pedido não encontrado." } };
   },
   "POST /api/orders": (params, query, body, ctx) => {
+    if (!ctx[orderAccess]) return { status: 410, body: { error: "Use o checkout para criar um pedido com pagamento verificado." } };
     const catalogRestaurant = data.restaurants.find(
       (item) => item.id === body.storeId,
     );
@@ -4064,22 +3846,41 @@ Object.assign(api, {
       ? catalogRestaurant.menu.flatMap((section) => section.items)
       : partnerStore.products;
     try {
+      if (partnerStore && (partnerStore.status !== "active" || !partnerStore.open))
+        throw new Error("Este estabelecimento está fechado ou indisponível.");
+      if (catalogRestaurant && !catalogRestaurant.open)
+        throw new Error("Este estabelecimento está fechado.");
+      const requestedStock = new Map();
       const items = body.items.map((line) => {
         const product = catalogItems.find((item) => item.id === line.productId);
-        const quantity = Math.max(1, Math.min(20, Number(line.quantity) || 1));
+        const quantity = Number(line.quantity);
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20)
+          throw new Error("Quantidade inválida.");
+        requestedStock.set(line.productId, (requestedStock.get(line.productId) || 0) + quantity);
         if (
           !product ||
           product.active === false ||
           (Number.isFinite(Number(product.stock)) &&
-            Number(product.stock) < quantity)
+            Number(product.stock) < requestedStock.get(line.productId))
         )
           throw new Error("Produto indisponível ou sem estoque suficiente.");
+        const options = Array.isArray(line.options) ? line.options : [];
+        const groups = Array.isArray(product.options) ? product.options : data.optionGroups[product.options] || [];
+        const choices = groups.flatMap(group => group.choices || []);
+        if (new Set(options).size !== options.length || options.some(name => !choices.some(choice => choice.name === name)))
+          throw new Error("Adicional inválido.");
+        for (const group of groups) {
+          const selected = group.choices.filter(choice => options.includes(choice.name));
+          if ((group.required && !selected.length) || (group.type === "single" && selected.length > 1))
+            throw new Error(`Confira as opções de ${group.name}.`);
+        }
+        const extra = options.reduce((sum, name) => sum + Number(choices.find(choice => choice.name === name).price || 0), 0);
         return {
           productId: product.id,
           name: product.name,
           quantity,
-          unitPrice: Number(product.promoPrice ?? product.price),
-          options: Array.isArray(line.options) ? line.options : [],
+          unitPrice: payments.money(Number(product.promoPrice ?? product.price) + extra),
+          options,
         };
       });
       const subtotal = items.reduce(
@@ -4098,10 +3899,12 @@ Object.assign(api, {
           partnerStore?.freeShippingMin ??
           0,
       );
-      const deliveryFee =
+      if (!["standard", "priority"].includes(body.delivery || "standard")) throw new Error("Entrega inválida.");
+      const priorityFee = body.delivery === "priority" ? 4.9 : 0;
+      const deliveryFee = (
         freeShippingMin > 0 && subtotal >= freeShippingMin
           ? 0
-          : baseDeliveryFee;
+          : baseDeliveryFee) + priorityFee;
       const couponCode = auth
         .sanitize(body.couponCode)
         .toUpperCase()
@@ -4134,7 +3937,7 @@ Object.assign(api, {
         );
       const discount = promotion
         ? promotion.type === "shipping"
-          ? deliveryFee
+          ? Math.max(0, deliveryFee - priorityFee)
           : Math.min(
               subtotal,
               promotion.type === "fixed"
@@ -4148,7 +3951,7 @@ Object.assign(api, {
               address.id === body.addressId && address.userId === ctx.user.id,
           )
         : null;
-      if (body.addressId && !savedAddress)
+      if (!savedAddress)
         throw new Error("Endereço de entrega inválido.");
       let scheduledAt = null;
       if (body.scheduledAt) {
@@ -4162,7 +3965,7 @@ Object.assign(api, {
         scheduledAt = new Date(scheduleTime).toISOString();
       }
       const order = {
-        id: "FC-" + Date.now(),
+        id: "FC-" + crypto.randomUUID(),
         customerId: ctx.user.id,
         storeId: partnerStore?.id || catalogRestaurant.id,
         restaurantId: catalogRestaurant?.id || partnerStore.slug,
@@ -4173,12 +3976,14 @@ Object.assign(api, {
         items,
         subtotal,
         deliveryFee,
+        priorityFee,
+        delivery: body.delivery || "standard",
         discount: Number(discount.toFixed(2)),
         couponCode: promotion?.code || null,
         total: Number((subtotal + deliveryFee - discount).toFixed(2)),
-        paymentMethod: body.paymentMethod || "Simulado",
+        paymentMethod: body.paymentMethod,
         paymentIntentId: null,
-        paymentStatus: "authorized",
+        paymentStatus: "pending",
         addressId: savedAddress?.id || null,
         address: savedAddress
           ? `${savedAddress.label} — ${savedAddress.street}, ${savedAddress.number}`
@@ -4188,31 +3993,7 @@ Object.assign(api, {
         updatedAt: platform.now(),
         cancelReason: null,
       };
-      if (
-        String(body.paymentMethod || "")
-          .toLowerCase()
-          .includes("pix")
-      ) {
-        const charge = db.state.paymentEvents.find(
-          (item) =>
-            item.id === body.paymentIntentId &&
-            item.userId === ctx.user.id &&
-            item.status === "pending",
-        );
-        if (!charge || Date.parse(charge.expiresAt) <= Date.now())
-          throw new Error("O Pix expirou. Gere um novo código para continuar.");
-        const reserved = Number(charge.reservedAmount || 0);
-        if (reserved + order.total - Number(charge.amount) > 0.01)
-          throw new Error(
-            "O valor do Pix não corresponde ao total deste pedido.",
-          );
-        charge.reservedAmount = Number((reserved + order.total).toFixed(2));
-        charge.orderIds = [...(charge.orderIds || []), order.id];
-        charge.orderId = charge.orderIds[0];
-        charge.updatedAt = platform.now();
-        order.paymentIntentId = charge.id;
-        order.paymentStatus = "pending";
-      }
+      if (ctx[orderAccess] === "quote") return { order };
       if (promotion?.userId) {
         promotion.active = false;
         promotion.usedAt = platform.now();
@@ -4548,6 +4329,11 @@ function serveStatic(req, res, pathname) {
   });
 }
 
+const paymentService = payments.install({
+  api, db, cancelOrderState, refundOrderPayment, pushNotification,
+  order: (body, ctx, mode) => api["POST /api/orders"]({}, null, body, { ...ctx, [orderAccess]: mode }),
+});
+
 /* ============ SERVIDOR ============ */
 
 const server = http.createServer(async (req, res) => {
@@ -4574,6 +4360,17 @@ const server = http.createServer(async (req, res) => {
       } catch (error) {
         console.error("[payments] webhook:", error.message);
         sendJson(res, 500, { error: "Falha ao processar notificação." });
+      }
+      return;
+    }
+
+    if (pathname === "/api/payments/stripe/webhook" && req.method === "POST") {
+      try {
+        const result = await paymentService.stripeWebhook(req);
+        sendJson(res, result.status, result.body);
+      } catch (error) {
+        console.error("[payments] Stripe webhook:", error.message);
+        sendJson(res, 500, { error: "Falha ao processar webhook." });
       }
       return;
     }
@@ -4706,7 +4503,11 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res, pathname);
 });
 
+let paymentReconciliationTimer;
+server.on("close", () => clearInterval(paymentReconciliationTimer));
 function start(port = PORT) {
+  paymentReconciliationTimer = setInterval(() => paymentService.reconcile(), 60000);
+  paymentReconciliationTimer.unref();
   server.listen(port, () => {
     console.log("");
     console.log(

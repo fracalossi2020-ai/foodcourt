@@ -1,0 +1,79 @@
+.payment-status-page {
+  max-width: 720px;
+  margin-inline: auto;
+  display: grid;
+  gap: 18px;
+  color: var(--text);
+}
+.payment-status-page p {
+  color: var(--text-2);
+}
+.payment-status-total {
+  font-size: 2rem;
+}
+.payment-pix-code {
+  padding: 24px;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  min-width: 0;
+}
+.payment-pix-code img {
+  width: min(100%, 300px);
+  border-radius: 12px;
+}
+.payment-pix-code label {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.payment-pix-code input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+.payment-status-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.payment-method-grid .select-card:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.payment-method-grid .sc-emoji svg {
+  width: 36px;
+  height: 36px;
+  fill: currentColor;
+}
+.payment-method-grid .sc-title,
+.payment-method-grid .sc-sub {
+  display: block;
+}
+.payment-method-grid .sc-emoji {
+  color: var(--consumer-green);
+}
+html[data-theme="dark"] .test-payment-note {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+.payment-status-page [data-payment-error] {
+  color: var(--danger);
+}
+@media (max-width: 600px) {
+  .payment-status-links {
+    flex-direction: column;
+  }
+  .payment-pix-code {
+    padding: 16px;
+  }
+}

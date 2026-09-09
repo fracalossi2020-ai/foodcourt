@@ -132,9 +132,10 @@ export async function render(view, _boot) {
           <b>${esc(o.restaurantName)}</b>
           <div class="text-xs dim">${esc(o.dateLabel)} • #${esc(o.id)}</div>
         </div>
-        <span class="badge ${active ? "badge-brand" : "badge-dark"}">${active ? "🛵 Em andamento" : "✓ Entregue"}</span>
+        <span class="badge ${active ? "badge-brand" : "badge-dark"}">${o.status === "cancelled" ? "Cancelado" : active ? o.paymentStatus !== "paid" ? "Aguardando pagamento" : "🛵 Em andamento" : "✓ Entregue"}</span>
       </div>
       <div class="order-items">${esc(o.summary)}</div>
+      ${o.paymentIntentId ? `<a class="btn btn-outline btn-sm" href="#/checkout?payment=${encodeURIComponent(o.paymentIntentId)}">Ver pagamento</a>` : ""}
       <div class="order-foot">
         <b>${money(o.total)}</b>
         <div class="pair">

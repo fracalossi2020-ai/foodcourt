@@ -20,6 +20,81 @@ const db = require("../src/lib/db");
 
 let baseUrl;
 
+async function checkoutFixture(cookie, body) {
+  const previous = {
+    token: process.env.MERCADO_PAGO_ACCESS_TOKEN,
+    secret: process.env.MERCADO_PAGO_WEBHOOK_SECRET,
+    url: process.env.APP_URL,
+  };
+  process.env.MERCADO_PAGO_ACCESS_TOKEN = "TEST-payments";
+  process.env.MERCADO_PAGO_WEBHOOK_SECRET = "fixture-secret";
+  process.env.APP_URL = "https://foodcourt.example";
+  const originalFetch = global.fetch;
+  global.fetch = async (input, options) => {
+    if (String(input) === "https://api.mercadopago.com/v1/payments") {
+      const payload = JSON.parse(options.body);
+      return new Response(
+        JSON.stringify({
+          id: payload.external_reference,
+          external_reference: payload.external_reference,
+          transaction_amount: payload.transaction_amount,
+          currency_id: "BRL",
+          status: "pending",
+          point_of_interaction: {
+            transaction_data: { qr_code: "test-pix-payload" },
+          },
+        }),
+        { status: 201 },
+      );
+    }
+    return originalFetch(input, options);
+  };
+  try {
+    const payload = {
+      groups: [{ storeId: body.storeId, items: body.items }],
+      addressId: body.addressId,
+      couponCode: body.couponCode || "",
+      scheduledAt: body.scheduledAt || null,
+      delivery: "standard",
+      method: "pix",
+    };
+    const quote = await fetch(`${baseUrl}/api/checkout/quote`, {
+      method: "POST",
+      headers: { Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const priced = await quote.json();
+    assert.equal(quote.status, 200, JSON.stringify(priced));
+    const response = await fetch(`${baseUrl}/api/checkout`, {
+      method: "POST",
+      headers: { Cookie: cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        expectedTotal: priced.total,
+        idempotencyKey: require("node:crypto").randomUUID(),
+      }),
+    });
+    const result = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(result));
+    return {
+      pix: result.payment,
+      order: db.state.platformOrders.find(
+        (item) => item.id === result.payment.orders[0].id,
+      ),
+    };
+  } finally {
+    global.fetch = originalFetch;
+    for (const [key, value] of [
+      ["MERCADO_PAGO_ACCESS_TOKEN", previous.token],
+      ["MERCADO_PAGO_WEBHOOK_SECRET", previous.secret],
+      ["APP_URL", previous.url],
+    ]) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
 async function loginDemo() {
   const response = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",
@@ -506,6 +581,8 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
   const { cookie } = await loginDemo();
   const store = db.state.stores.find((item) => item.id === "store_real_test");
   store.deliveryFee = 7;
+  store.status = "active";
+  store.open = true;
   store.freeShippingMin = 100;
   const customer = db.findByEmail("joao@foodcourt.com");
   const address = db.state.customerAddresses.find(
@@ -524,29 +601,13 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
     endsAt: new Date(Date.now() + 86_400_000).toISOString(),
     uses: 0,
   });
-  const pixResponse = await fetch(`${baseUrl}/api/pix-charge`, {
-    method: "POST",
-    headers: { Cookie: cookie, "Content-Type": "application/json" },
-    body: JSON.stringify({ amount: 52 }),
+  const { pix, order } = await checkoutFixture(cookie, {
+    storeId: store.id,
+    items: [{ productId: "product_real_test", quantity: 2 }],
+    addressId: address.id,
+    couponCode: "TESTE10",
+    scheduledAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   });
-  assert.equal(pixResponse.status, 200);
-  const pix = await pixResponse.json();
-  assert.ok(db.state.paymentEvents.some((item) => item.id === pix.id));
-  const response = await fetch(`${baseUrl}/api/orders`, {
-    method: "POST",
-    headers: { Cookie: cookie, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      storeId: store.id,
-      items: [{ productId: "product_real_test", quantity: 2 }],
-      addressId: address.id,
-      paymentMethod: "Pix",
-      paymentIntentId: pix.id,
-      couponCode: "TESTE10",
-      scheduledAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }),
-  });
-  assert.equal(response.status, 201);
-  const order = (await response.json()).order;
   assert.equal(order.discount, 5);
   assert.equal(order.deliveryFee, 7);
   assert.equal(order.total, 52);
@@ -635,21 +696,15 @@ test("merchant follows order transitions and cancellation restores inventory", a
   const address = db.state.customerAddresses.find(
     (item) => item.userId === customer.id,
   );
-  const creation = await fetch(`${baseUrl}/api/orders`, {
-    method: "POST",
-    headers: {
-      Cookie: customerLogin.cookie,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      storeId: store.id,
-      items: [{ productId: "product_real_test", quantity: 1 }],
-      addressId: address.id,
-      paymentMethod: "Cartão",
-    }),
+  const { order } = await checkoutFixture(customerLogin.cookie, {
+    storeId: store.id,
+    items: [{ productId: "product_real_test", quantity: 1 }],
+    addressId: address.id,
   });
-  assert.equal(creation.status, 201);
-  const order = (await creation.json()).order;
+  order.paymentStatus = "paid";
+  db.state.paymentEvents.find(
+    (item) => item.id === order.paymentIntentId,
+  ).status = "paid";
   assert.equal(store.products[0].stock, 4);
 
   const login = await fetch(`${baseUrl}/api/auth/login`, {

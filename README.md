@@ -1,5 +1,7 @@
 # FoodCourt
 
+Consulte [docs/PAYMENTS.md](docs/PAYMENTS.md) para configurar Pix, cartões e Apple Pay e homologar os pagamentos antes de ativá-los em produção.
+
 > Consulte [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) para o mapa atualizado de pastas e convenções do projeto.
 
 Plataforma de pedidos de comida com landing page pública, autenticação e área interna do cliente.

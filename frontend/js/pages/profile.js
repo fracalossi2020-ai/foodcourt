@@ -62,7 +62,7 @@ function renderOverview(view) {
       ${item("package", "Meus pedidos", "Em andamento e anteriores", "#/pedidos")}
       ${item("heart", "Favoritos", "Restaurantes e produtos", "#/favoritos")}
       ${item("pin", "Endereços", `${store.addresses.length} salvos`, "#/perfil?secao=enderecos")}
-      ${item("wallet", "Pagamentos", "Cartões, Pix e carteira", "#/perfil?secao=pagamentos")}
+      ${item("wallet", "Pagamentos", "Pix, cartões e Apple Pay", "#/perfil?secao=pagamentos")}
       ${item("tag", "Cupons", `${couponCount} na carteira`, "#/ofertas")}
       ${item("star", "Programa de benefícios", `${u.cashback}% cashback ativo`, "#/fidelidade")}
       ${item("bell", "Notificações", "Alertas e novidades", "#/notificacoes")}
@@ -123,7 +123,7 @@ function sectionContent(sectionId, boot) {
           selected: store.preferredPaymentId === payment.id,
           icon: payment.emoji,
           title: payment.name,
-          description: payment.description,
+          description: payment.enabled ? payment.description : "Indisponível no momento",
         }),
       )
       .join("")}</div>`;

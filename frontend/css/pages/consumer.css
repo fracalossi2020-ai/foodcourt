@@ -254,6 +254,21 @@ body.app-mode .empty-inline {
   background: linear-gradient(145deg, #f8fcf9, #fff);
   box-shadow: none !important;
 }
+html[data-theme="dark"] body.app-mode :is(.state-box, .empty-modern, .empty-inline) {
+  background: var(--consumer-card);
+  border-color: var(--consumer-border);
+  color: var(--consumer-muted);
+}
+html[data-theme="dark"] body.app-mode :is(.state-box, .empty-modern) h3 {
+  color: var(--consumer-text);
+}
+html[data-theme="dark"] body.app-mode :is(.state-box, .empty-modern) p {
+  color: var(--consumer-muted);
+}
+html[data-theme="dark"] body.app-mode .state-box .state-emoji {
+  background: var(--consumer-green-pale) !important;
+  border-color: var(--consumer-border) !important;
+}
 .state-box .state-emoji {
   background: #eaf7ef !important;
   border-color: #cde7d7 !important;

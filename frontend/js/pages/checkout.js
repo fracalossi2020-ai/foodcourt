@@ -1,13 +1,18 @@
 import { store } from '../core/store.js'
 import { api } from '../core/api.js'
 import { esc, money, toast, emptyState } from '../core/ui.js'
-import { setFeeContext, renderCartUI } from '../core/cart.js'
+import { setFeeContext } from '../core/cart.js'
 
-let activePixTimer = null
-export function cleanup() { if (activePixTimer) clearInterval(activePixTimer); activePixTimer = null }
+import { renderPayment, cleanupPayment, rememberCart } from '../core/payment-screen.js'
 
-export async function render(view, boot) {
+let listeners
+export function cleanup() { cleanupPayment(); listeners?.abort() }
+
+export async function render(view, boot, _params, query = new URLSearchParams()) {
   cleanup()
+  if (query.get('payment')) { await renderPayment(view, query.get('payment')); return }
+  const config = await api.paymentConfig()
+  listeners = new AbortController()
   const { cart } = store
   if (!cart.items.length) {
     view.innerHTML = `<div class="page">${emptyState({ emoji: '🛒', title: 'Seu carrinho está vazio', sub: 'Adicione itens para finalizar um pedido.', action: '#/', actionLabel: 'Explorar restaurantes' })}</div>`
@@ -25,14 +30,12 @@ export async function render(view, boot) {
   const state = {
     addressId: savedAddresses()[0]?.id || null,
     delivery: 'standard',
-    payment: 'pix',
+    payment: config.methods.find(method => method.enabled && method.id === store.preferredPaymentId)?.id || config.methods.find(method => method.enabled)?.id || 'pix',
     scheduledAt: null,
-    card: null,
-    pixCharge: null
+    quote: null
   }
 
   function draw() {
-    cleanup()
     const steps = ['Endereço', 'Entrega', 'Pagamento', 'Revisão']
     view.innerHTML = `
     <div class="page" style="max-width:680px;margin:0 auto">
@@ -47,7 +50,7 @@ export async function render(view, boot) {
       <div id="stepBody"></div>
       <div class="checkout-nav">
         ${step > 1 ? '<button class="btn btn-ghost" data-back>← Voltar</button>' : ''}
-        ${step < 4 ? `<button class="btn btn-primary" data-next>${nextStepLabel()} →</button>` : `<button class="btn btn-primary btn-lg" data-place>${state.payment === 'pix' ? 'Confirmar pedido após o Pix' : 'Finalizar pedido'} →</button>`}
+        ${step < 4 ? `<button class="btn btn-primary" data-next>${nextStepLabel()} →</button>` : `<button class="btn btn-primary btn-lg" data-place>${state.payment === 'pix' ? 'Gerar Pix e pagar' : 'Ir para pagamento seguro'} →</button>`}
       </div>
     </div>`
     const body = document.getElementById('stepBody')
@@ -120,111 +123,54 @@ export async function render(view, boot) {
     bindSelects(body, 'delivery', drawDelivery, state)
   }
 
+  function checkoutBody() {
+    const totals = store.cartTotals(fee, freeMin)
+    return { groups: cartGroups.map(group => ({ storeId: group.restaurantId, items: group.items.map(item => ({ productId: item.id, quantity: item.qty, options: item.optionNames || [] })) })), addressId: state.addressId, delivery: state.delivery, scheduledAt: state.scheduledAt || null, couponCode: totals.coupon?.code || '', method: state.payment }
+  }
+
   function drawPayment(body) {
-    const t = store.cartTotals(fee, freeMin)
-    const total = t.total + prioExtra()
-    const available = boot.paymentMethods.filter(pm => ['pix', 'credit'].includes(pm.id))
-    body.innerHTML = `
-      <div class="payment-heading"><div><span class="checkout-kicker">PAGAMENTO SEGURO</span><h2 class="h-md">Como você quer pagar?</h2><p>Escolha uma opção para este pedido de <b>${money(total)}</b>.</p></div><span class="payment-lock">🔒</span></div>
-      <div class="payment-method-grid">${available.map(pm => `
-        <button class="select-card ${state.payment === pm.id ? 'selected' : ''}" data-select="payment" data-value="${pm.id}">
-          <span class="sc-emoji ${pm.id === 'pix' ? 'pix-brand-icon' : pm.id === 'credit' ? 'card-brand-icon' : ''}">${pm.id === 'pix' ? pixLogo() : pm.id === 'credit' ? cardLogo() : pm.emoji}</span>
-          <span class="sc-main">
-            <span class="sc-title">${pm.id === 'credit' ? 'Cartão de crédito' : 'Pix'}</span>
-            <span class="sc-sub">${pm.id === 'credit' ? (state.card ? `${esc(state.card.brand)} terminado em ${esc(state.card.last4)}` : 'Cadastre seu cartão com segurança') : 'QR Code ou Pix copia e cola'}</span>
-          </span>
-          <span class="radio-big"></span>
-        </button>`).join('')}</div>
-      ${state.payment === 'credit' ? cardForm() : `<aside class="pix-preview"><span>⚡</span><div><b>Pagamento rápido pelo aplicativo do seu banco</b><small>Na próxima etapa você poderá escanear o QR Code ou copiar o código Pix com o valor de ${money(total)} já preenchido.</small></div></aside>`}
-      <div class="test-payment-note"><b>AMBIENTE DE TESTE</b><span>O FoodCourt ainda não confirma pagamentos automaticamente. Não compartilhe dados de cartão reais nesta demonstração.</span></div>`
+    body.innerHTML = `<div class="payment-heading"><div><span class="checkout-kicker">PAGAMENTO SEGURO</span><h2 class="h-md">Como você quer pagar?</h2><p>Escolha a forma de pagamento. O total será conferido na revisão.</p></div></div>
+      <div class="payment-method-grid">${config.methods.map(method => `<button type="button" class="select-card ${state.payment === method.id ? 'selected' : ''}" data-select="payment" data-value="${method.id}" ${method.enabled ? '' : 'disabled'} aria-pressed="${state.payment === method.id}"><span class="sc-emoji">${method.id === 'pix' ? pixLogo() : cardLogo()}</span><span class="sc-main"><span class="sc-title">${esc(method.name)}</span><span class="sc-sub">${method.enabled ? esc(method.description) : 'Indisponível no momento'}</span></span><span class="radio-big"></span></button>`).join('')}</div>
+      <aside class="pix-preview"><div><b>${state.payment === 'pix' ? 'Pix vinculado ao seu pedido' : 'Seus dados ficam com o provedor de pagamento'}</b><small>${state.payment === 'apple_pay' ? 'O Apple Pay aparece na página segura da Stripe quando disponível para seu dispositivo e cartão. Essa página também oferece cartão como alternativa.' : state.payment === 'pix' ? 'A confirmação é automática após a aprovação do banco.' : 'Você informa os dados e autoriza o pagamento na página segura do Mercado Pago.'}</small></div></aside>
+      ${config.testMode ? '<p class="test-payment-note">Ambiente de teste: use os dados de teste do provedor.</p>' : ''}`
     bindSelects(body, 'payment', drawPayment, state)
-    bindCardForm(body)
   }
 
   function nextStepLabel() {
     if (step === 1) return 'Continuar para entrega'
     if (step === 2) return 'Continuar para pagamento'
-    return state.payment === 'pix' ? 'Gerar QR Code Pix' : 'Revisar pedido'
+    return 'Revisar pedido'
   }
 
-  function cardForm() {
-    return `<form class="checkout-card-form" data-card-form autocomplete="off">
-      <div class="card-visual"><span>FOODCOURT • TESTE</span><i>◉</i><strong data-card-preview>•••• •••• •••• ${state.card?.last4 || '0000'}</strong><small><span data-name-preview>${esc(state.card?.holder || 'NOME NO CARTÃO')}</span><span>${esc(state.card?.expiry || 'MM/AA')}</span></small></div>
-      <div class="card-fields">
-        <label class="wide"><span>Número do cartão</span><input name="number" inputmode="numeric" placeholder="0000 0000 0000 0000" maxlength="19" required></label>
-        <label class="wide"><span>Nome impresso</span><input name="holder" placeholder="Como aparece no cartão" maxlength="40" required></label>
-        <label><span>Validade</span><input name="expiry" inputmode="numeric" placeholder="MM/AA" maxlength="5" required></label>
-        <label><span>CVV</span><input name="cvv" type="password" inputmode="numeric" placeholder="•••" maxlength="4" required></label>
-        <label class="save-card-check wide"><input name="save" type="checkbox" checked><span>Salvar somente bandeira e últimos 4 dígitos neste dispositivo</span></label>
-      </div>
-      ${state.card ? `<div class="card-saved">✓ Cartão de teste ${esc(state.card.brand)} •••• ${esc(state.card.last4)} pronto para continuar.</div>` : ''}
-    </form>`
-  }
 
-  function bindCardForm(body) {
-    const form = body.querySelector('[data-card-form]')
-    if (!form) return
-    const number = form.elements.number
-    const holder = form.elements.holder
-    const expiry = form.elements.expiry
-    number.addEventListener('input', () => { const digits=number.value.replace(/\D/g,'').slice(0,16);number.value=digits.replace(/(.{4})/g,'$1 ').trim();form.querySelector('[data-card-preview]').textContent=(digits.padEnd(16,'•').match(/.{1,4}/g)||[]).join(' ') })
-    holder.addEventListener('input', () => { form.querySelector('[data-name-preview]').textContent=holder.value.toUpperCase()||'NOME NO CARTÃO' })
-    expiry.addEventListener('input', () => { const digits=expiry.value.replace(/\D/g,'').slice(0,4);expiry.value=digits.length>2?`${digits.slice(0,2)}/${digits.slice(2)}`:digits })
-    form.elements.cvv.addEventListener('input', event => { event.target.value=event.target.value.replace(/\D/g,'').slice(0,4) })
-  }
-
-  function validateCard() {
-    const form = view.querySelector('[data-card-form]')
-    if (!form) return false
-    const digits=form.elements.number.value.replace(/\D/g,'');const holder=form.elements.holder.value.trim();const expiry=form.elements.expiry.value;const cvv=form.elements.cvv.value
-    const luhn=digits.length>=13&&[...digits].reverse().reduce((sum,n,index)=>{let value=Number(n);if(index%2){value*=2;if(value>9)value-=9}return sum+value},0)%10===0
-    const match=expiry.match(/^(0[1-9]|1[0-2])\/(\d{2})$/)
-    if(!luhn){toast('Digite um número de cartão de teste válido.','error','⚠️');form.elements.number.focus();return false}
-    if(!holder){toast('Informe o nome impresso no cartão.','error','⚠️');form.elements.holder.focus();return false}
-    if(!match||cvv.length<3){toast('Confira a validade e o CVV.','error','⚠️');return false}
-    const brand=/^4/.test(digits)?'Visa':/^5[1-5]/.test(digits)?'Mastercard':'Cartão'
-    state.card={brand,last4:digits.slice(-4),holder,expiry};form.elements.number.value='';form.elements.cvv.value='';return true
-  }
-
-  function prioExtra() { return state.delivery === 'priority' ? 4.9 : 0 }
 
   function drawReview(body) {
-    const t = store.cartTotals(fee, freeMin)
-    const grand = t.total + prioExtra()
+    const t = { subtotal: state.quote.subtotal, fee: state.quote.deliveryFee, discount: state.quote.discount, coupon: { code: checkoutBody().couponCode } }
+    const grand = state.quote.total
     const addr = savedAddresses().find(a => a.id === state.addressId)
-    const pm = boot.paymentMethods.find(p => p.id === state.payment)
-    if (state.payment === 'pix' && state.pixCharge) {
-      body.innerHTML = `<section class="pix-payment-screen">
-        <header><span class="checkout-kicker">PIX • AMBIENTE DE TESTE</span><h2>Pague ${money(grand)} pelo Pix</h2><p>Abra o aplicativo do seu banco, escaneie o QR Code ou use o Pix copia e cola.</p><div class="pix-expiry" data-pix-expiry><span>⏱ Este código expira em</span><strong data-pix-timer>07:00</strong><i><b data-pix-progress></b></i></div></header>
-        <div class="pix-payment-layout"><div class="pix-qr-card"><img src="${state.pixCharge.qrCode}" alt="QR Code Pix no valor de ${money(grand)}"><span>Valor exato do pedido</span><strong>${money(grand)}</strong></div>
-        <div class="pix-payment-content"><ol><li><b>Abra o app do seu banco</b><small>Escolha a opção pagar com Pix.</small></li><li><b>Escaneie ou copie</b><small>O valor já está incluído no código.</small></li><li><b>Confira antes de pagar</b><small>Favorecido esperado: FOODCOURT.</small></li></ol><label><span>Pix copia e cola</span><div><input value="${esc(state.pixCharge.payload)}" readonly data-pix-code><button type="button" data-copy-pix>Copiar código</button></div></label><aside>⚠️ Esta chave pode gerar uma transferência real. O modo local não verifica a aprovação automaticamente.</aside></div></div>
-      </section>`
-      body.querySelector('[data-copy-pix]')?.addEventListener('click', async event => { try{await navigator.clipboard.writeText(state.pixCharge.payload)}catch{const input=body.querySelector('[data-pix-code]');input.select();document.execCommand('copy')}event.currentTarget.textContent='✓ Copiado';toast('Código Pix copiado.','success','✓') })
-      startPixTimer(body, grand)
-      return
-    }
+    const pm = config.methods.find(p => p.id === state.payment)
     body.innerHTML = `
       <h2 class="h-md" style="margin-bottom:14px">🧾 Revise seu pedido</h2>
       <div class="card" style="padding:6px 16px;margin-bottom:14px">
-        ${cart.items.map(i => `
+        ${state.quote.orders.flatMap(order => order.items).map(i => `
           <div class="cart-item">
-            <div class="ci-emoji">${i.emoji}</div>
+            <div class="ci-emoji">🍽️</div>
             <div class="ci-info">
-              <div class="ci-name">${i.qty}× ${esc(i.name)}</div>
-              ${i.optionNames?.length ? `<div class="ci-detail">${esc(i.optionNames.join(', '))}</div>` : ''}
+              <div class="ci-name">${i.quantity}× ${esc(i.name)}</div>
+              ${i.options?.length ? `<div class="ci-detail">${esc(i.options.join(', '))}</div>` : ''}
             </div>
-            <span class="ci-price">${money(i.unitPrice * i.qty)}</span>
+            <span class="ci-price">${money(i.unitPrice * i.quantity)}</span>
           </div>`).join('')}
       </div>
       <div class="card" style="padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:9px">
         <div class="pair text-sm"><span>📍</span> <b>${esc(addr.label)}</b> — <span class="muted">${esc(addr.street)}</span></div>
         <div class="pair text-sm"><span>🚴</span> <span class="muted">${state.delivery === 'priority' ? 'Entrega prioritária' : 'Entrega padrão'}</span></div>
-        <div class="pair text-sm"><span>💳</span> <span class="muted">${state.card ? `${esc(state.card.brand)} •••• ${esc(state.card.last4)}` : esc(pm.name)}</span></div>
+        <div class="pair text-sm"><span>💳</span> <span class="muted">${esc(pm.name)}</span></div>
       </div>
       <div class="totals">
         <div class="totals-row"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
-        <div class="totals-row"><span>Taxa de entrega</span><span>${t.fee === 0 && !prioExtra() ? '<b class="brand-text">Grátis</b>' : money(t.fee + prioExtra())}</span></div>
-        ${t.discount ? `<div class="totals-row discount"><span>Cupom ${t.coupon.code}</span><span>-${money(t.discount)}</span></div>` : ''}
+        <div class="totals-row"><span>Taxa de entrega</span><span>${t.fee === 0 ? '<b class="brand-text">Grátis</b>' : money(t.fee)}</span></div>
+        ${t.discount ? `<div class="totals-row discount"><span>Cupom ${esc(t.coupon.code)}</span><span>-${money(t.discount)}</span></div>` : ''}
         <div class="totals-row total"><span>Total</span><span class="val">${money(grand)}</span></div>
       </div>`
   }
@@ -254,65 +200,50 @@ export async function render(view, boot) {
     </button>`
   }
 
+  let placing = false
   async function placeOrder() {
-    const t = store.cartTotals(fee, freeMin)
-    const addr = savedAddresses().find(a => a.id === state.addressId)
-    const pm = boot.paymentMethods.find(p => p.id === state.payment)
-    const placeButton = view.querySelector('[data-place]')
-    if (placeButton) { placeButton.disabled = true; placeButton.textContent = 'CONFIRMANDO...' }
+    if (placing) return
+    placing = true
+    const button = view.querySelector('[data-place]')
+    button.disabled = true
+    button.textContent = 'Preparando pagamento...'
     try {
-      const results = await Promise.all(cartGroups.map(group => api.createOrder({ storeId:group.restaurantId, items:group.items.map(item => ({ productId:item.id,quantity:item.qty,options:item.optionNames||[] })), addressId:addr.id, address:`${addr.label} — ${addr.street}${addr.number?', '+addr.number:''}`, paymentMethod:pm.name, paymentIntentId:state.payment==='pix'?state.pixCharge?.id:null, couponCode:t.coupon?.code||'', scheduledAt:state.scheduledAt||null })))
-      const localOrders = results.map((result,index) => { const serverOrder=result.order; const group=cartGroups[index]; return store.addOrder({
-      id: serverOrder.id,
-      restaurantId: group.restaurantId,
-      restaurantName: group.restaurantName,
-      emoji: rest?.logo || '🍔',
-      items: group.items.map(i => ({ ...i })),
-      summary: group.items.map(i=>`${i.qty}× ${i.name}`).join(', ').slice(0,60),
-      subtotal: serverOrder.subtotal, fee: serverOrder.deliveryFee, discount:serverOrder.discount, total:serverOrder.total,
-      coupon: t.coupon?.code || null,
-      address: `${addr.label} — ${addr.street}`,
-      payment: pm.name,
-      serverSynced: true, status: serverOrder.status, createdAt: new Date(serverOrder.createdAt).getTime(),
-      dateLabel: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
-      rated: false
-      }) })
-      store.cartClear();renderCartUI();toast(`${localOrders.length} ${localOrders.length===1?'pedido confirmado':'pedidos confirmados'} e enviados às lojas! 🎉`,'success','✅');location.hash=localOrders.length===1?`#/pedido/${localOrders[0].id}`:'#/pedidos'
-    } catch (error) { toast(error.message,'error','⚠️'); if(placeButton){placeButton.disabled=false;placeButton.textContent='FINALIZAR PEDIDO 🍔'} }
+      const body = checkoutBody()
+      const fingerprint = JSON.stringify(body)
+      const storageKey = 'fc:checkout-attempt:' + boot.user.id
+      let attempt
+      try { attempt = JSON.parse(sessionStorage.getItem(storageKey)) } catch {}
+      if (!attempt || attempt.fingerprint !== fingerprint) attempt = { fingerprint, key: crypto.randomUUID() }
+      sessionStorage.setItem(storageKey, JSON.stringify(attempt))
+      const result = await api.checkout({ ...body, expectedTotal: state.quote.total, idempotencyKey: attempt.key })
+      rememberCart(result.payment.id, storageKey)
+      location.hash = '#/checkout?payment=' + encodeURIComponent(result.payment.id)
+    } catch (error) {
+      toast(error.message, 'error')
+      if (error.status === 409) { step = 3; draw() }
+      else { button.disabled = false; button.textContent = 'Tentar novamente' }
+    } finally { placing = false }
   }
 
   view.addEventListener('click', async event => {
     if (event.target.closest('[data-back]')) { step = Math.max(1, step - 1); draw(); return }
     if (event.target.closest('[data-next]')) {
       if (step === 1 && !savedAddresses().find(address => address.id === state.addressId)) { toast('Adicione e selecione um endereço para continuar','error','⚠️'); return }
-      if (step === 3 && state.payment === 'credit' && !state.card && !validateCard()) return
-      if (step === 3 && state.payment === 'pix') {
-        const button=event.target.closest('[data-next]');button.disabled=true;button.textContent='Gerando Pix...'
-        try { const totals=store.cartTotals(fee,freeMin);state.pixCharge=await api.createPixCharge(+(totals.total+prioExtra()).toFixed(2));state.pixCharge.expiresAt=Number(state.pixCharge.expiresAt)||Date.now()+420000 }
-        catch(error){toast(error.message||'Não foi possível gerar o Pix.','error','⚠️');button.disabled=false;button.textContent='Continuar →';return}
+      if (step === 3) {
+        if (!config.methods.find(method => method.id === state.payment)?.enabled) { toast('Escolha uma forma de pagamento disponível.', 'error'); return }
+        const button = event.target.closest('[data-next]')
+        if (button.disabled) return
+        button.disabled = true
+        button.textContent = 'Conferindo total...'
+        try { state.quote = await api.checkoutQuote(checkoutBody()) }
+        catch (error) { toast(error.message, 'error'); button.disabled = false; button.textContent = 'Revisar pedido'; return }
       }
       step = Math.min(4, step + 1)
       try { draw(); window.scrollTo({ top:0, behavior:'smooth' }) } catch (error) { step = Math.max(1,step-1); toast('Não foi possível avançar: '+error.message,'error','⚠️'); draw() }
     }
-  })
+  }, { signal: listeners.signal })
   draw()
 
-  function startPixTimer(body, amount) {
-    cleanup()
-    const timer=body.querySelector('[data-pix-timer]');const progress=body.querySelector('[data-pix-progress]');const box=body.querySelector('[data-pix-expiry]')
-    const duration=420000
-    const tick=async()=>{
-      const remaining=Math.max(0,(state.pixCharge?.expiresAt||0)-Date.now());const totalSeconds=Math.ceil(remaining/1000);const minutes=Math.floor(totalSeconds/60);const seconds=totalSeconds%60
-      if(timer)timer.textContent=`${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`
-      if(progress)progress.style.width=`${Math.max(0,Math.min(100,remaining/duration*100))}%`
-      if(remaining>0)return
-      cleanup();box?.classList.add('expired');if(timer)timer.textContent='EXPIRADO';const copy=body.querySelector('[data-copy-pix]');if(copy)copy.disabled=true
-      toast('O QR Code expirou. Estamos gerando um novo Pix.','info','⏱')
-      try{state.pixCharge=await api.createPixCharge(amount);state.pixCharge.expiresAt=Number(state.pixCharge.expiresAt)||Date.now()+duration;drawReview(body);toast('Novo QR Code Pix gerado.','success','✓')}
-      catch(error){box?.classList.add('refresh-error');if(timer)timer.textContent='TENTE NOVAMENTE';toast(error.message||'Não foi possível renovar o Pix.','error','⚠️')}
-    }
-    tick();activePixTimer=setInterval(tick,1000)
-  }
 }
 
 function bindSelects(body, key, redraw, state) {

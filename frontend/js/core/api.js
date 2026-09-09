@@ -59,6 +59,11 @@ async function post(path, payload) {
 
 export const api = {
   invalidate: () => cache.clear(),
+  paymentConfig: () => get("/api/payments/config"),
+  checkoutQuote: (body) => post("/api/checkout/quote", body),
+  checkout: (body) => post("/api/checkout", body),
+  payment: (id) => get(`/api/payments/${encodeURIComponent(id)}`),
+  cancelPayment: (id) => post(`/api/payments/${encodeURIComponent(id)}/cancel`),
   bootstrap: () => get("/api/bootstrap", { ttl: 60000 }),
   home: () => get("/api/home", { ttl: 30000 }),
   restaurant: (id) => get(`/api/restaurants/${id}`),

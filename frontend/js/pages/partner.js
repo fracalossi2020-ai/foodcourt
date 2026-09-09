@@ -85,7 +85,7 @@ export function renderSubscriptionPix(target, charge, regenerate) {
   clearInterval(subscriptionPixTimer);
   target.hidden = false;
   target.classList.remove("expired");
-  target.innerHTML = `<div class="subscription-pix-qr"><img src="${charge.qrCode}" alt="QR Code Pix da assinatura"><b>R$ ${Number(charge.amount).toFixed(2).replace(".", ",")}</b><small>Valor da assinatura</small></div><div class="subscription-pix-content"><span class="subscription-pix-test">PIX · AMBIENTE DE TESTE</span><h2>Pague pelo aplicativo do seu banco</h2><p>Escaneie o QR Code ou copie o código Pix abaixo. O valor já está incluído e não pode ser alterado.</p><div class="subscription-pix-timer"><div><b data-pix-countdown>07:00</b><small>para o código expirar</small></div><i><span data-pix-progress></span></i></div><label>Pix copia e cola</label><div class="subscription-pix-copy"><input value="${esc(charge.payload)}" readonly aria-label="Código Pix copia e cola"><button type="button" data-copy-subscription-pix>Copiar código</button></div><p class="subscription-pix-warning">Este código usa a chave Pix informada e pode gerar uma transferência real. No ambiente local, a aprovação não é confirmada automaticamente.</p><button class="btn btn-primary subscription-pix-renew" type="button" data-renew-subscription-pix hidden>Gerar novo código Pix</button></div>`;
+  target.innerHTML = `<div class="subscription-pix-qr"><img src="${charge.qrCode}" alt="QR Code Pix da assinatura"><b>R$ ${Number(charge.amount).toFixed(2).replace(".", ",")}</b><small>Valor da assinatura</small></div><div class="subscription-pix-content"><span class="subscription-pix-test">${charge.mode === "test" ? "PIX - TESTE" : "PIX"}</span><h2>Pague pelo aplicativo do seu banco</h2><p>Escaneie o QR Code ou copie o código Pix abaixo. O valor já está incluído e não pode ser alterado.</p><div class="subscription-pix-timer"><div><b data-pix-countdown>07:00</b><small>para o código expirar</small></div><i><span data-pix-progress></span></i></div><label>Pix copia e cola</label><div class="subscription-pix-copy"><input value="${esc(charge.payload)}" readonly aria-label="Código Pix copia e cola"><button type="button" data-copy-subscription-pix>Copiar código</button></div><p class="subscription-pix-warning">A assinatura será ativada somente após a confirmação do provedor.</p><button class="btn btn-primary subscription-pix-renew" type="button" data-renew-subscription-pix hidden>Gerar novo código Pix</button></div>`;
   target
     .querySelector("[data-copy-subscription-pix]")
     .addEventListener("click", async (event) => {
@@ -107,12 +107,29 @@ export function renderSubscriptionPix(target, charge, regenerate) {
     progress = target.querySelector("[data-pix-progress]"),
     renew = target.querySelector("[data-renew-subscription-pix]"),
     expiresAt = Number(charge.expiresAt) || Date.now() + 420000;
-  const tick = () => {
+  const duration = Math.max(1, expiresAt - Date.now());
+  let lastCheck = 0;
+  let checking = false;
+  const tick = async () => {
+    if (!target.isConnected) { clearInterval(subscriptionPixTimer); return; }
+    if (charge.id && !checking && Date.now() - lastCheck > 5000) {
+      checking = true;
+      lastCheck = Date.now();
+      try {
+        const { payment } = await api.payment(charge.id);
+        if (payment.status === "paid" && target.isConnected) {
+          clearInterval(subscriptionPixTimer);
+          target.innerHTML = '<div class="subscription-pix-content"><h2>Pagamento confirmado</h2><p>Sua assinatura foi paga. A publicação da loja continua sujeita à revisão.</p><a class="btn btn-primary" href="#/parceiro?secao=plano">Ver assinatura</a></div>';
+          return;
+        }
+      } catch { /* A próxima consulta recupera falhas temporárias. */ }
+      finally { checking = false; }
+    }
     const remaining = Math.max(0, expiresAt - Date.now()),
       seconds = Math.ceil(remaining / 1000),
       minutes = Math.floor(seconds / 60);
     countdown.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-    progress.style.width = `${Math.max(0, Math.min(100, (remaining / 420000) * 100))}%`;
+    progress.style.width = `${Math.max(0, Math.min(100, (remaining / duration) * 100))}%`;
     if (!remaining) {
       clearInterval(subscriptionPixTimer);
       countdown.textContent = "EXPIRADO";
