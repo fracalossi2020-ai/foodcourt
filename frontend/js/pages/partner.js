@@ -37,6 +37,10 @@ export async function render(
     : "dashboard";
   view.innerHTML = `<div class="partner-loading">Carregando central do parceiro...</div>`;
   try {
+    if (section === 'plano' && query.get('recorrencia') === 'retorno') {
+      try { await api.syncRecurring(); }
+      catch { toast('Não foi possível atualizar a recorrência agora. Use Atualizar situação.', 'error'); }
+    }
     const payload = await load(section);
     view.innerHTML = `<div class="partner-shell"><aside class="partner-sidebar"><a class="partner-brand" href="#/parceiro"><i>FC</i><span>Central do<br><b>Parceiro</b></span></a><p class="partner-nav-label">GERENCIAR</p><nav>${nav.map(([id, label, iconName], index) => `<a class="${section === id ? "active" : ""}" style="--nav-index:${index}" href="#/parceiro?secao=${id}" title="Abrir ${label}"><span>${icon(iconName)}</span><b>${label}</b>${section === id ? "<i>Você está aqui</i>" : ""}</a>`).join("")}</nav><div class="partner-user"><span>${boot.user.avatarEmoji}</span><div><b>${esc(boot.user.fullName)}</b><small>Proprietário da loja</small></div></div></aside><main class="partner-main"><div class="partner-mobile-context"><b>${nav.find((item) => item[0] === section)?.[1]}</b><span>Gerencie sua operação com dados reais.</span></div>${content(section, payload)}</main></div>`;
     bind(view, section, payload);
@@ -304,7 +308,7 @@ function content(section, data) {
     const subscription = data.subscription || {};
     const date = value => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Ainda não pago';
     const status = { ACTIVE: 'Ativo', PENDING: 'Aguardando pagamento', OVERDUE: 'Vencido', CANCELED: 'Cancelado', BLOCKED: 'Bloqueado' }[subscription.status] || 'Sem assinatura';
-    return `${head('ASSINATURA', 'Plano e renovação', 'Acompanhe o pagamento e o período de uso.')}<article class="partner-panel subscription-card"><h2>${subscription.lifetime ? 'Plano vitalício' : 'FoodCourt Parceiro mensal'}</h2><b>${status}</b><dl class="subscription-dates"><div><dt>Último pagamento</dt><dd>${subscription.lifetime ? 'Isento' : date(subscription.paidAt)}</dd></div><div><dt>Dias de uso ${subscription.lifetime ? '' : 'no ciclo'}</dt><dd>${subscription.daysUsed || 0} dias</dd></div><div><dt>Próximo vencimento</dt><dd>${subscription.lifetime ? 'Sem vencimento' : subscription.nextBillingAt ? date(subscription.nextBillingAt) : 'Um mês após o pagamento'}</dd></div><div><dt>Tempo restante</dt><dd>${subscription.lifetime ? 'Ilimitado' : subscription.daysRemaining === null ? 'Aguardando pagamento' : (subscription.daysRemaining ?? 0) + ' dias'}</dd></div></dl>${subscription.lifetime ? '<p>Sua conta possui acesso sem cobrança e sem expiração.</p>' : `<p>${money(subscription.price || 119.9)} por mês. Renovação por Pix, sem débito automático.</p>${['PENDING', 'OVERDUE'].includes(subscription.status) ? '<button class="btn btn-primary" data-generate-subscription-pix>Pagar mensalidade com Pix</button><section class="partner-subscription-pix" data-subscription-pix hidden></section>' : ''}`}<button class="btn btn-outline" data-plan-details>Ver permissões</button></article>`;
+    return `${head('ASSINATURA', 'Plano e renovação', 'Acompanhe o pagamento e o período de uso.')}<article class="partner-panel subscription-card"><h2>${subscription.lifetime ? 'Plano vitalício' : 'FoodCourt Parceiro mensal'}</h2><b>${status}</b><dl class="subscription-dates"><div><dt>Último pagamento</dt><dd>${subscription.lifetime ? 'Isento' : date(subscription.paidAt)}</dd></div><div><dt>Dias de uso ${subscription.lifetime ? '' : 'no ciclo'}</dt><dd>${subscription.daysUsed || 0} dias</dd></div><div><dt>Próximo vencimento</dt><dd>${subscription.lifetime ? 'Sem vencimento' : subscription.nextBillingAt ? date(subscription.nextBillingAt) : 'Um mês após o pagamento'}</dd></div><div><dt>Tempo restante</dt><dd>${subscription.lifetime ? 'Ilimitado' : subscription.daysRemaining === null ? 'Aguardando pagamento' : (subscription.daysRemaining ?? 0) + ' dias'}</dd></div></dl>${subscription.lifetime ? '<p>Sua conta possui acesso sem cobrança e sem expiração.</p>' : `<p>${money(subscription.price || 119.9)} por mês. Escolha Pix avulso ou autorize a renovação automática.</p>${(!subscription.recurring || subscription.recurring.status === 'cancelled') && ['PENDING', 'OVERDUE'].includes(subscription.status) ? '<button class="btn btn-primary" data-generate-subscription-pix>Pagar mensalidade com Pix</button><section class="partner-subscription-pix" data-subscription-pix hidden></section>' : ''}`}${recurringControls(subscription)}<button class="btn btn-outline" data-plan-details>Ver permissões</button></article>`;
   }
   if (section === "configuracoes")
     return `${head("PREFERÊNCIAS", "Configurações", "Dados gerais e segurança da operação.")}<div class="partner-panel partner-settings"><article><div><b>Notificações de novos pedidos</b><small>Mostra alertas quando um pedido chegar.</small></div><label class="partner-toggle"><input type="checkbox" data-order-notifications ${data.store.orderNotifications !== false ? "checked" : ""}><i></i><span>${data.store.orderNotifications !== false ? "Ativadas" : "Desativadas"}</span></label></article><article><div><b>Segurança da conta</b><small>Sessão, autorização e vínculo da loja estão protegidos.</small></div><button data-security-details>Ver detalhes</button></article><article><div><b>Voltar ao marketplace</b><small>Acesse o FoodCourt como consumidor.</small></div><a href="#/inicio">Abrir FoodCourt →</a></article></div>`;
@@ -321,6 +325,14 @@ function content(section, data) {
   if (section === "equipe")
     return `${head("ACESSOS", "Equipe da loja", "Controle funções e permissões dos colaboradores.", `<button class="btn btn-primary" data-new-member>+ Convidar pessoa</button>`)}<div class="partner-role-legend"><span><b>Gerente</b> pode administrar a loja</span><span><b>Cozinha</b> acompanha e prepara pedidos</span></div><div class="partner-panel">${data.members.map((m) => `<div class="team-row"><span>${m.name.slice(0, 2).toUpperCase()}</span><div><b>${esc(m.name)}</b><small>${esc(m.email)}</small></div><em>${roleLabel(m.role)}</em><button aria-label="Editar ${esc(m.name)}" data-edit-member="${m.id}">Editar</button></div>`).join("") || emptyState("♟", "Nenhuma pessoa na equipe", "Convide alguém para ajudar na operação.")}</div>`;
   return `${head("ATENDIMENTO", "Suporte", "Converse sobre dúvidas e ocorrências da operação.")}<div class="partner-support-banner"><span>💬</span><div><b>Precisa de ajuda agora?</b><p>Descreva o problema com detalhes para receber uma orientação mais rápida.</p></div><button class="btn btn-primary" data-new-ticket>Novo chamado</button></div><div class="partner-panel">${data.tickets.map((t) => `<article class="ticket-row"><span>#${t.id.split("_").pop()}</span><div><b>${esc(t.subject)}</b><small>Última mensagem: ${esc(t.messages.at(-1)?.text || "")}</small></div><em>${t.status === "open" ? "Aberto" : "Resolvido"}</em><button class="btn btn-outline btn-sm" data-open-ticket="${t.id}">Abrir conversa</button></article>`).join("") || emptyState("✓", "Nenhum chamado aberto", "Quando precisar, abra uma conversa com o suporte.")}</div>`;
+}
+
+function recurringControls(subscription) {
+  if (subscription.lifetime || ['BLOCKED', 'CANCELED'].includes(subscription.status)) return '';
+  const recurring = subscription.recurring;
+  const active = recurring && recurring.status !== 'cancelled';
+  const status = { creating: 'Preparando autorização', pending: 'Aguardando autorização', authorized: 'Cobrança automática autorizada', paused: 'Cobrança automática pausada', cancelled: 'Cobrança automática cancelada' }[recurring?.status] || 'Cobrança automática desativada';
+  return `<section class="recurring-controls"><h3>Renovação automática</h3><p>${status}</p>${recurring?.nextPaymentAt && active ? '<p>Próxima tentativa de cobrança: ' + new Date(recurring.nextPaymentAt).toLocaleDateString('pt-BR') + '</p>' : ''}${!active || ['creating', 'pending'].includes(recurring.status) ? '<form data-recurring-form><label><input type="checkbox" required> Quero autorizar ' + money(subscription.price || 119.9) + ' por mês, até cancelar. A autorização será concluída no Mercado Pago.</label><button class="btn btn-primary">Autorizar cobrança mensal</button></form>' : ''}${active ? '<button class="btn btn-outline" data-cancel-recurring>Cancelar cobranças automáticas</button><button class="btn btn-outline" data-sync-recurring>Atualizar situação</button>' : ''}<p>O acesso é renovado após a confirmação de cada pagamento. Cancelar impede novas cobranças e preserva o período já pago.</p></section>`;
 }
 
 function catalogContent(data) {
@@ -538,6 +550,29 @@ function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
+  view.querySelector('[data-recurring-form]')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('button');
+    button.disabled = true;
+    try {
+      const result = await api.startRecurring();
+      if (result.status === 'authorized') location.hash = '#/parceiro?secao=plano&at=' + Date.now();
+      else location.assign(result.url);
+    } catch (error) { toast(error.message, 'error'); button.disabled = false; }
+  });
+  view.querySelector('[data-cancel-recurring]')?.addEventListener('click', async event => {
+    if (!window.confirm('Cancelar as próximas cobranças automáticas? O período já pago será mantido.')) return;
+    const button = event.currentTarget;
+    button.disabled = true;
+    try { await api.cancelRecurring(); location.hash = '#/parceiro?secao=plano&at=' + Date.now(); }
+    catch (error) { toast(error.message, 'error'); button.disabled = false; }
+  });
+  view.querySelector('[data-sync-recurring]')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try { await api.syncRecurring(); location.hash = '#/parceiro?secao=plano&at=' + Date.now(); }
+    catch (error) { toast(error.message, 'error'); button.disabled = false; }
+  });
   if (section === "plano") bindPendingSubscription(view);
   const refreshCatalog = async () => {
     const updated = await api.partnerCatalog();

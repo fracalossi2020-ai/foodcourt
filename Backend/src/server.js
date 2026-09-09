@@ -1982,6 +1982,8 @@ async function mercadoPagoWebhook(req, res, url) {
     expected.length === signature.v1.length &&
     crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature.v1));
   if (!valid) return sendJson(res, 401, { error: "Assinatura inválida." });
+  if (await paymentService.recurringWebhook(body.type || url.searchParams.get("type"), dataId))
+    return sendJson(res, 200, { received: true });
   const response = await fetch(
     `${MERCADO_PAGO_API}/v1/payments/${encodeURIComponent(dataId)}`,
     { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(15000) },

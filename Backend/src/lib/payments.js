@@ -157,6 +157,7 @@ function install({
   pushNotification,
 }) {
   const running = new Map();
+  const recurring = require("./recurring").install({ api, db, request, headers: mpHeaders, appUrl });
   const syncing = new Map();
   const ordersFor = (payment) =>
     db.state.platformOrders.filter(
@@ -725,6 +726,8 @@ function install({
       );
       if (!subscription) throw error("Assinatura não encontrada.", 404);
       const billing = subscriptions.summary(subscription, ctx.user);
+      if (subscription.recurring && subscription.recurring.status !== "cancelled")
+        throw error("Cancele a recorrência antes de pagar por Pix avulso.", 409);
       if (billing.lifetime || ["ACTIVE", "CANCELED", "BLOCKED"].includes(billing.status))
         throw error("A assinatura não está disponível para pagamento.", 409);
       if (!methods().find((item) => item.id === "pix").enabled)
@@ -884,11 +887,12 @@ function install({
         }
         payment.reconciledAt = Date.now();
       }
+      await recurring.reconcile();
     } finally {
       reconciling = false;
     }
   }
-  return { applyMercadoPago, stripeWebhook, synchronize, reconcile };
+  return { applyMercadoPago, stripeWebhook, synchronize, reconcile, recurringWebhook: recurring.webhook };
 }
 
 module.exports = { install, methods, money, refundStripe };

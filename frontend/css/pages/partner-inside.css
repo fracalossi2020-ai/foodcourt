@@ -74,3 +74,8 @@ html[data-theme="dark"] .partner-shell .menu-phone-preview footer { background: 
 .subscription-dates { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 18px; margin: 24px 0; }
 .subscription-dates dt { color: var(--text-2); font-size: .8rem; }
 .subscription-dates dd { margin: 6px 0 0; font-weight: 700; }
+.recurring-controls { margin: 24px 0; padding: 20px; border: 1px solid var(--border); border-radius: 16px; }
+.recurring-controls form { display: grid; gap: 14px; margin: 18px 0; }
+.recurring-controls label { display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+.recurring-controls input { margin-top: 5px; flex: none; }
+.recurring-controls .btn { margin: 6px 8px 6px 0; white-space: normal; }
