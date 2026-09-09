@@ -306,8 +306,7 @@ function content(section, data) {
     return `${head("FINANCEIRO", "Recebimentos e repasses", "Valores calculados sobre pedidos entregues.")}<section class="partner-metrics">${metric("💵", "Vendas brutas", money(data.gross), `${data.orders} pedidos concluídos`)}${metric("📉", "Comissão", money(data.commission), "desconto da plataforma")}${metric("✅", "Você recebe", money(data.net), "valor líquido estimado")}${metric("📅", "Próximo repasse", new Date(data.nextPayout).toLocaleDateString("pt-BR"), "data prevista")}</section><div class="partner-panel partner-finance-explain"><h2>Como chegamos ao valor líquido?</h2><div><span>Vendas brutas <b>${money(data.gross)}</b></span><i>−</i><span>Comissão <b>${money(data.commission)}</b></span><i>=</i><span class="total">Você recebe <b>${money(data.net)}</b></span></div><button class="btn btn-outline" data-export-finance>Exportar relatório CSV</button></div>`;
   if (section === "avaliacoes")
     return `${head("REPUTAÇÃO", "Avaliações dos clientes", "Responda comentários e acompanhe a percepção da loja.")}<div class="partner-panel">${data.reviews.map((r) => `<article class="review-row"><span>${r.customerName.slice(0, 2).toUpperCase()}</span><div><b>${esc(r.customerName)}</b><strong aria-label="${r.rating} de 5 estrelas">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</strong><p>${esc(r.comment)}</p>${r.reply ? `<blockquote><b>Sua resposta</b>${esc(r.reply)}</blockquote>` : ""}<button data-review-reply="${r.id}">${r.reply ? "Editar resposta" : "Responder avaliação"}</button></div></article>`).join("") || emptyState("★", "Ainda não há avaliações", "As avaliações aparecerão depois dos pedidos entregues.")}</div>`;
-  if (section === "equipe")
-    return `${head("ACESSOS", "Equipe da loja", "Controle funções e permissões dos colaboradores.", `<button class="btn btn-primary" data-new-member>+ Convidar pessoa</button>`)}<div class="partner-role-legend"><span><b>Gerente</b> pode administrar a loja</span><span><b>Cozinha</b> acompanha e prepara pedidos</span></div><div class="partner-panel">${data.members.map((m) => `<div class="team-row"><span>${m.name.slice(0, 2).toUpperCase()}</span><div><b>${esc(m.name)}</b><small>${esc(m.email)}</small></div><em>${roleLabel(m.role)}</em><button aria-label="Editar ${esc(m.name)}" data-edit-member="${m.id}">Editar</button></div>`).join("") || emptyState("♟", "Nenhuma pessoa na equipe", "Convide alguém para ajudar na operação.")}</div>`;
+  if (section === "equipe") return teamContent(data);
   return `${head("ATENDIMENTO", "Suporte", "Converse sobre dúvidas e ocorrências da operação.")}<div class="partner-support-banner"><span>💬</span><div><b>Precisa de ajuda agora?</b><p>Descreva o problema com detalhes para receber uma orientação mais rápida.</p></div><button class="btn btn-primary" data-new-ticket>Novo chamado</button></div><div class="partner-panel">${data.tickets.map((t) => `<article class="ticket-row"><span>#${t.id.split("_").pop()}</span><div><b>${esc(t.subject)}</b><small>Última mensagem: ${esc(t.messages.at(-1)?.text || "")}</small></div><em>${t.status === "open" ? "Aberto" : "Resolvido"}</em><button class="btn btn-outline btn-sm" data-open-ticket="${t.id}">Abrir conversa</button></article>`).join("") || emptyState("✓", "Nenhum chamado aberto", "Quando precisar, abra uma conversa com o suporte.")}</div>`;
 }
 
@@ -317,6 +316,15 @@ function recurringControls(subscription) {
   const active = recurring && recurring.status !== 'cancelled';
   const status = { creating: 'Preparando autorização', pending: 'Aguardando autorização', authorized: 'Cobrança automática autorizada', paused: 'Cobrança automática pausada', cancelled: 'Cobrança automática cancelada' }[recurring?.status] || 'Cobrança automática desativada';
   return `<section class="recurring-controls"><h3>Renovação automática</h3><p>${status}</p>${recurring?.nextPaymentAt && active ? '<p>Próxima tentativa de cobrança: ' + new Date(recurring.nextPaymentAt).toLocaleDateString('pt-BR') + '</p>' : ''}${!active || ['creating', 'pending'].includes(recurring.status) ? '<form data-recurring-form><label><input type="checkbox" required> Quero autorizar ' + money(subscription.price || 119.9) + ' por mês, até cancelar. A autorização será concluída no Mercado Pago.</label><button class="btn btn-primary">Autorizar cobrança mensal</button></form>' : ''}${active ? '<button class="btn btn-outline" data-cancel-recurring>Cancelar cobranças automáticas</button><button class="btn btn-outline" data-sync-recurring>Atualizar situação</button>' : ''}<p>O acesso é renovado após a confirmação de cada pagamento. Cancelar impede novas cobranças e preserva o período já pago.</p></section>`;
+}
+
+function teamContent(data) {
+  const members = data.members || [];
+  const active = members.filter(member => member.active !== false).length;
+  return `${head('PESSOAS', 'Equipe da loja', 'Organize os colaboradores e mantenha seus cadastros atualizados.', '<button class="btn btn-primary" data-new-member>+ Adicionar pessoa</button>')}
+    <section class="team-summary" aria-label="Resumo da equipe"><div><span>Total de pessoas</span><b>${members.length}</b></div><div><span>Ativas</span><b>${active}</b></div><div><span>Inativas</span><b>${members.length - active}</b></div><div><span>Gerentes</span><b>${members.filter(member => member.role === 'manager').length}</b></div></section>
+    <section class="partner-panel team-directory"><header><div><h2>Colaboradores</h2><p>Busque por nome ou e-mail e filtre a lista.</p></div><span data-team-count>${members.length} pessoas</span></header><div class="team-filters"><label>Buscar<input class="input" type="search" data-team-search placeholder="Nome ou e-mail"></label><label>Função<select class="input" data-team-role><option value="">Todas</option><option value="manager">Gerente</option><option value="kitchen">Cozinha</option></select></label><label>Status<select class="input" data-team-status><option value="">Todos</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select></label></div>
+    <div class="team-directory-list">${members.map(member => `<article class="team-person" data-team-person="${esc(member.id)}" data-role="${esc(member.role)}" data-status="${member.active === false ? 'inactive' : 'active'}"><span class="team-avatar" aria-hidden="true">${esc(member.name.slice(0, 2).toUpperCase())}</span><div class="team-person-info"><h3>${esc(member.name)}</h3><p>${esc(member.email)}</p><span>${esc(roleLabel(member.role))}</span> <b class="team-status ${member.active === false ? 'inactive' : ''}">${member.active === false ? 'Inativo' : 'Ativo'}</b></div><div class="team-person-actions"><button class="btn btn-outline" data-edit-member="${esc(member.id)}" aria-label="Editar ${esc(member.name)}">Editar</button><button class="btn btn-outline" data-toggle-member="${esc(member.id)}">${member.active === false ? 'Reativar' : 'Desativar'}</button></div></article>`).join('')}</div><div class="team-empty" data-team-empty ${members.length ? 'hidden' : ''}><h3>${members.length ? 'Nenhum resultado' : 'Sua equipe começa aqui'}</h3><p>${members.length ? 'Tente outro nome ou ajuste os filtros.' : 'Adicione as pessoas que trabalham com você.'}</p></div></section><p class="team-help">O cadastro registra a pessoa na equipe. Nenhum convite por e-mail é enviado por esta tela.</p>`;
 }
 
 function scheduleContent(data) {
@@ -543,6 +551,28 @@ function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
+  const filterTeam = () => {
+    const normalize = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const query = normalize(view.querySelector('[data-team-search]').value.trim());
+    const role = view.querySelector('[data-team-role]').value;
+    const status = view.querySelector('[data-team-status]').value;
+    let count = 0;
+    view.querySelectorAll('[data-team-person]').forEach(row => {
+      row.hidden = !normalize(row.querySelector('.team-person-info').textContent).includes(query) || Boolean(role && row.dataset.role !== role) || Boolean(status && row.dataset.status !== status);
+      if (!row.hidden) count++;
+    });
+    view.querySelector('[data-team-count]').textContent = `${count} pessoas`;
+    view.querySelector('[data-team-empty]').hidden = count > 0;
+  };
+  view.querySelectorAll('[data-team-search], [data-team-role], [data-team-status]').forEach(input => input.addEventListener('input', filterTeam));
+  view.querySelectorAll('[data-toggle-member]').forEach(button => button.addEventListener('click', async () => {
+    const member = data.members.find(item => item.id === button.dataset.toggleMember);
+    button.disabled = true;
+    try {
+      await api.savePartnerTeamMember({ ...member, active: member.active === false });
+      location.hash = '#/parceiro?secao=equipe&at=' + Date.now();
+    } catch (error) { toast(error.message, 'error'); button.disabled = false; }
+  }));
   view.querySelectorAll('[data-schedule-preset]').forEach(button => button.addEventListener('click', () => {
     const form = button.closest('form');
     const [start, end] = button.dataset.schedulePreset.split(',');
@@ -801,15 +831,15 @@ function bind(view, section, data) {
   );
   const memberModal = (member) => {
     const modal = openActionModal(view, {
-      title: member ? "Editar acesso" : "Convidar pessoa",
+      title: member ? "Editar pessoa" : "Adicionar pessoa",
       text: "Escolha o que esta pessoa poderá fazer na operação.",
       fields: `<input type="hidden" name="id" value="${esc(member?.id || "")}"><label>Nome completo<input class="input" name="name" value="${esc(member?.name || "")}" required></label><label>E-mail<input class="input" name="email" type="email" value="${esc(member?.email || "")}" required></label><label>Função<select class="input" name="role"><option value="kitchen" ${member?.role === "kitchen" ? "selected" : ""}>Cozinha — acompanha pedidos</option><option value="manager" ${member?.role === "manager" ? "selected" : ""}>Gerente — administra a loja</option></select></label>`,
-      submitLabel: member ? "Salvar acesso" : "Enviar convite",
+      submitLabel: member ? "Salvar alterações" : "Adicionar pessoa",
       secondary: member
         ? '<button class="btn btn-danger" type="button" data-remove-member>Remover</button>'
         : "",
       onSubmit: async (values) => {
-        await api.savePartnerTeamMember(values);
+        await api.savePartnerTeamMember({ ...values, active: member?.active !== false });
         toast(
           member ? "Acesso atualizado." : "Pessoa adicionada à equipe.",
           "success",

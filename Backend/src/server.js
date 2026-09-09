@@ -2858,6 +2858,7 @@ Object.assign(api, {
     };
   },
   "POST /api/partner-team-member": (params, query, body, ctx) => {
+    if (!["merchant", "admin"].includes(ctx.user.role)) return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     let member = db.state.storeMembers.find(
       (m) => m.id === body.id && m.storeId === store.id,
@@ -2876,6 +2877,9 @@ Object.assign(api, {
         .trim()
         .toLowerCase(),
       role = ["manager", "kitchen"].includes(body.role) ? body.role : "kitchen";
+    if (body.id && !member) return { status: 404, body: { error: "Pessoa não encontrada." } };
+    if (db.state.storeMembers.some(item => item.storeId === store.id && item.id !== member?.id && item.email.toLowerCase() === email))
+      return { status: 409, body: { error: "Este e-mail já faz parte da equipe." } };
     if (name.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return {
         status: 400,
