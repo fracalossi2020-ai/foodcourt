@@ -43,3 +43,31 @@ html[data-theme="dark"] body.app-mode:has(.partner-shell){background:radial-grad
 @media(max-width:760px){.partner-quick-actions{align-items:stretch;overflow-x:auto;padding-bottom:3px}.partner-quick-actions>span{display:none}.partner-quick-actions>a{flex:none}.partner-dashboard-metrics{grid-template-columns:1fr 1fr}.partner-attention>a,.partner-attention>button{align-items:flex-start}.partner-attention>a>span,.partner-attention>button>span{display:none}.partner-dashboard-charts>.partner-panel{min-height:250px}.partner-bars{gap:6px}.partner-donut-wrap{justify-content:flex-start}}
 @media(max-width:430px){.partner-dashboard-metrics{grid-template-columns:1fr}.partner-attention{padding:15px}.partner-attention header em{display:none}}
 .finance-export-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.finance-export-actions .btn{min-height:46px;gap:8px}.finance-export-actions .partner-pdf-button{box-shadow:none}@media(max-width:600px){.finance-export-actions{align-items:stretch;flex-direction:column}.finance-export-actions .btn{width:100%;justify-content:center}}
+/* Catalog cards must fit the available workspace, including beside the preview. */
+.partner-shell .menu-workspace { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); }
+.partner-shell .menu-workspace > * { min-width: 0; }
+.partner-shell .partner-product-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+.partner-shell .partner-product { display: flex; flex-direction: column; min-width: 0; }
+.partner-shell .partner-product-image { flex: none; background-size: cover; background-position: center; }
+.partner-shell .partner-product-image > svg { width: 44px; height: 44px; color: var(--text-2); }
+.partner-shell .partner-product h3 { overflow-wrap: anywhere; }
+.partner-shell .partner-product-note { margin-top: 8px; color: var(--text-2); font-size: .75rem; line-height: 1.5; }
+.partner-shell .partner-product > button { position: static; inset: auto; align-self: stretch; margin: auto 15px 15px; padding: 10px 14px; min-height: 42px; border: 1px solid var(--border); border-radius: 10px; background: var(--brand-soft); color: var(--text); font-size: .8rem; }
+.partner-shell .partner-product label { min-height: 36px; font-size: .8rem; }
+.partner-shell .partner-product label input { width: 17px; height: 17px; accent-color: var(--brand); }
+.partner-shell .partner-product-form { max-height: calc(100dvh - 40px); overflow-y: auto; }
+.partner-shell .menu-phone-preview { width: 100%; }
+.partner-shell .menu-preview-scroll article { flex-wrap: wrap; }
+.partner-shell .menu-preview-scroll article b { overflow-wrap: anywhere; }
+.partner-shell [hidden] { display: none !important; }
+@media (max-width: 1250px) {
+  .partner-shell .menu-workspace { grid-template-columns: minmax(0, 1fr); }
+  .partner-shell .menu-phone-preview { position: static; max-width: 430px; }
+}
+@media (max-width: 650px) {
+  .partner-shell .partner-product-grid { grid-template-columns: minmax(0, 1fr); }
+}
+html[data-theme="dark"] .partner-shell .partner-product-image { background: #1c2b22; }
+html[data-theme="dark"] .partner-shell .partner-product-image > span { background: #2a3c30; color: #e3f2e7; }
+html[data-theme="dark"] .partner-shell .menu-phone-preview footer { background: #1c2b22; color: #bfcdc3; }
+.partner-shell .menu-preview-empty { padding: 14px 0; color: var(--text-2); font-size: .8rem; line-height: 1.5; }
