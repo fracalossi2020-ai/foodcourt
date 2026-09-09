@@ -287,23 +287,7 @@ function content(section, data) {
   if (section === "minhaloja") return storeContent(data);
   if (section === "minhaloja")
     return `${head("ESTABELECIMENTO", "Minha loja", "Edite as informações que o consumidor poderá visualizar.")}<form class="partner-panel partner-store-form" data-store-form><header class="partner-form-intro"><span>🏪</span><div><h2>Informações públicas da loja</h2><p>Preencha com dados simples e claros. Eles aparecerão para seus clientes.</p></div><em>Campos com * são obrigatórios</em></header><label><span>Nome da loja *</span><small>Como sua loja será encontrada</small><input class="input" name="name" value="${esc(data.store.name)}" placeholder="Ex.: Burger Neon" required></label><label><span>Categoria principal *</span><small>O tipo de comida que você vende</small><input class="input" name="category" value="${esc(data.store.category)}" placeholder="Ex.: Hambúrguer" required></label><label class="wide"><span>Descrição</span><small>Conte em poucas palavras o que torna sua loja especial</small><textarea class="input" name="description" maxlength="500" placeholder="Ex.: Hambúrgueres artesanais, combos e porções.">${esc(data.store.description || "")}</textarea></label><label><span>Telefone comercial</span><small>Para contato sobre a operação</small><input class="input" name="phone" value="${esc(data.store.phone || "")}" placeholder="(00) 00000-0000"></label><label><span>Tempo médio de preparo</span><small>Quanto tempo o pedido leva para ficar pronto</small><div class="partner-field-unit"><input class="input" name="preparationMinutes" type="number" min="5" max="180" value="${data.store.preparationMinutes || 30}"><b>minutos</b></div></label><label><span>Pedido mínimo</span><small>Menor valor aceito pela loja</small><div class="partner-field-unit money"><b>R$</b><input class="input" name="minimumOrder" type="number" min="0" step=".01" value="${data.store.minimumOrder || 0}"></div></label><footer class="partner-form-actions"><p><i>✓</i> As alterações ficam visíveis após salvar.</p><button class="btn btn-primary">Salvar alterações</button></footer></form>`;
-  if (section === "horarios")
-    return `${head("OPERAÇÃO", "Horários de funcionamento", "Configure quando sua loja atende.")}<form class="partner-panel partner-hours" data-hours-form>${[
-      ["mon", "Segunda"],
-      ["tue", "Terça"],
-      ["wed", "Quarta"],
-      ["thu", "Quinta"],
-      ["fri", "Sexta"],
-      ["sat", "Sábado"],
-      ["sun", "Domingo"],
-    ]
-      .map(([id, label]) => {
-        const time = data.store.hours?.[id] || ["", ""];
-        return `<label><b>${label}</b><input type="time" name="${id}Start" value="${time[0] || ""}"><span>até</span><input type="time" name="${id}End" value="${time[1] || ""}"></label>`;
-      })
-      .join(
-        "",
-      )}<button class="btn btn-primary">Salvar horários</button></form>`;
+  if (section === "horarios") return scheduleContent(data);
   if (section === "plano") {
     const subscription = data.subscription || {};
     const date = value => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Ainda não pago';
@@ -333,6 +317,15 @@ function recurringControls(subscription) {
   const active = recurring && recurring.status !== 'cancelled';
   const status = { creating: 'Preparando autorização', pending: 'Aguardando autorização', authorized: 'Cobrança automática autorizada', paused: 'Cobrança automática pausada', cancelled: 'Cobrança automática cancelada' }[recurring?.status] || 'Cobrança automática desativada';
   return `<section class="recurring-controls"><h3>Renovação automática</h3><p>${status}</p>${recurring?.nextPaymentAt && active ? '<p>Próxima tentativa de cobrança: ' + new Date(recurring.nextPaymentAt).toLocaleDateString('pt-BR') + '</p>' : ''}${!active || ['creating', 'pending'].includes(recurring.status) ? '<form data-recurring-form><label><input type="checkbox" required> Quero autorizar ' + money(subscription.price || 119.9) + ' por mês, até cancelar. A autorização será concluída no Mercado Pago.</label><button class="btn btn-primary">Autorizar cobrança mensal</button></form>' : ''}${active ? '<button class="btn btn-outline" data-cancel-recurring>Cancelar cobranças automáticas</button><button class="btn btn-outline" data-sync-recurring>Atualizar situação</button>' : ''}<p>O acesso é renovado após a confirmação de cada pagamento. Cancelar impede novas cobranças e preserva o período já pago.</p></section>`;
+}
+
+function scheduleContent(data) {
+  const days = [['mon', 'Segunda'], ['tue', 'Terça'], ['wed', 'Quarta'], ['thu', 'Quinta'], ['fri', 'Sexta'], ['sat', 'Sábado'], ['sun', 'Domingo']];
+  const configured = Object.keys(data.store.hours || {}).length > 0;
+  return `${head('OPERAÇÃO', 'Horários de funcionamento', 'Escolha um modelo, ajuste os dias e salve para programar a loja.')}<form class="partner-panel store-schedule-card" data-hours-form><div class="schedule-presets"><span>Preencher com um modelo:</span><button class="btn btn-outline" type="button" data-schedule-preset="11:00,15:00">Almoço · 11h às 15h</button><button class="btn btn-outline" type="button" data-schedule-preset="18:00,23:00">Noite · 18h às 23h</button><button class="btn btn-outline" type="button" data-schedule-preset="09:00,18:00">Comercial · 9h às 18h</button></div>${!configured ? '<p>Modelo inicial sugerido: todos os dias, das 18h às 23h. Revise antes de salvar.</p>' : ''}<label class="partner-toggle schedule-master"><input type="checkbox" name="autoSchedule" ${data.store.autoSchedule || !configured ? 'checked' : ''}><i></i><span>Abrir e fechar automaticamente (horário de Brasília)</span></label><div class="schedule-days">${days.map(([id, label]) => {
+    const time = configured ? data.store.hours?.[id] || ['', ''] : ['18:00', '23:00'];
+    return `<div class="schedule-day"><label><input type="checkbox" name="${id}Enabled" ${time[0] && time[1] ? 'checked' : ''}> ${label}</label><input type="time" name="${id}Start" aria-label="Abertura de ${label}" value="${time[0]}"><span>até</span><input type="time" name="${id}End" aria-label="Fechamento de ${label}" value="${time[1]}"></div>`;
+  }).join('')}</div><p>Desmarque os dias em que a loja não atende. A programação só é aplicada após salvar.</p><button class="btn btn-primary" type="submit">Salvar horários</button></form>`;
 }
 
 function catalogContent(data) {
@@ -550,6 +543,16 @@ function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
+  view.querySelectorAll('[data-schedule-preset]').forEach(button => button.addEventListener('click', () => {
+    const form = button.closest('form');
+    const [start, end] = button.dataset.schedulePreset.split(',');
+    for (const day of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) {
+      form.elements[day + 'Start'].value = start;
+      form.elements[day + 'End'].value = end;
+      form.elements[day + 'Enabled'].checked = true;
+    }
+    form.elements.autoSchedule.checked = true;
+  }));
   view.querySelector('[data-recurring-form]')?.addEventListener('submit', async event => {
     event.preventDefault();
     const button = event.currentTarget.querySelector('button');
@@ -948,6 +951,12 @@ function bind(view, section, data) {
       event.preventDefault();
       const values = Object.fromEntries(new FormData(event.currentTarget)),
         hours = {};
+      for (const day of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) {
+        if (values[day + 'Enabled'] === 'on' && (!values[day + 'Start'] || !values[day + 'End'] || values[day + 'Start'] === values[day + 'End'])) {
+          toast('Preencha abertura e fechamento diferentes para cada dia selecionado.', 'error');
+          return;
+        }
+      }
       for (const day of ["mon", "tue", "wed", "thu", "fri", "sat", "sun"])
         hours[day] =
           values[day + "Enabled"] === "on"

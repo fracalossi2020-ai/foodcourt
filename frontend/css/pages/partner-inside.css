@@ -79,3 +79,7 @@ html[data-theme="dark"] .partner-shell .menu-phone-preview footer { background: 
 .recurring-controls label { display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
 .recurring-controls input { margin-top: 5px; flex: none; }
 .recurring-controls .btn { margin: 6px 8px 6px 0; white-space: normal; }
+.schedule-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 20px; }
+.schedule-day { display: grid; grid-template-columns: minmax(110px,1fr) minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.schedule-day input[type=time] { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); }
+@media(max-width:600px) { .schedule-day { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); } .schedule-day > label { grid-column: 1 / -1; } }
