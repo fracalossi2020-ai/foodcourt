@@ -119,7 +119,7 @@ export function renderSubscriptionPix(target, charge, regenerate) {
         const { payment } = await api.payment(charge.id);
         if (payment.status === "paid" && target.isConnected) {
           clearInterval(subscriptionPixTimer);
-          target.innerHTML = '<div class="subscription-pix-content"><h2>Pagamento confirmado</h2><p>Sua assinatura foi paga. A publicação da loja continua sujeita à revisão.</p><a class="btn btn-primary" href="#/parceiro?secao=plano">Ver assinatura</a></div>';
+          target.innerHTML = '<div class="subscription-pix-content"><h2>Pagamento confirmado</h2><p>Sua assinatura foi paga. A publicação da loja continua sujeita à revisão.</p><a class="btn btn-primary" href="#/parceiro?secao=plano&pagamento=confirmado">Ver assinatura</a></div>';
           return;
         }
       } catch { /* A próxima consulta recupera falhas temporárias. */ }
@@ -301,10 +301,10 @@ function content(section, data) {
         "",
       )}<button class="btn btn-primary">Salvar horários</button></form>`;
   if (section === "plano") {
-    const owner =
-      data.subscription?.provider === "OWNER_ACCESS" ||
-      data.subscription?.complimentary;
-    return `${head("ACESSO", "Plano e permissões", "Informações validadas pelo servidor.")}<article class="partner-panel subscription-card"><span>FOODCOURT PARCEIRO</span><h2>${owner ? "ACESSO PROPRIETÁRIO" : "Plano ativo"}</h2><b class="subscription-status status-active">ATIVO</b><p>${owner ? "Sua conta proprietária possui acesso completo ao portal, sem cobrança e sem expiração." : "Seu Portal do Parceiro está ativo."}</p><ul><li>Gestão completa da loja</li><li>Cardápio e estoque</li><li>Pedidos e promoções</li><li>Financeiro e avaliações</li><li>Equipe e suporte</li></ul><button class="btn btn-outline" data-plan-details>Ver permissões</button></article>`;
+    const subscription = data.subscription || {};
+    const date = value => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Ainda não pago';
+    const status = { ACTIVE: 'Ativo', PENDING: 'Aguardando pagamento', OVERDUE: 'Vencido', CANCELED: 'Cancelado', BLOCKED: 'Bloqueado' }[subscription.status] || 'Sem assinatura';
+    return `${head('ASSINATURA', 'Plano e renovação', 'Acompanhe o pagamento e o período de uso.')}<article class="partner-panel subscription-card"><h2>${subscription.lifetime ? 'Plano vitalício' : 'FoodCourt Parceiro mensal'}</h2><b>${status}</b><dl class="subscription-dates"><div><dt>Último pagamento</dt><dd>${subscription.lifetime ? 'Isento' : date(subscription.paidAt)}</dd></div><div><dt>Dias de uso ${subscription.lifetime ? '' : 'no ciclo'}</dt><dd>${subscription.daysUsed || 0} dias</dd></div><div><dt>Próximo vencimento</dt><dd>${subscription.lifetime ? 'Sem vencimento' : subscription.nextBillingAt ? date(subscription.nextBillingAt) : 'Um mês após o pagamento'}</dd></div><div><dt>Tempo restante</dt><dd>${subscription.lifetime ? 'Ilimitado' : subscription.daysRemaining === null ? 'Aguardando pagamento' : (subscription.daysRemaining ?? 0) + ' dias'}</dd></div></dl>${subscription.lifetime ? '<p>Sua conta possui acesso sem cobrança e sem expiração.</p>' : `<p>${money(subscription.price || 119.9)} por mês. Renovação por Pix, sem débito automático.</p>${['PENDING', 'OVERDUE'].includes(subscription.status) ? '<button class="btn btn-primary" data-generate-subscription-pix>Pagar mensalidade com Pix</button><section class="partner-subscription-pix" data-subscription-pix hidden></section>' : ''}`}<button class="btn btn-outline" data-plan-details>Ver permissões</button></article>`;
   }
   if (section === "configuracoes")
     return `${head("PREFERÊNCIAS", "Configurações", "Dados gerais e segurança da operação.")}<div class="partner-panel partner-settings"><article><div><b>Notificações de novos pedidos</b><small>Mostra alertas quando um pedido chegar.</small></div><label class="partner-toggle"><input type="checkbox" data-order-notifications ${data.store.orderNotifications !== false ? "checked" : ""}><i></i><span>${data.store.orderNotifications !== false ? "Ativadas" : "Desativadas"}</span></label></article><article><div><b>Segurança da conta</b><small>Sessão, autorização e vínculo da loja estão protegidos.</small></div><button data-security-details>Ver detalhes</button></article><article><div><b>Voltar ao marketplace</b><small>Acesse o FoodCourt como consumidor.</small></div><a href="#/inicio">Abrir FoodCourt →</a></article></div>`;
@@ -538,6 +538,7 @@ function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
+  if (section === "plano") bindPendingSubscription(view);
   const refreshCatalog = async () => {
     const updated = await api.partnerCatalog();
     if (!view.isConnected) return;

@@ -2332,7 +2332,8 @@ Object.assign(api, {
     const subscription = db.state.subscriptions.find(
       (item) => item.storeId === store.id,
     );
-    return { store, subscription, ...platform.dashboard(store.id) };
+    const owner = db.state.users.find((user) => user.id === store.ownerId);
+    return { store, subscription: require("./lib/subscriptions").summary(subscription, owner), ...platform.dashboard(store.id) };
   },
   "GET /api/partner-orders": (params, query, body, ctx) => {
     if (!["merchant", "admin"].includes(ctx.user.role))

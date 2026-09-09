@@ -2,6 +2,7 @@
 
 const crypto = require("node:crypto");
 const QRCode = require("qrcode");
+const subscriptions = require("./subscriptions");
 const MP = "https://api.mercadopago.com";
 const STRIPE = "https://api.stripe.com/v1";
 const money = (value) =>
@@ -242,7 +243,7 @@ function install({
     const firstApproval = status === "paid" && !payment.paidAt;
     payment.status = status;
     payment.updatedAt = new Date().toISOString();
-    if (status === "paid") payment.paidAt ||= payment.updatedAt;
+    if (status === "paid") payment.paidAt ||= payment.providerApprovedAt || payment.updatedAt;
     if (firstApproval && payment.subscriptionId) {
       const subscription = db.state.subscriptions.find(
         (item) => item.id === payment.subscriptionId,
@@ -252,13 +253,11 @@ function install({
         !["CANCELED", "BLOCKED"].includes(subscription.status)
       ) {
         subscription.status = "ACTIVE";
-        subscription.paidAt = payment.updatedAt;
+        subscription.paidAt = payment.paidAt;
         subscription.updatedAt = payment.updatedAt;
         subscription.paymentId = payment.id;
         subscription.provider = payment.provider;
-        subscription.nextBillingAt = new Date(
-          Date.now() + 30 * 86400000,
-        ).toISOString();
+        subscription.nextBillingAt = subscriptions.nextMonth(subscription.paidAt);
         pushNotification(
           payment.userId,
           "payment",
@@ -340,6 +339,9 @@ function install({
       if (payment.paidAt || provider.status !== "approved") return;
     }
     payment.providerPaymentId = String(provider.id);
+    if (provider.status === "approved" && Number.isFinite(Date.parse(provider.date_approved))) {
+      payment.providerApprovedAt = new Date(provider.date_approved).toISOString();
+    }
     const status =
       {
         approved: "paid",
@@ -722,13 +724,15 @@ function install({
         (item) => item.storeId === shop?.id,
       );
       if (!subscription) throw error("Assinatura não encontrada.", 404);
-      if (["ACTIVE", "CANCELED", "BLOCKED"].includes(subscription.status))
+      const billing = subscriptions.summary(subscription, ctx.user);
+      if (billing.lifetime || ["ACTIVE", "CANCELED", "BLOCKED"].includes(billing.status))
         throw error("A assinatura não está disponível para pagamento.", 409);
       if (!methods().find((item) => item.id === "pix").enabled)
         throw error("Pagamento da assinatura indisponível no momento.", 503);
       let payment = db.state.paymentEvents.find(
         (item) =>
           item.subscriptionId === subscription.id &&
+          !item.paidAt &&
           !["expired", "cancelled", "refunded"].includes(item.status),
       );
       if (payment) {
@@ -745,7 +749,7 @@ function install({
           email: ctx.user.email,
           provider: "mercado-pago",
           method: "pix",
-          amount: money(subscription.price),
+          amount: money(billing.price),
           status: "creating",
           createdAt: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 3600000).toISOString(),

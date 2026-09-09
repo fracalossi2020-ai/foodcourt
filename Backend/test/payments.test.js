@@ -521,6 +521,28 @@ test("subscription Pix is provider-backed and signed approval activates the subs
   assert.equal((await mpWebhook(providerRecords[first.body.id])).status, 200);
   assert.equal(db.state.subscriptions[0].status, "ACTIVE");
   assert.equal(db.state.platformOrders.length, 0);
+  assert.equal(
+    (await api("/api/partner-subscription-pix", {}, merchantCookie)).status,
+    409,
+  );
+  db.state.subscriptions[0].paidAt = "2020-01-10T15:00:00Z";
+  const renewal = await api(
+    "/api/partner-subscription-pix",
+    {},
+    merchantCookie,
+  );
+  assert.equal(renewal.status, 200);
+  assert.notEqual(renewal.body.id, first.body.id);
+  providerRecords[renewal.body.id].status = "approved";
+  await mpWebhook(providerRecords[renewal.body.id]);
+  const billing = db.state.subscriptions[0];
+  assert.equal(
+    billing.nextBillingAt,
+    require("../src/lib/subscriptions").nextMonth(billing.paidAt),
+  );
+  const due = billing.nextBillingAt;
+  await mpWebhook(providerRecords[renewal.body.id]);
+  assert.equal(billing.nextBillingAt, due);
 });
 
 test("free shipping coupon does not waive the separately requested priority service", async () => {
