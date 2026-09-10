@@ -17,6 +17,12 @@
 
 Em Minha loja, marque Retirada na loja nas modalidades de atendimento e salve. Cadastre rua e número da loja. O checkout oferece retirada para carrinhos de uma loja, sem frete ou endereço do cliente. Depois do pagamento aprovado, a loja aceita, prepara, marca como pronto e confirma a retirada. Nenhum entregador é acionado. O acompanhamento e a comanda identificam a modalidade.
 
+## Feriados e datas de fechamento
+
+Em Horários (ou Minha loja), use Adicionar data, informe a data e um motivo opcional e salve a programação. Essas datas bloqueiam novos pedidos imediatos e agendados, inclusive retirada, no horário de Brasília. A programação automática retoma os horários semanais depois da data; no modo manual, a reabertura continua manual. Pedidos já confirmados não são cancelados. As datas são cadastradas pela loja; não existe importação automática de feriados.
+
+Validação desta etapa: 52 testes passaram e o editor foi exercitado no Chromium em tela de celular (adicionar, salvar, recarregar e remover).
+
 ## Publicação e uso
 
 Publique backend e frontend do mesmo commit. Os arquivos da aplicação foram versionados para essa entrega.
@@ -34,7 +40,7 @@ Testes automatizados cobrem observações, adicionais, estoque, cobertura de CEP
 ## Etapas ainda não implementadas
 
 - Frete por distância e mapa do entregador.
-- Múltiplos turnos, feriados e limite de capacidade por horário.
+- Múltiplos turnos e limite de capacidade por horário.
 - Repasses bancários reais, conciliação financeira completa e política comercial de carência.
 - Migração do arquivo JSON para banco transacional, backups operacionais e monitoramento de produção.
 - Convites por e-mail, notificações push, pós-venda com ocorrências e melhorias de recompra.

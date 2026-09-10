@@ -45,6 +45,7 @@ function brazilClock(date=new Date()) {
   return {day:{Sun:'sun',Mon:'mon',Tue:'tue',Wed:'wed',Thu:'thu',Fri:'fri',Sat:'sat'}[parts.weekday],minutes:Number(parts.hour)*60+Number(parts.minute)}
 }
 function applyStoreSchedule(store,date=new Date()) {
+  if(store && require('./closures').isClosedDate(store,date)) { store.open=false; return store }
   if(!store||!store.autoSchedule)return store
   const clock=brazilClock(date),days=['sun','mon','tue','wed','thu','fri','sat'],range=store.hours?.[clock.day],toMinutes=value=>{const [hour,minute]=String(value).split(':').map(Number);return hour*60+minute}
   let open=false

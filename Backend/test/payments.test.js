@@ -330,6 +330,62 @@ test("pickup requires store opt-in and an address; pickup-only stores reject del
   assert.equal(providerCalls.length, 0);
 });
 
+test("closures reject immediate and scheduled checkout and can be removed by the merchant", async () => {
+  const { dateKey } = require("../src/lib/closures");
+  shop.autoSchedule = true;
+  shop.hours = Object.fromEntries(
+    ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+      day,
+      ["00:00", "00:00"],
+    ]),
+  );
+  const future = new Date(Date.now() + 86400000);
+  const closures = [...new Set([dateKey(new Date()), dateKey(future)])].map(
+    (date) => ({ date }),
+  );
+  assert.equal(
+    (await api("/api/partner-store", { closures }, merchantCookie)).status,
+    200,
+  );
+  assert.equal((await api("/api/checkout/quote", cart())).status, 400);
+  assert.equal(
+    (
+      await api(
+        "/api/checkout/quote",
+        cart({ scheduledAt: future.toISOString() }),
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await api(
+        "/api/partner-store",
+        { closures: [{ date: "2026-02-30" }] },
+        merchantCookie,
+      )
+    ).status,
+    400,
+  );
+  assert.deepEqual(
+    shop.closures.map((entry) => entry.date),
+    closures.map((entry) => entry.date),
+  );
+  assert.equal(
+    (await api("/api/partner-store", { closures: [] }, merchantCookie)).status,
+    200,
+  );
+  assert.equal(
+    (
+      await api(
+        "/api/checkout/quote",
+        cart({ scheduledAt: future.toISOString() }),
+      )
+    ).status,
+    200,
+  );
+});
+
 test("server prices extras, quantity, delivery and priority instead of client totals", async () => {
   const body = cart({ amount: 0.01, expectedTotal: 0.01 });
   const quote = await api("/api/checkout/quote", body);

@@ -2763,6 +2763,10 @@ Object.assign(api, {
         0,
         Math.min(100000, Number(body.freeShippingMin) || 0),
       );
+    if (body.closures !== undefined) {
+      try { store.closures = require('./lib/closures').normalizeClosures(body.closures); }
+      catch (error) { return { status: 400, body: { error: error.message } }; }
+    }
     if (body.hours && typeof body.hours === "object") store.hours = body.hours;
     if (typeof body.autoSchedule === "boolean")
       store.autoSchedule = body.autoSchedule;
@@ -3879,7 +3883,7 @@ Object.assign(api, {
     );
     const partnerStore =
       platform.storeForId(body.storeId) ||
-      db.state.stores.find((item) => item.slug === body.storeId);
+      platform.applyStoreSchedule(db.state.stores.find((item) => item.slug === body.storeId));
     if (
       (!catalogRestaurant && !partnerStore) ||
       !Array.isArray(body.items) ||
