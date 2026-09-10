@@ -457,6 +457,40 @@ test("reviews require a completed owned order and a valid score, awarding points
   });
   assert.equal(result.status, 201);
   assert.equal(result.body.review.rating, 2);
+  const reply = {
+    reviewId: result.body.review.id,
+    reply: "Obrigado pelo retorno.",
+  };
+  assert.equal(
+    (await api("/api/partner-review-reply", reply, otherCookie)).status,
+    403,
+  );
+  assert.equal(
+    (await api("/api/partner-review-reply", reply, merchantCookie)).status,
+    200,
+  );
+  assert.equal(
+    db.state.userNotifications.filter(
+      (item) => item.userId === "buyer" && item.orderId === orderId,
+    ).length,
+    1,
+  );
+  assert.equal(
+    (await api("/api/partner-review-reply", reply, merchantCookie)).status,
+    200,
+  );
+  assert.equal(
+    db.state.userNotifications.filter(
+      (item) => item.userId === "buyer" && item.orderId === orderId,
+    ).length,
+    1,
+  );
+  assert.equal(
+    (await api("/api/customer-reviews")).body.reviews.find(
+      (item) => item.id === reply.reviewId,
+    ).reply,
+    reply.reply,
+  );
   assert.equal(result.body.points, points + 10);
   assert.equal(
     (await api("/api/customer-reviews", { orderId, rating: 5 })).status,

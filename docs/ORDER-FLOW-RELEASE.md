@@ -39,6 +39,10 @@ Pedir novamente, no histórico e na página inicial, consulta o cardápio atual 
 
 O cliente escolhe explicitamente de 1 a 5 estrelas e pode escrever até 500 caracteres. Cancelar o formulário não envia avaliação. Apenas pedidos concluídos podem ser avaliados; o histórico recupera as avaliações existentes ao abrir. O servidor rejeita notas inválidas, pedidos de outra pessoa e duplicatas; os 10 pontos são creditados uma única vez.
 
+## Respostas às avaliações
+
+O cliente consulta sua nota, comentário e resposta da loja no histórico e nos detalhes do pedido. Respostas novas ou alteradas geram uma notificação dentro do site com acesso ao pedido; reenviar o mesmo texto não duplica o aviso. Não há envio de e-mail ou push nesta etapa.
+
 ## Publicação e uso
 
 Publique backend e frontend do mesmo commit. Os arquivos da aplicação foram versionados para essa entrega.

@@ -2987,9 +2987,11 @@ Object.assign(api, {
         status: 400,
         body: { error: "Escreva uma resposta antes de enviar." },
       };
+    const changed = review.reply !== reply;
     review.reply = reply;
     review.replied = true;
     review.repliedAt = platform.now();
+    if (changed) pushNotification(review.customerId, 'order', 'Resposta à sua avaliação', `${store.name} respondeu à sua avaliação. Abra o pedido para ler.`, review.orderId);
     platform.audit(ctx.user, "review.reply", "review", review.id);
     return { review };
   },

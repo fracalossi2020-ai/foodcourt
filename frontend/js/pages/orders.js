@@ -1,4 +1,5 @@
 import { openReview } from '../core/review-editor.js';
+import { reviewCard } from '../core/review-card.js';
 import { store } from "../core/store.js";
 import { esc, money, emptyState, bindGotos } from "../core/ui.js";
 import { repeatOrder } from "../core/reorder.js";
@@ -25,6 +26,7 @@ export async function render(view, _boot) {
       .join(", "),
     restaurantName: order.restaurantName || "Estabelecimento",
     rated: reviewPayload.reviews.some(review => review.orderId === order.id),
+    review: reviewPayload.reviews.find(review => review.orderId === order.id),
   }));
   const allOrders = [
     ...serverOrders,
@@ -101,7 +103,7 @@ export async function render(view, _boot) {
       b.addEventListener("click", () => {
         const order = allOrders.find((item) => item.id === b.dataset.rate);
         if (!order) return;
-        openReview(order, () => { order.rated = true; draw(); });
+        openReview(order, review => { order.rated = true; order.review = review; draw(); });
       }),
     );
   }
@@ -119,6 +121,7 @@ export async function render(view, _boot) {
         <span class="badge ${active ? "badge-brand" : "badge-dark"}">${o.status === "cancelled" ? "Cancelado" : active ? o.paymentStatus !== "paid" ? "Aguardando pagamento" : "🛵 Em andamento" : "✓ Entregue"}</span>
       </div>
       <div class="order-items">${esc(o.summary)}</div>
+      ${reviewCard(o.review)}
       ${o.paymentIntentId ? `<a class="btn btn-outline btn-sm" href="#/checkout?payment=${encodeURIComponent(o.paymentIntentId)}">Ver pagamento</a>` : ""}
       <div class="order-foot">
         <b>${money(o.total)}</b>
