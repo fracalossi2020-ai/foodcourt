@@ -42,6 +42,7 @@ const routes = [
   { pattern: /^\/notificacoes$/, page: "notifications" },
   { pattern: /^\/perfil$/, page: "profile" },
   { pattern: /^\/parceiro$/, page: "partner" },
+  { pattern: /^\/aceitar-convite$/, page: 'team-invitation' },
   { pattern: /^\/admin$/, page: "admin" },
   { pattern: /^\/entregador$/, page: "courier" },
   { pattern: /^\/quero-ser-entregador$/, page: "courier-register" },

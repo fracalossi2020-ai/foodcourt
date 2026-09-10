@@ -65,11 +65,15 @@ Os detalhes do pedido oferecem Relatar problema, com o número preenchido na cen
 
 Equipe oferece envio de instruções de acesso para colaboradores ativos e vinculados, mediante clique do proprietário. Consulte TEAM-EMAIL.md. A configuração do provedor e testes de entrega real continuam pendentes. O backend pode agendar backups ao definir FC_BACKUP_DIR; consulte BACKUP-RECOVERY.md. Ambas as funcionalidades foram testadas localmente, sem ativação na produção.
 
+## Localização, push e convites
+
+O entregador pode compartilhar a posição com o titular do pedido durante a entrega; o cliente abre a posição no mapa externo. O perfil permite ativar push quando as chaves estiverem configuradas. Equipe inclui convite por e-mail com aceite, cancelamento e expiração. Consulte PUSH-LOCATION.md e TEAM-EMAIL.md. Provedores e geolocalização foram simulados nos testes; entrega real e publicação estão pendentes.
+
 ## Etapas ainda não implementadas
 
-- Frete por distância e mapa do entregador.
+- Frete por distância de trajeto e mapa com rota/previsão de chegada.
 - Repasses bancários reais, conciliação financeira completa e política comercial de carência.
 - Migração do arquivo JSON para banco transacional, backups operacionais e monitoramento de produção.
-- Convites por e-mail, notificações push, pós-venda com ocorrências.
+- Ativação e validação em produção do e-mail, push e localização.
 
 A ativação comercial dos pagamentos permanece separada, conforme solicitado; consulte RECURRING.md quando for retomá-la.

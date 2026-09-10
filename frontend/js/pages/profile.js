@@ -1,4 +1,5 @@
 import { store } from "../core/store.js";
+import { mountPush } from '../core/push-settings.js';
 import { api } from "../core/api.js";
 import { esc, toast } from "../core/ui.js";
 import { icon } from "../core/icons.js";
@@ -40,6 +41,7 @@ export async function render(
   const sectionId = query.get("secao");
   if (sections[sectionId]) {
     renderSection(view, boot, sectionId);
+    if (sectionId === 'configuracoes') mountPush(view);
     return;
   }
   renderOverview(view);

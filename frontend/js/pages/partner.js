@@ -1,5 +1,6 @@
 import { mountClosures, readClosures } from '../core/closure-editor.js';
 import { mountShifts, readShifts } from '../core/shift-editor.js';
+import { mountInvites } from '../core/team-invite-editor.js';
 import { api } from "../core/api.js";
 import { esc, money, toast } from "../core/ui.js";
 import { icon } from "../core/icons.js";
@@ -564,6 +565,7 @@ function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
+  if (section === 'equipe') mountInvites(view, data.invitations || []);
   const scheduleForm = view.querySelector('[data-hours-form]');
   if (scheduleForm) {
     const label = document.createElement('label');

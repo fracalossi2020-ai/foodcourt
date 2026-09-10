@@ -44,6 +44,8 @@ const EMPTY = () => ({
   courierPayouts: [],
   courierApplications: [],
   userNotifications: [],
+  pushSubscriptions: [],
+  teamInvites: [],
 });
 let state = EMPTY();
 let emailIndex = new Map();

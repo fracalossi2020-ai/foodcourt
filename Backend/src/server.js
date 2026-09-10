@@ -759,6 +759,7 @@ function pushNotification(userId, type, title, text, orderId = null) {
   };
   db.state.userNotifications.unshift(notification);
   emitRealtime(userId, { type, orderId, notification });
+  require('./lib/web-push').notify(db, userId).catch(() => console.error('[push] Falha no envio.'));
 }
 
 function grantOrderLoyalty(order) {
@@ -2900,7 +2901,23 @@ Object.assign(api, {
     const store = platform.storeForUser(ctx.user);
     return {
       members: db.state.storeMembers.filter((m) => m.storeId === store.id),
+      invitations: db.state.teamInvites.filter(item => item.storeId === store.id && Date.parse(item.expiresAt) > Date.now()).map(item => ({ id: item.id, name: item.name, email: item.email, role: item.role, expiresAt: item.expiresAt })),
     };
+  },
+  "POST /api/partner-team-invite": async (params, query, body, ctx) => {
+    const store = platform.storeForUser(ctx.user);
+    try {
+      if (body.cancelId) { db.state.teamInvites = db.state.teamInvites.filter(item => !(item.id === body.cancelId && item.storeId === store.id)); db.saveNow(); return { cancelled: true }; }
+      return await require('./lib/team-invites').invite(db, store, body);
+    } catch (error) { return { status: 400, body: { error: error.message } }; }
+  },
+  "POST /api/team-invitation": (params, query, body, ctx) => {
+    try {
+      const service = require('./lib/team-invites');
+      if (body.accept === true) return service.accept(db, ctx.user, body.token);
+      const invitation = service.find(db, ctx.user, body.token);
+      return { invitation: { storeName: db.state.stores.find(store => store.id === invitation.storeId)?.name, role: invitation.role, expiresAt: invitation.expiresAt } };
+    } catch (error) { return { status: 400, body: { error: error.message } }; }
   },
   "POST /api/partner-team-email": async (params, query, body, ctx) => {
     const store = platform.storeForUser(ctx.user);
@@ -3313,6 +3330,18 @@ Object.assign(api, {
       status: 201,
       body: { payout, availableBalance: balance - amount },
     };
+  },
+  "POST /api/courier-location": (params, query, body, ctx) => {
+    const delivery = db.state.deliveries.find(item => item.id === body.deliveryId);
+    if (!delivery || delivery.courierId !== ctx.user.id || ctx.user.role !== 'courier') return { status: 403, body: { error: 'Entrega não autorizada.' } };
+    try { require('./lib/delivery-location').update(delivery, ctx.user, body); return { updated: true }; }
+    catch (error) { return { status: 400, body: { error: error.message } }; }
+  },
+  "GET /api/order-location/:id": (params, query, body, ctx) => {
+    const order = db.state.platformOrders.find(item => item.id === params.id && item.customerId === ctx.user.id);
+    if (!order) return { status: 404, body: { error: 'Pedido não encontrado.' } };
+    const delivery = db.state.deliveries.find(item => item.orderId === order.id);
+    return { position: order.status === 'out_for_delivery' ? require('./lib/delivery-location').read(delivery) : null };
   },
   "POST /api/courier-availability": (params, query, body, ctx) => {
     if (!["courier", "admin"].includes(ctx.user.role))
@@ -4139,6 +4168,24 @@ Object.assign(api, {
     );
     db.saveNow();
     return { order };
+  },
+  "GET /api/push-config": () => {
+    const { enabled, publicKey } = require('./lib/web-push').config();
+    return { enabled, publicKey: enabled ? publicKey : null };
+  },
+  "POST /api/push-subscription": (params, query, body, ctx) => {
+    try {
+      const subscription = require('./lib/web-push').validate(body.subscription);
+      if (body.remove === true) {
+        db.state.pushSubscriptions = db.state.pushSubscriptions.filter(item => !(item.userId === ctx.user.id && item.subscription.endpoint === subscription.endpoint));
+      } else {
+        if (!require('./lib/web-push').config().enabled) return { status: 503, body: { error: 'Notificações push ainda não configuradas.' } };
+        const others = db.state.pushSubscriptions.filter(item => item.subscription.endpoint !== subscription.endpoint);
+        if (others.filter(item => item.userId === ctx.user.id).length >= 5) return { status: 400, body: { error: 'Limite de cinco dispositivos por conta.' } };
+        db.state.pushSubscriptions = [...others, { userId: ctx.user.id, subscription }];
+      }
+      db.saveNow(); return { saved: true };
+    } catch (error) { return { status: 400, body: { error: error.message } }; }
   },
   "GET /api/customer-reviews": (params, query, body, ctx) => ({
     reviews: db.state.reviews.filter(

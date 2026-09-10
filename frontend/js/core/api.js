@@ -98,6 +98,8 @@ export const api = {
     post("/api/partner-promotion", promotion),
   savePartnerTeamMember: (member) => post("/api/partner-team-member", member),
   emailPartnerTeamMember: (memberId) => post('/api/partner-team-email', { memberId }),
+  invitePartnerMember: (body) => post('/api/partner-team-invite', body),
+  teamInvitation: (token, accept = false) => post('/api/team-invitation', { token, accept }),
   replyPartnerReview: (reviewId, reply) =>
     post("/api/partner-review-reply", { reviewId, reply }),
   savePartnerSupport: (ticket) => post("/api/partner-support-ticket", ticket),
@@ -114,6 +116,10 @@ export const api = {
   updateAdminCourierPayout: (payoutId, status) =>
     post("/api/admin-courier-payout", { payoutId, status }),
   courierDashboard: () => get("/api/courier-dashboard"),
+  pushConfig: () => get('/api/push-config'),
+  savePushSubscription: (subscription, remove = false) => post('/api/push-subscription', { subscription, remove }),
+  courierLocation: (body) => post('/api/courier-location', body),
+  orderLocation: (id) => get('/api/order-location/' + encodeURIComponent(id)),
   courierApplication: () => get("/api/courier-application"),
   submitCourierApplication: (payload) =>
     post("/api/courier-application", payload),
@@ -150,7 +156,17 @@ export const api = {
   login: (credentials) => post("/api/auth/login", credentials),
   register: (data) => post("/api/auth/register", data),
   registerPartner: (data) => post("/api/auth/partner-register", data),
-  logout: () => post("/api/auth/logout"),
+  logout: async () => {
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration('/push-worker.js');
+      const subscription = await registration?.pushManager.getSubscription();
+      if (subscription) {
+        await post('/api/push-subscription', { subscription: subscription.toJSON(), remove: true });
+        await subscription.unsubscribe();
+      }
+    } catch { /* A falha do push não impede sair da conta. */ }
+    return post('/api/auth/logout');
+  },
   forgotPassword: (email) => post("/api/auth/forgot-password", { email }),
   resetPassword: (payload) => post("/api/auth/reset-password", payload),
 };

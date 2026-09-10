@@ -531,6 +531,63 @@ test("support ticket derives its store from the customer's own order", async () 
   );
 });
 
+test("courier location endpoints isolate the assigned courier and order customer", async () => {
+  const courierId = "location-courier";
+  if (!db.state.users.some((user) => user.id === courierId))
+    db.addUser({
+      id: courierId,
+      role: "courier",
+      email: "courier-location@example.com",
+      status: "active",
+    });
+  const courierSession = `fc_session=${auth.createSession(courierId)}`;
+  const orderId = crypto.randomUUID(),
+    deliveryId = crypto.randomUUID();
+  db.state.platformOrders.push({
+    id: orderId,
+    customerId: "buyer",
+    status: "out_for_delivery",
+  });
+  db.state.deliveries.push({
+    id: deliveryId,
+    orderId,
+    courierId,
+    status: "out_for_delivery",
+  });
+  const point = { deliveryId, latitude: -20, longitude: -40, accuracy: 15 };
+  assert.equal(
+    (await api("/api/courier-location", point, otherCookie)).status,
+    403,
+  );
+  assert.equal(
+    (await api("/api/courier-location", point, courierSession)).status,
+    200,
+  );
+  assert.equal(
+    (await api(`/api/order-location/${orderId}`)).body.position.latitude,
+    -20,
+  );
+  assert.equal(
+    (await api(`/api/order-location/${orderId}`, undefined, otherCookie))
+      .status,
+    404,
+  );
+  assert.equal(
+    (
+      await api(
+        "/api/courier-location",
+        { deliveryId, stop: true },
+        courierSession,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await api(`/api/order-location/${orderId}`)).body.position,
+    null,
+  );
+});
+
 test("server prices extras, quantity, delivery and priority instead of client totals", async () => {
   const body = cart({ amount: 0.01, expectedTotal: 0.01 });
   const quote = await api("/api/checkout/quote", body);
