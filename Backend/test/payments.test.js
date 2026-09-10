@@ -386,6 +386,44 @@ test("closures reject immediate and scheduled checkout and can be removed by the
   );
 });
 
+test("concurrent scheduled checkouts cannot overbook the store capacity", async () => {
+  shop.autoSchedule = true;
+  shop.hours = Object.fromEntries(
+    ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+      day,
+      ["00:00", "00:00"],
+    ]),
+  );
+  assert.equal(
+    (await api("/api/partner-store", { scheduledCapacity: 1 }, merchantCookie))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await api("/api/partner-store", { scheduledCapacity: -1 }, merchantCookie))
+      .status,
+    400,
+  );
+  const scheduledAt = new Date(
+    Math.ceil((Date.now() + 86400000) / 1800000) * 1800000,
+  ).toISOString();
+  const results = await Promise.all([
+    api("/api/checkout", cart({ scheduledAt })),
+    api("/api/checkout", cart({ scheduledAt })),
+  ]);
+  assert.deepEqual(results.map((result) => result.status).sort(), [200, 400]);
+  assert.equal(db.state.platformOrders.length, 1);
+  assert.match(
+    results.find((result) => result.status === 400).body.error,
+    /lotado/,
+  );
+  assert.equal(
+    (await api("/api/checkout/quote", cart({ scheduledAt }))).status,
+    400,
+  );
+  assert.equal((await api("/api/checkout/quote", cart())).status, 200);
+});
+
 test("server prices extras, quantity, delivery and priority instead of client totals", async () => {
   const body = cart({ amount: 0.01, expectedTotal: 0.01 });
   const quote = await api("/api/checkout/quote", body);

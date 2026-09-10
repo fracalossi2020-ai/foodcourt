@@ -564,6 +564,13 @@ function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
+  const scheduleForm = view.querySelector('[data-hours-form]');
+  if (scheduleForm) {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:block;margin:16px 0';
+    label.innerHTML = `<b>Limite de pedidos agendados por 30 minutos</b><input class="input" name="scheduledCapacity" type="number" min="0" max="500" step="1" required value="${Number(data.store.scheduledCapacity || 0)}"><small>0 = sem limite. Entregas e retiradas compartilham as vagas. Pedidos aguardando pagamento também reservam uma vaga; cancelamentos liberam a vaga. Pedidos para agora não entram neste limite.</small>`;
+    scheduleForm.querySelector('button[type="submit"],button:not([type])').before(label);
+  }
   mountShifts(view.querySelector('[data-hours-form]'), data.store.extraHours || {});
   mountClosures(view.querySelector('[data-hours-form]'), data.store.closures || []);
   view.querySelectorAll('[data-order-details]').forEach(button => button.addEventListener('click', () => {
@@ -1031,6 +1038,7 @@ function bind(view, section, data) {
       try {
         await api.updatePartnerStore({
           hours,
+          scheduledCapacity: Number(values.scheduledCapacity),
           extraHours: readShifts(event.currentTarget),
           closures: readClosures(event.currentTarget),
           autoSchedule: values.autoSchedule === "on",

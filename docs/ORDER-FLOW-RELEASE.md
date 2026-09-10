@@ -27,6 +27,10 @@ Validação desta etapa: 52 testes passaram e o editor foi exercitado no Chromiu
 
 Em Horários ou Minha loja, use Adicionar turno para configurar até três períodos por dia (por exemplo, 11h–15h e 18h–23h). Salve a programação com a automação ativada. O status da loja e os agendamentos respeitam os intervalos. Turnos que atravessam a meia-noite são aceitos; sobreposições são rejeitadas, inclusive entre dias. Desativar um dia remove seus turnos ao salvar. Os modelos substituem os turnos adicionais do formulário. Datas de fechamento continuam tendo prioridade.
 
+## Capacidade de agendamento
+
+Em Horários ou Minha loja, configure o limite de pedidos agendados por intervalo de 30 minutos (0 desativa o limite). Entrega e retirada compartilham as vagas. Pedidos aguardando pagamento reservam capacidade e cancelamentos liberam a vaga. Horários lotados deixam de ser oferecidos; o servidor revalida na compra, inclusive em solicitações simultâneas. O limite não se aplica a pedidos para agora e não cancela pedidos existentes se for reduzido. A garantia atual pressupõe uma instância do backend, como a persistência JSON do projeto.
+
 ## Publicação e uso
 
 Publique backend e frontend do mesmo commit. Os arquivos da aplicação foram versionados para essa entrega.
@@ -44,7 +48,6 @@ Testes automatizados cobrem observações, adicionais, estoque, cobertura de CEP
 ## Etapas ainda não implementadas
 
 - Frete por distância e mapa do entregador.
-- Limite de capacidade por horário.
 - Repasses bancários reais, conciliação financeira completa e política comercial de carência.
 - Migração do arquivo JSON para banco transacional, backups operacionais e monitoramento de produção.
 - Convites por e-mail, notificações push, pós-venda com ocorrências e melhorias de recompra.

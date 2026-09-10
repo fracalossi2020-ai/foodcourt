@@ -616,7 +616,7 @@ function registeredRestaurant(store) {
     schedulingEnabled: Boolean(store.autoSchedule),
     deliveryModes: store.deliveryModes || ['delivery'],
     pickupAddress: [store.address?.street, store.address?.number, store.address?.neighborhood, store.address?.city, store.address?.state].filter(Boolean).join(', '),
-    scheduleSlots: store.autoSchedule ? Array.from({ length: 336 }, (_, index) => new Date(Math.ceil((Date.now() + Math.max(15, prep) * 60000) / 1800000) * 1800000 + index * 1800000)).filter(date => date.getTime() <= Date.now() + 7 * 86400000 && platform.applyStoreSchedule({ ...store }, date).open).map(date => date.toISOString()) : [],
+    scheduleSlots: store.autoSchedule ? Array.from({ length: 336 }, (_, index) => new Date(Math.ceil((Date.now() + Math.max(15, prep) * 60000) / 1800000) * 1800000 + index * 1800000)).filter(date => date.getTime() <= Date.now() + 7 * 86400000 && platform.applyStoreSchedule({ ...store }, date).open && require('./lib/capacity').available(store, db.state.platformOrders, date)).map(date => date.toISOString()) : [],
     priceRange: averagePrice > 60 ? "$$$" : averagePrice > 30 ? "$$" : "$",
     open: store.status === "active" && Boolean(store.open),
     promo: promotion
@@ -2763,6 +2763,10 @@ Object.assign(api, {
         0,
         Math.min(100000, Number(body.freeShippingMin) || 0),
       );
+    if (body.scheduledCapacity !== undefined) {
+      try { store.scheduledCapacity = require('./lib/capacity').normalize(body.scheduledCapacity); }
+      catch (error) { return { status: 400, body: { error: error.message } }; }
+    }
     if (body.extraHours !== undefined || body.hours !== undefined) {
       try { store.extraHours = require('./lib/shifts').normalize(body.extraHours ?? store.extraHours ?? {}, body.hours ?? store.hours); }
       catch (error) { return { status: 400, body: { error: error.message } }; }
@@ -4021,6 +4025,8 @@ Object.assign(api, {
         )
           throw new Error("Escolha um agendamento entre 15 minutos e 7 dias.");
         scheduledAt = new Date(scheduleTime).toISOString();
+        if (partnerStore && !require('./lib/capacity').available(partnerStore, db.state.platformOrders, scheduledAt))
+          throw new Error('Este horário está lotado. Escolha outro horário para agendar.');
         if (partnerStore && (!partnerStore.autoSchedule || !platform.applyStoreSchedule({ ...partnerStore }, new Date(scheduleTime)).open))
           throw new Error("A loja não atende no horário escolhido ou não habilitou a programação automática.");
       }
