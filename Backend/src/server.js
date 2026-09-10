@@ -614,6 +614,8 @@ function registeredRestaurant(store) {
     freeShippingMin: Math.max(0, Number(store.freeShippingMin) || 0),
     distance: 0,
     schedulingEnabled: Boolean(store.autoSchedule),
+    deliveryModes: store.deliveryModes || ['delivery'],
+    pickupAddress: [store.address?.street, store.address?.number, store.address?.neighborhood, store.address?.city, store.address?.state].filter(Boolean).join(', '),
     scheduleSlots: store.autoSchedule ? Array.from({ length: 336 }, (_, index) => new Date(Math.ceil((Date.now() + Math.max(15, prep) * 60000) / 1800000) * 1800000 + index * 1800000)).filter(date => date.getTime() <= Date.now() + 7 * 86400000 && platform.applyStoreSchedule({ ...store }, date).open).map(date => date.toISOString()) : [],
     priceRange: averagePrice > 60 ? "$$$" : averagePrice > 30 ? "$$" : "$",
     open: store.status === "active" && Boolean(store.open),
@@ -2423,6 +2425,7 @@ Object.assign(api, {
       pending: "accepted",
       accepted: "preparing",
       preparing: "ready",
+      ready: order.fulfillment === 'pickup' ? 'delivered' : null,
     }[order.status];
     if (!expectedStatus || body.status !== expectedStatus)
       return {
@@ -2450,14 +2453,15 @@ Object.assign(api, {
       {
         accepted: "A loja aceitou seu pedido.",
         preparing: "Seu pedido está em preparação.",
-        ready: "Seu pedido está pronto para coleta.",
-        delivered: "Pedido entregue. Bom apetite!",
+        ready: order.fulfillment === "pickup" ? "Seu pedido está pronto para retirada na loja." : "Seu pedido está pronto para coleta.",
+        delivered: order.fulfillment === "pickup" ? "Retirada confirmada. Bom apetite!" : "Pedido entregue. Bom apetite!",
         cancelled: "O estabelecimento cancelou o pedido.",
       }[body.status] || `Novo status: ${body.status}.`,
       order.id,
     );
     if (
       body.status === "ready" &&
+      order.fulfillment !== 'pickup' &&
       !db.state.deliveries.some((delivery) => delivery.orderId === order.id)
     ) {
       const timestamp = platform.now();
@@ -2716,6 +2720,10 @@ Object.assign(api, {
       const prefixes = String(body.deliveryCepPrefixes).split(/[\s,;]+/).filter(Boolean);
       if (prefixes.length > 100 || prefixes.some(value => !/^\d{3,8}$/.test(value))) return { status: 400, body: { error: 'Informe prefixos de CEP com 3 a 8 dígitos, separados por vírgula.' } };
       store.deliveryCepPrefixes = [...new Set(prefixes)];
+    }
+    if (body.deliveryModes !== undefined) {
+      if (!Array.isArray(body.deliveryModes) || !body.deliveryModes.length || body.deliveryModes.some(mode => !['delivery','pickup'].includes(mode))) return {status:400,body:{error:'Selecione entrega ou retirada.'}};
+      store.deliveryModes = [...new Set(body.deliveryModes)];
     }
     if (typeof body.open === "boolean") {
       store.open = body.open;
@@ -3936,9 +3944,12 @@ Object.assign(api, {
           partnerStore?.freeShippingMin ??
           0,
       );
-      if (!["standard", "priority"].includes(body.delivery || "standard")) throw new Error("Entrega inválida.");
+      if (!["standard", "priority", "pickup"].includes(body.delivery || "standard")) throw new Error("Entrega inválida.");
+      const pickup = body.delivery === 'pickup';
+      if (partnerStore && !(partnerStore.deliveryModes || ['delivery']).includes(pickup ? 'pickup' : 'delivery')) throw new Error('Esta loja não oferece a modalidade selecionada.');
+      if (pickup && (!partnerStore || !partnerStore.address?.street || !partnerStore.address?.number)) throw new Error('A loja precisa cadastrar um endereço completo para oferecer retirada.');
       const priorityFee = body.delivery === "priority" ? 4.9 : 0;
-      const deliveryFee = (
+      const deliveryFee = pickup ? 0 : (
         freeShippingMin > 0 && subtotal >= freeShippingMin
           ? 0
           : baseDeliveryFee) + priorityFee;
@@ -3982,15 +3993,15 @@ Object.assign(api, {
                 : (subtotal * Number(promotion.value)) / 100,
             )
         : 0;
-      const savedAddress = body.addressId
+      const savedAddress = !pickup && body.addressId
         ? db.state.customerAddresses.find(
             (address) =>
               address.id === body.addressId && address.userId === ctx.user.id,
           )
         : null;
-      if (!savedAddress)
+      if (!pickup && !savedAddress)
         throw new Error("Endereço de entrega inválido.");
-      if (partnerStore?.deliveryCepPrefixes?.length && !partnerStore.deliveryCepPrefixes.some(prefix => String(savedAddress.cep || '').replace(/\D/g, '').startsWith(prefix)))
+      if (!pickup && partnerStore?.deliveryCepPrefixes?.length && !partnerStore.deliveryCepPrefixes.some(prefix => String(savedAddress.cep || '').replace(/\D/g, '').startsWith(prefix)))
         throw new Error('Este endereço está fora da área de entrega da loja. Escolha outro endereço.');
       let scheduledAt = null;
       if (body.scheduledAt) {
@@ -4019,6 +4030,7 @@ Object.assign(api, {
         deliveryFee,
         priorityFee,
         delivery: body.delivery || "standard",
+        fulfillment: pickup ? 'pickup' : 'delivery',
         discount: Number(discount.toFixed(2)),
         couponCode: promotion?.code || null,
         total: Number((subtotal + deliveryFee - discount).toFixed(2)),
@@ -4026,7 +4038,7 @@ Object.assign(api, {
         paymentIntentId: null,
         paymentStatus: "pending",
         addressId: savedAddress?.id || null,
-        address: savedAddress
+        address: pickup ? [partnerStore.address.street, partnerStore.address.number, partnerStore.address.neighborhood, partnerStore.address.city].filter(Boolean).join(', ') : savedAddress
           ? `${savedAddress.label} — ${savedAddress.street}, ${savedAddress.number}`
           : body.address || "",
         scheduledAt,

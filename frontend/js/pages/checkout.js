@@ -23,6 +23,9 @@ export async function render(view, boot, _params, query = new URLSearchParams())
   const cartGroups = Object.values(cart.items.reduce((groups,item) => { const restaurantId=item.restaurantId||cart.restaurantId; (groups[restaurantId] ||= { restaurantId, restaurantName:item.restaurantName, items:[] }).items.push(item); return groups }, {}))
   const restaurants = await Promise.all(cartGroups.map(group => group.restaurantId === rest?.id ? rest : api.restaurant(group.restaurantId).then(result => result.restaurant)))
   const scheduleSlots = (restaurants[0]?.scheduleSlots || []).filter(slot => restaurants.every(restaurant => restaurant.scheduleSlots?.includes(slot)))
+  const canPickup = restaurants.length === 1 && restaurants[0]?.deliveryModes?.includes('pickup') && restaurants[0]?.pickupAddress
+  const canDelivery = restaurants.every(restaurant => (restaurant.deliveryModes || ['delivery']).includes('delivery'))
+  if (!canDelivery && !canPickup) { view.innerHTML = '<div class="page"><h1>Modalidade indisponível</h1><p>Para retirar na loja, mantenha produtos de apenas um estabelecimento no carrinho. A loja precisa ter um endereço de retirada cadastrado.</p><a href="#/inicio" class="btn btn-primary">Voltar ao início</a></div>'; return }
   const savedAddresses = () => store.addresses.filter(address => address.street)
   const fee = rest?.deliveryFee ?? 0
   const freeMin = rest?.freeShippingMin ?? 0
@@ -31,14 +34,14 @@ export async function render(view, boot, _params, query = new URLSearchParams())
   let step = 1
   const state = {
     addressId: savedAddresses()[0]?.id || null,
-    delivery: 'standard',
+    delivery: canDelivery ? 'standard' : canPickup ? 'pickup' : 'standard',
     payment: config.methods.find(method => method.enabled && method.id === store.preferredPaymentId)?.id || config.methods.find(method => method.enabled)?.id || 'pix',
     scheduledAt: null,
     quote: null
   }
 
   function draw() {
-    const steps = ['Endereço', 'Entrega', 'Pagamento', 'Revisão']
+    const steps = ['Recebimento', 'Horário', 'Pagamento', 'Revisão']
     view.innerHTML = `
     <div class="page" style="max-width:680px;margin:0 auto">
       <h1 class="h-lg" style="margin-bottom:18px">Finalizar pedido</h1>
@@ -64,6 +67,16 @@ export async function render(view, boot, _params, query = new URLSearchParams())
   }
 
   function drawAddress(body) {
+    const addressRoot = body
+    if (canPickup) {
+      body.innerHTML = `<h2>Como quer receber?</h2><div class="delivery-choice-list">${canDelivery ? '<button class="btn btn-outline" data-receive-delivery>Receber no endereço</button>' : ''}<button class="btn btn-outline" data-receive-pickup>Retirar na loja · sem frete</button></div><div data-address-content></div>`
+      body.querySelectorAll('[data-receive-delivery], [data-receive-pickup]').forEach(button => { const selected = button.hasAttribute('data-receive-pickup') === (state.delivery === 'pickup'); button.setAttribute('aria-pressed', String(selected)); button.classList.toggle('btn-primary', selected); button.classList.toggle('btn-outline', !selected) })
+      body.querySelector('[data-receive-delivery]')?.addEventListener('click', () => {state.delivery='standard';drawAddress(addressRoot)})
+      body.querySelector('[data-receive-pickup]').addEventListener('click', () => {state.delivery='pickup';drawAddress(addressRoot)})
+      const content = body.querySelector('[data-address-content]')
+      if (state.delivery === 'pickup') { content.innerHTML = `<div class="card" style="padding:18px;margin-top:16px"><h3>Retirada em ${esc(rest.name)}</h3><p>${esc(rest.pickupAddress)}</p><p>Aguarde a confirmação de que o pedido está pronto antes de buscar.</p></div>`; return }
+      body = content
+    }
     body.innerHTML = `
       <h2 class="h-md" style="margin-bottom:14px">📍 Onde entregar?</h2>
       ${savedAddresses().length ? savedAddresses().map(a => addrCard(a, state.addressId === a.id, 'addressId')).join('') : '<div class="checkout-no-address"><span>📍</span><div><b>Nenhum endereço cadastrado</b><p>Adicione seu primeiro endereço para continuar. “Casa” e “Trabalho” são apenas exemplos de identificação.</p></div></div>'}
@@ -86,7 +99,7 @@ export async function render(view, boot, _params, query = new URLSearchParams())
         <aside class="address-privacy"><span>✓</span><p><b>Seus dados estão protegidos</b><small>Usaremos este endereço somente para entregas e informações do pedido.</small></p></aside>
         <div class="address-form-actions"><button class="btn btn-ghost" type="button" data-cancel-address>Cancelar</button><button class="btn btn-primary" type="submit"><span>Salvar endereço</span> →</button></div>
       </form>`
-    bindSelects(body, 'addressId', drawAddress, state)
+    bindSelects(body, 'addressId', () => drawAddress(addressRoot), state)
     body.querySelector('[data-newaddr]')?.addEventListener('click', () => { body.querySelector('[data-address-form]').hidden = false; body.querySelector('[data-newaddr]').hidden = true; body.querySelector('[name="label"]').focus() })
     let cepRequest = 0
     body.querySelector('[name="cep"]')?.addEventListener('input', async event => {
@@ -100,34 +113,36 @@ export async function render(view, boot, _params, query = new URLSearchParams())
         if(request!==cepRequest)return;body.querySelector('[name="street"]').value=address.street;body.querySelector('[name="neighborhood"]').value=address.neighborhood;body.querySelector('[name="city"]').value=address.city;body.querySelector('[name="state"]').value=address.state;feedback.className='cep-feedback wide success';feedback.innerHTML=`<b>✓ CEP encontrado</b><span>${esc([address.street,address.neighborhood,address.city,address.state].filter(Boolean).join(' · '))}</span>`;body.querySelector('[name="number"]').focus()
       }catch(error){if(request!==cepRequest)return;feedback.className='cep-feedback wide error';feedback.innerHTML=`<b>CEP não localizado</b><span>${esc(error.message||'Preencha o endereço manualmente.')}</span>`}
     })
-    body.querySelector('[data-cancel-address]')?.addEventListener('click', () => drawAddress(body))
+    body.querySelector('[data-cancel-address]')?.addEventListener('click', () => drawAddress(addressRoot))
     body.querySelector('[data-address-form]')?.addEventListener('submit', async event => {
       event.preventDefault(); const form = new FormData(event.currentTarget)
       const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true
-      try{const result=await api.saveAddress(Object.fromEntries(form));const address=store.addAddress(result.address);state.addressId=address.id;toast('Endereço adicionado e selecionado.','success','📍');drawAddress(body)}catch(error){toast(error.message,'error');button.disabled=false}
+      try{const result=await api.saveAddress(Object.fromEntries(form));const address=store.addAddress(result.address);state.addressId=address.id;toast('Endereço adicionado e selecionado.','success','📍');drawAddress(addressRoot)}catch(error){toast(error.message,'error');button.disabled=false}
     })
   }
 
   function drawDelivery(body) {
-    const addr = savedAddresses().find(a => a.id === state.addressId)
+    const addr = state.delivery === 'pickup' ? {label:rest.name,street:rest.pickupAddress} : savedAddresses().find(a => a.id === state.addressId)
     body.innerHTML = `
       <h2 class="h-md" style="margin-bottom:14px">🚴 Como quer receber?</h2>
       <div class="card" style="padding:13px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center">
         <span>📍</span>
-        <div class="text-sm muted">Entrega em <b style="color:var(--text)">${esc(addr.label)}</b> — ${esc(addr.street)}</div>
+        <div class="text-sm muted">${state.delivery === 'pickup' ? 'Retirada em' : 'Entrega em'} <b style="color:var(--text)">${esc(addr.label)}</b> — ${esc(addr.street)}</div>
       </div>
       <div class="delivery-choice-list">
         ${deliveryCard('standard', 'Entrega padrão', `${rest?.deliveryTime?.[0] ?? 25}–${rest?.deliveryTime?.[1] ?? 40} min`, fee === 0 ? 'Grátis' : money(fee), 'A loja prepara o pedido na fila normal e o entregador segue o fluxo regular até seu endereço.', 'RECOMENDADA')}
         ${deliveryCard('priority', 'Prioridade FC', `${Math.max(10, (rest?.deliveryTime?.[0] ?? 25) - 8)}–${Math.max(15, (rest?.deliveryTime?.[1] ?? 40) - 10)} min`, money(fee + 4.9), 'Seu pedido recebe prioridade operacional para ser preparado e enviado mais rapidamente.')}
       </div>
-      <label class="card" style="display:block;padding:16px;margin-top:14px"><b>Agendar entrega (opcional)</b><small style="display:block;margin:5px 0 10px">Horários de Brasília disponíveis para todas as lojas do pedido nos próximos 7 dias.</small><select class="input" data-scheduled-at><option value="">Pedir agora</option>${scheduleSlots.map(slot => '<option value="' + slot + '" ' + (state.scheduledAt === slot ? 'selected' : '') + '>' + new Date(slot).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) + '</option>').join('')}</select></label><div class="delivery-estimate-note"><span>⏱</span><p><b>Os prazos são estimativas</b><small>Podem variar conforme o preparo da loja, trânsito e disponibilidade de entregadores.</small></p></div>`
+      <label class="card" style="display:block;padding:16px;margin-top:14px"><b>Agendar pedido (opcional)</b><small style="display:block;margin:5px 0 10px">Horários de Brasília disponíveis para todas as lojas do pedido nos próximos 7 dias.</small><select class="input" data-scheduled-at><option value="">Pedir agora</option>${scheduleSlots.map(slot => '<option value="' + slot + '" ' + (state.scheduledAt === slot ? 'selected' : '') + '>' + new Date(slot).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) + '</option>').join('')}</select></label><div class="delivery-estimate-note"><span>⏱</span><p><b>Os prazos são estimativas</b><small>Podem variar conforme o preparo da loja, trânsito e disponibilidade de entregadores.</small></p></div>`
     body.querySelector('[data-scheduled-at]')?.addEventListener('change',event=>{state.scheduledAt=event.currentTarget.value})
+    if (state.delivery === 'pickup') body.querySelector('.delivery-estimate-note small').textContent = 'Aguarde a loja avisar que o pedido está pronto para retirada.'
+    if (state.delivery === 'pickup') body.querySelector('.delivery-choice-list').innerHTML = '<div class="card" style="padding:18px"><b>Retirada na loja</b><p>Você busca o pedido. Não há taxa de entrega.</p></div>'
     bindSelects(body, 'delivery', drawDelivery, state)
   }
 
   function checkoutBody() {
     const totals = store.cartTotals(fee, freeMin)
-    return { groups: cartGroups.map(group => ({ storeId: group.restaurantId, items: group.items.map(item => ({ productId: item.id, quantity: item.qty, options: item.optionNames || [], note: item.note || "" })) })), addressId: state.addressId, delivery: state.delivery, scheduledAt: state.scheduledAt || null, couponCode: totals.coupon?.code || '', method: state.payment }
+    return { groups: cartGroups.map(group => ({ storeId: group.restaurantId, items: group.items.map(item => ({ productId: item.id, quantity: item.qty, options: item.optionNames || [], note: item.note || "" })) })), addressId: state.delivery === 'pickup' ? null : state.addressId, delivery: state.delivery, scheduledAt: state.scheduledAt || null, couponCode: totals.coupon?.code || '', method: state.payment }
   }
 
   function drawPayment(body) {
@@ -149,7 +164,7 @@ export async function render(view, boot, _params, query = new URLSearchParams())
   function drawReview(body) {
     const t = { subtotal: state.quote.subtotal, fee: state.quote.deliveryFee, discount: state.quote.discount, coupon: { code: checkoutBody().couponCode } }
     const grand = state.quote.total
-    const addr = savedAddresses().find(a => a.id === state.addressId)
+    const addr = state.delivery === 'pickup' ? {label:rest.name,street:rest.pickupAddress} : savedAddresses().find(a => a.id === state.addressId)
     const pm = config.methods.find(p => p.id === state.payment)
     body.innerHTML = `
       <h2 class="h-md" style="margin-bottom:14px">🧾 Revise seu pedido</h2>
@@ -167,7 +182,7 @@ export async function render(view, boot, _params, query = new URLSearchParams())
       </div>
       <div class="card" style="padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:9px">
         <div class="pair text-sm"><span>📍</span> <b>${esc(addr.label)}</b> — <span class="muted">${esc(addr.street)}</span></div>
-        <div class="pair text-sm"><span>🚴</span> <span class="muted">${state.delivery === 'priority' ? 'Entrega prioritária' : 'Entrega padrão'}</span></div>
+        <div class="pair text-sm"><span>🚴</span> <span class="muted">${state.delivery === 'pickup' ? 'Retirada na loja' : state.delivery === 'priority' ? 'Entrega prioritária' : 'Entrega padrão'}</span></div>
         <div class="pair text-sm"><span>💳</span> <span class="muted">${esc(pm.name)}</span></div>
       </div>
       <div class="totals">
@@ -231,7 +246,7 @@ export async function render(view, boot, _params, query = new URLSearchParams())
   view.addEventListener('click', async event => {
     if (event.target.closest('[data-back]')) { step = Math.max(1, step - 1); draw(); return }
     if (event.target.closest('[data-next]')) {
-      if (step === 1 && !savedAddresses().find(address => address.id === state.addressId)) { toast('Adicione e selecione um endereço para continuar','error','⚠️'); return }
+      if (step === 1 && state.delivery !== 'pickup' && !savedAddresses().find(address => address.id === state.addressId)) { toast('Adicione e selecione um endereço para continuar','error','⚠️'); return }
       if (step === 3) {
         if (!config.methods.find(method => method.id === state.payment)?.enabled) { toast('Escolha uma forma de pagamento disponível.', 'error'); return }
         const button = event.target.closest('[data-next]')

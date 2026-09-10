@@ -530,7 +530,7 @@ function orderRows(orders, actions = false, couriers = []) {
     orders
       .map(
         (o) =>
-          `<article class="partner-order" data-order-status="${o.status}"><span class="order-time">${new Date(o.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span><div><b>${esc(o.id)}</b><small><strong>${esc(o.customerName)}</strong> pediu ${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</small></div><em class="status-${o.status}">${statusLabel[o.status]}</em><strong>${money(o.total)}</strong><button class="btn btn-outline btn-sm" data-order-details="${esc(o.id)}">Ver comanda</button>${o.scheduledAt ? `<small>Agendado: ${new Date(o.scheduledAt).toLocaleString("pt-BR", {timeZone:"America/Sao_Paulo"})}</small>` : ""}${actions ? orderAction(o, couriers) : ""}</article>`,
+          `<article class="partner-order" data-order-status="${o.status}"><span class="order-time">${new Date(o.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span><div><b>${esc(o.id)}</b><small><strong>${esc(o.customerName)}</strong> pediu ${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</small></div><em class="status-${o.status}">${o.fulfillment === 'pickup' ? (o.status === 'delivered' ? 'Retirado' : o.status === 'ready' ? 'Pronto para retirada' : statusLabel[o.status] + ' · Retirada') : statusLabel[o.status]}</em><strong>${money(o.total)}</strong><button class="btn btn-outline btn-sm" data-order-details="${esc(o.id)}">Ver comanda</button>${o.scheduledAt ? `<small>Agendado: ${new Date(o.scheduledAt).toLocaleString("pt-BR", {timeZone:"America/Sao_Paulo"})}</small>` : ""}${actions ? orderAction(o, couriers) : ""}</article>`,
       )
       .join("") ||
     emptyState(
@@ -545,6 +545,7 @@ function orderAction(o, couriers) {
     pending: "accepted",
     accepted: "preparing",
     preparing: "ready",
+    ready: o.fulfillment === 'pickup' ? 'delivered' : null,
   }[o.status];
   const canInvite =
     o.status === "ready" &&
@@ -554,7 +555,7 @@ function orderAction(o, couriers) {
     : o.delivery?.status === "offered"
       ? `<small>Convite enviado · ${o.delivery.commissionPercent}%</small>`
       : "";
-  return `<div class="partner-order-actions">${next ? `<button class="btn btn-primary btn-sm" data-order="${o.id}" data-status="${next}">${next === "accepted" ? "Aceitar" : next === "preparing" ? "Preparar" : "Marcar pronto"}</button>` : ""}${invite}${o.status === "pending" ? `<button class="btn btn-ghost btn-sm" data-order="${o.id}" data-status="cancelled">Recusar</button>` : ""}<a class="btn btn-outline btn-sm" href="#/conversa/${o.id}">Conversar</a></div>`;
+  return `<div class="partner-order-actions">${next ? `<button class="btn btn-primary btn-sm" data-order="${o.id}" data-status="${next}">${next === "accepted" ? "Aceitar" : next === "preparing" ? "Preparar" : next === "delivered" ? "Confirmar retirada" : "Marcar pronto"}</button>` : ""}${invite}${o.status === "pending" ? `<button class="btn btn-ghost btn-sm" data-order="${o.id}" data-status="cancelled">Recusar</button>` : ""}<a class="btn btn-outline btn-sm" href="#/conversa/${o.id}">Conversar</a></div>`;
 }
 function productCard(p) {
   const draft = p.active === false && Number(p.price) === 0;
@@ -566,11 +567,15 @@ function bind(view, section, data) {
     if (order) openOrderDetails(view, order);
   }));
   const deliveryForm = view.querySelector('[data-delivery-form]');
-  if (deliveryForm) {
+    if (deliveryForm) {
     const label = document.createElement('label');
     label.className = 'wide';
     label.innerHTML = `<span>Área de entrega por CEP</span><small>Prefixos separados por vírgula (ex.: 35180, 35181). Vazio mantém a cobertura sem restrição de CEP.</small><input class="input" name="deliveryCepPrefixes" value="${esc((data.store.deliveryCepPrefixes || []).join(', '))}" placeholder="Ex.: 35180, 35181">`;
     deliveryForm.querySelector('button').before(label);
+    const modes = document.createElement('div');
+    modes.className = 'wide';
+    modes.innerHTML = `<h3>Modalidades de atendimento</h3><label><input type="checkbox" name="modeDelivery" ${(data.store.deliveryModes || ['delivery']).includes('delivery') ? 'checked' : ''}> Entrega no endereço</label><label><input type="checkbox" name="modePickup" ${data.store.deliveryModes?.includes('pickup') ? 'checked' : ''}> Retirada na loja</label><small>A retirada exige endereço completo da loja cadastrado.</small>`;
+    deliveryForm.querySelector('button').before(modes);
   }
   const filterTeam = () => {
     const normalize = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -971,6 +976,7 @@ function bind(view, section, data) {
     ?.addEventListener("submit", async (event) => {
       event.preventDefault();
       const values = Object.fromEntries(new FormData(event.currentTarget));
+      values.deliveryModes = [values.modeDelivery ? 'delivery' : null, values.modePickup ? 'pickup' : null].filter(Boolean);
       try {
         await api.updatePartnerStore(values);
         toast("Configuração de frete atualizada.", "success");

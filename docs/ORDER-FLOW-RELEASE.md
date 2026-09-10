@@ -13,6 +13,10 @@
 - Comissão zero é respeitada. Repasse sem programação aparece como não programado, inclusive nos relatórios.
 - Permissões: cozinha acessa pedidos e avança para preparando/pronto; gerente administra operação; proprietário administra equipe, financeiro e assinatura. Verificação no servidor.
 
+## Retirada na loja
+
+Em Minha loja, marque Retirada na loja nas modalidades de atendimento e salve. Cadastre rua e número da loja. O checkout oferece retirada para carrinhos de uma loja, sem frete ou endereço do cliente. Depois do pagamento aprovado, a loja aceita, prepara, marca como pronto e confirma a retirada. Nenhum entregador é acionado. O acompanhamento e a comanda identificam a modalidade.
+
 ## Publicação e uso
 
 Publique backend e frontend do mesmo commit. Os arquivos da aplicação foram versionados para essa entrega.
@@ -29,7 +33,7 @@ Testes automatizados cobrem observações, adicionais, estoque, cobertura de CEP
 
 ## Etapas ainda não implementadas
 
-- Retirada na loja como fluxo completo, frete por distância e mapa do entregador.
+- Frete por distância e mapa do entregador.
 - Múltiplos turnos, feriados e limite de capacidade por horário.
 - Repasses bancários reais, conciliação financeira completa e política comercial de carência.
 - Migração do arquivo JSON para banco transacional, backups operacionais e monitoramento de produção.

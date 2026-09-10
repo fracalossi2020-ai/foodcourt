@@ -282,6 +282,54 @@ test("checkout methods fail closed without provider configuration; legacy bypass
   assert.equal((await api("/api/pix-charge", { amount: 0.01 })).status, 410);
 });
 
+test("pickup has no freight or customer address and finishes without a courier", async () => {
+  shop.deliveryModes = ["delivery", "pickup"];
+  shop.address = { street: "Store street", number: "10", city: "Test" };
+  const body = cart({ delivery: "pickup", addressId: null, expectedTotal: 56 });
+  const quote = await api("/api/checkout/quote", body);
+  assert.equal(quote.status, 200);
+  assert.equal(quote.body.deliveryFee, 0);
+  assert.equal(quote.body.total, 56);
+  const payment = await create(body);
+  providerRecords[payment.id].status = "approved";
+  await mpWebhook(providerRecords[payment.id]);
+  const orderId = payment.orders[0].id;
+  assert.equal(
+    (
+      await api(
+        "/api/partner-order-status",
+        { orderId, status: "delivered" },
+        merchantCookie,
+      )
+    ).status,
+    409,
+  );
+  for (const status of ["accepted", "preparing", "ready", "delivered"]) {
+    const result = await api(
+      "/api/partner-order-status",
+      { orderId, status },
+      merchantCookie,
+    );
+    assert.equal(result.status, 200, JSON.stringify(result.body));
+    assert.equal(result.body.order.fulfillment, "pickup");
+    assert.match(result.body.order.address, /Store street/);
+  }
+  assert.equal(
+    db.state.deliveries.some((delivery) => delivery.orderId === orderId),
+    false,
+  );
+});
+
+test("pickup requires store opt-in and an address; pickup-only stores reject delivery", async () => {
+  const body = cart({ delivery: "pickup", addressId: null, expectedTotal: 56 });
+  assert.equal((await api("/api/checkout/quote", body)).status, 400);
+  shop.deliveryModes = ["pickup"];
+  assert.equal((await api("/api/checkout/quote", body)).status, 400);
+  shop.address = { street: "Store street", number: "10" };
+  assert.equal((await api("/api/checkout/quote", cart())).status, 400);
+  assert.equal(providerCalls.length, 0);
+});
+
 test("server prices extras, quantity, delivery and priority instead of client totals", async () => {
   const body = cart({ amount: 0.01, expectedTotal: 0.01 });
   const quote = await api("/api/checkout/quote", body);
