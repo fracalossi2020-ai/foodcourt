@@ -504,6 +504,33 @@ test("reviews require a completed owned order and a valid score, awarding points
   );
 });
 
+test("support ticket derives its store from the customer's own order", async () => {
+  const orderId = crypto.randomUUID();
+  db.state.platformOrders.push({
+    id: orderId,
+    customerId: "buyer",
+    storeId: shop.id,
+  });
+  const result = await api("/api/customer-support", {
+    orderId,
+    storeId: "unrelated",
+    subject: "Missing item",
+    message: "An item was missing",
+  });
+  assert.equal(result.status, 201);
+  assert.equal(result.body.ticket.storeId, shop.id);
+  assert.equal(
+    (
+      await api(
+        "/api/customer-support",
+        { orderId, message: "Wrong account" },
+        otherCookie,
+      )
+    ).status,
+    400,
+  );
+});
+
 test("server prices extras, quantity, delivery and priority instead of client totals", async () => {
   const body = cart({ amount: 0.01, expectedTotal: 0.01 });
   const quote = await api("/api/checkout/quote", body);

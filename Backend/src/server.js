@@ -4345,7 +4345,7 @@ Object.assign(api, {
     const ticket = {
       id: db.uid("ticket"),
       customerId: ctx.user.id,
-      storeId: body.storeId || null,
+      storeId: db.state.platformOrders.find(order => order.id === orderId && order.customerId === ctx.user.id)?.storeId || null,
       orderId: orderId || null,
       subject: auth.sanitize(body.subject || "Atendimento").slice(0, 120),
       status: "open",

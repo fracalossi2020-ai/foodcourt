@@ -57,6 +57,10 @@ Publique backend e frontend do mesmo commit. Os arquivos da aplicação foram ve
 
 Testes automatizados cobrem observações, adicionais, estoque, cobertura de CEP, horários fechados, permissões, acesso por HTTP e revogação do colaborador. Fluxos de checkout e editor de opções foram exercitados no Chromium com dados de teste. Nenhum pagamento real foi realizado.
 
+## Suporte e operação
+
+Os detalhes do pedido oferecem Relatar problema, com o número preenchido na central de ajuda. O servidor vincula o chamado à loja do pedido e valida o titular. Ferramentas de backup/recuperação e verificação de disponibilidade estão descritas em BACKUP-RECOVERY.md e OPERATIONS-PENDING.md; não estão agendadas na produção.
+
 ## Etapas ainda não implementadas
 
 - Frete por distância e mapa do entregador.

@@ -74,8 +74,7 @@ function load() {
       state = { ...EMPTY(), ...JSON.parse(fs.readFileSync(DB_PATH, "utf8")) };
     }
   } catch (e) {
-    console.error("[db] falha ao carregar, iniciando vazio:", e.message);
-    state = EMPTY();
+    throw new Error("Falha ao carregar o banco. Inicialização interrompida para preservar os dados.", { cause: e });
   }
   rebuildIndexes();
   domainFingerprint = fingerprintDomainState();
