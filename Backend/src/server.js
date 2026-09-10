@@ -4146,7 +4146,9 @@ Object.assign(api, {
       };
     if (db.state.reviews.some((review) => review.orderId === order.id))
       return { status: 409, body: { error: "Este pedido já foi avaliado." } };
-    const rating = Math.max(1, Math.min(5, Number(body.rating) || 5));
+    const rating = Number(body.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5)
+      return { status: 400, body: { error: 'Escolha uma nota inteira de 1 a 5 estrelas.' } };
     const review = {
       id: db.uid("review"),
       orderId: order.id,

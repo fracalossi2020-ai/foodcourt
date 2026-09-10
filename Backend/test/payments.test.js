@@ -424,6 +424,52 @@ test("concurrent scheduled checkouts cannot overbook the store capacity", async 
   assert.equal((await api("/api/checkout/quote", cart())).status, 200);
 });
 
+test("reviews require a completed owned order and a valid score, awarding points once", async () => {
+  const orderId = crypto.randomUUID();
+  db.state.platformOrders.push({
+    id: orderId,
+    customerId: "buyer",
+    storeId: shop.id,
+    status: "cancelled",
+  });
+  const user = db.state.users.find((item) => item.id === "buyer");
+  const points = user.points || 0;
+  assert.equal(
+    (await api("/api/customer-reviews", { orderId, rating: 2 })).status,
+    400,
+  );
+  db.state.platformOrders[0].status = "delivered";
+  assert.equal(
+    (await api("/api/customer-reviews", { orderId, rating: 2 }, otherCookie))
+      .status,
+    400,
+  );
+  for (const rating of [0, 6, 1.5, null, "invalid"]) {
+    assert.equal(
+      (await api("/api/customer-reviews", { orderId, rating })).status,
+      400,
+    );
+  }
+  const result = await api("/api/customer-reviews", {
+    orderId,
+    rating: 2,
+    comment: "Could improve",
+  });
+  assert.equal(result.status, 201);
+  assert.equal(result.body.review.rating, 2);
+  assert.equal(result.body.points, points + 10);
+  assert.equal(
+    (await api("/api/customer-reviews", { orderId, rating: 5 })).status,
+    409,
+  );
+  assert.equal(user.points, points + 10);
+  assert.ok(
+    (await api("/api/customer-reviews")).body.reviews.some(
+      (review) => review.orderId === orderId,
+    ),
+  );
+});
+
 test("server prices extras, quantity, delivery and priority instead of client totals", async () => {
   const body = cart({ amount: 0.01, expectedTotal: 0.01 });
   const quote = await api("/api/checkout/quote", body);

@@ -35,6 +35,10 @@ Em Horários ou Minha loja, configure o limite de pedidos agendados por interval
 
 Pedir novamente, no histórico e na página inicial, consulta o cardápio atual e apresenta uma revisão antes de substituir o carrinho. Preços e estoque são atualizados; observações e adicionais ainda válidos são preservados. Produtos removidos, esgotados ou com opções incompatíveis são sinalizados para personalização no cardápio. Frete e horário são escolhidos novamente. A validação definitiva continua no servidor ao pagar.
 
+## Avaliações de pedidos
+
+O cliente escolhe explicitamente de 1 a 5 estrelas e pode escrever até 500 caracteres. Cancelar o formulário não envia avaliação. Apenas pedidos concluídos podem ser avaliados; o histórico recupera as avaliações existentes ao abrir. O servidor rejeita notas inválidas, pedidos de outra pessoa e duplicatas; os 10 pontos são creditados uma única vez.
+
 ## Publicação e uso
 
 Publique backend e frontend do mesmo commit. Os arquivos da aplicação foram versionados para essa entrega.

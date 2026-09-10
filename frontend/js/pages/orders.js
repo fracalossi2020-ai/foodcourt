@@ -1,5 +1,6 @@
+import { openReview } from '../core/review-editor.js';
 import { store } from "../core/store.js";
-import { esc, money, emptyState, bindGotos, toast } from "../core/ui.js";
+import { esc, money, emptyState, bindGotos } from "../core/ui.js";
 import { repeatOrder } from "../core/reorder.js";
 import { api } from "../core/api.js";
 import { icon } from "../core/icons.js";
@@ -10,7 +11,7 @@ export async function render(view, _boot) {
     past: `${icon("history")} Anteriores`,
   };
   let tab = "active";
-  const serverPayload = await api.orders().catch(() => ({ orders: [] }));
+  const [serverPayload, reviewPayload] = await Promise.all([api.orders().catch(() => ({ orders: [] })), api.customerReviews().catch(() => ({ reviews: [] }))]);
   const serverOrders = serverPayload.orders.map((order) => ({
     ...order,
     createdAt: new Date(order.createdAt).getTime(),
@@ -23,7 +24,7 @@ export async function render(view, _boot) {
       .map((item) => `${item.quantity}× ${item.name}`)
       .join(", "),
     restaurantName: order.restaurantName || "Estabelecimento",
-    rated: false,
+    rated: reviewPayload.reviews.some(review => review.orderId === order.id),
   }));
   const allOrders = [
     ...serverOrders,
@@ -100,19 +101,7 @@ export async function render(view, _boot) {
       b.addEventListener("click", () => {
         const order = allOrders.find((item) => item.id === b.dataset.rate);
         if (!order) return;
-        const comment = window.prompt("Conte como foi sua experiência:") || "";
-        api
-          .createReview({ orderId: order.id, rating: 5, comment })
-          .then(() => {
-            order.rated = true;
-            toast(
-              "Avaliação enviada! Você ganhou 10 pontos FC.",
-              "success",
-              "⭐",
-            );
-            draw();
-          })
-          .catch((error) => toast(error.message, "error"));
+        openReview(order, () => { order.rated = true; draw(); });
       }),
     );
   }
@@ -139,7 +128,7 @@ export async function render(view, _boot) {
               ? `<a class="btn btn-primary btn-sm" href="#/pedido/${o.id}">Acompanhar 📍</a>`
               : `<button class="btn btn-primary btn-sm" data-repeat="${o.id}">↻ Pedir novamente</button>
                ${
-                 o.rated
+                 o.status !== "delivered" ? "" : o.rated
                    ? '<span class="badge badge-green">Avaliado ✓</span>'
                    : `<button class="btn btn-ghost btn-sm" data-rate="${o.id}">⭐ Avaliar</button>`
                }`
