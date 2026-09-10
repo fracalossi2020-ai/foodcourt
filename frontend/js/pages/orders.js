@@ -1,6 +1,6 @@
 import { store } from "../core/store.js";
 import { esc, money, emptyState, bindGotos, toast } from "../core/ui.js";
-import { renderCartUI } from "../core/cart.js";
+import { repeatOrder } from "../core/reorder.js";
 import { api } from "../core/api.js";
 import { icon } from "../core/icons.js";
 
@@ -93,10 +93,7 @@ export async function render(view, _boot) {
       b.addEventListener("click", () => {
         const order = allOrders.find((item) => item.id === b.dataset.repeat);
         if (!order) return;
-        store.repeatOrder(order);
-        renderCartUI();
-        toast("Pedido reconstruído no carrinho", "success", "↻");
-        location.hash = "#/checkout";
+        repeatOrder(order, b);
       }),
     );
     view.querySelectorAll("[data-rate]").forEach((b) =>

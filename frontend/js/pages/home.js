@@ -1,3 +1,4 @@
+import { repeatOrder } from '../core/reorder.js'
 import { api } from '../core/api.js'
 import { store } from '../core/store.js'
 import { restaurantCard, productCard, skeletonCards, errorState, bindGotos, greeting, money } from '../core/ui.js'
@@ -45,8 +46,7 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
   view.querySelectorAll('[data-repeat]').forEach(button => button.addEventListener('click', () => {
     const order = store.getOrder(button.dataset.repeat)
     if (!order) return
-    store.repeatOrder(order)
-    location.hash = `#/restaurante/${order.restaurantId}`
+    repeatOrder(order, button)
   }))
 
   requestAnimationFrame(() => view.querySelector('.modern-category.active')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }))
