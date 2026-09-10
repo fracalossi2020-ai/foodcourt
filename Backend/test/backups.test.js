@@ -5,6 +5,48 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const backups = require("../src/lib/backups");
+const scheduler = require("../src/lib/backup-scheduler");
+
+test("automatic backup is opt-in and rejects public directories or invalid intervals", () => {
+  assert.equal(typeof scheduler.start("unused", {}), "function");
+  assert.throws(() =>
+    scheduler.start("unused", {
+      FC_BACKUP_DIR: path.join(__dirname, "../../frontend/backups"),
+    }),
+  );
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "fc-scheduler-test-"),
+  );
+  try {
+    assert.throws(() =>
+      scheduler.start("unused", {
+        FC_BACKUP_DIR: directory,
+        FC_BACKUP_MINUTES: 0,
+      }),
+    );
+    const source = path.join(directory, "db.json");
+    fs.writeFileSync(
+      source,
+      JSON.stringify({ users: [], stores: [], platformOrders: [] }),
+    );
+    const messages = [];
+    const stop = scheduler.start(
+      source,
+      { FC_BACKUP_DIR: path.join(directory, "backups") },
+      {
+        log: (message) => messages.push(message),
+        error: (message) => {
+          throw new Error(message);
+        },
+      },
+    );
+    stop();
+    assert.equal(messages.length, 1);
+    assert.equal(fs.readdirSync(path.join(directory, "backups")).length, 1);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test("backup verifies integrity, restores to a new file and refuses overwrite", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "fc-backup-test-"));

@@ -14,6 +14,8 @@ Para recuperar: pare o backend, restaure para um arquivo novo, configure FC_DB_P
 
 Os backups contêm dados pessoais e de autenticação. Guarde fora da pasta pública do site, com acesso restrito, e mantenha uma cópia em outro servidor ou armazenamento privado. Não envie ao GitHub.
 
-O agendamento precisa ser ativado no servidor. Configure o agendador da hospedagem para executar create regularmente (por exemplo, a cada hora), monitorar o código de saída e copiar as cópias para armazenamento externo. A retenção e a cópia externa ainda não são automatizadas por esta ferramenta. Nenhum agendamento de produção foi criado nesta entrega.
+Para ativar o agendamento no próprio backend, configure FC_BACKUP_DIR com um diretório privado fora do frontend. FC_BACKUP_MINUTES define o intervalo (15 a 1440 minutos; padrão 60). O backend cria uma cópia ao iniciar e repete enquanto estiver rodando. Falhas são registradas no log. Ao atingir 168 arquivos de backup, novas cópias são pausadas com aviso no log; arquive as cópias fora do servidor e libere espaço. Não há exclusão automática. A cópia externa ainda não é automatizada. Nenhuma configuração de produção foi alterada nesta entrega.
+
+Também é possível usar um agendador externo para executar create. Evite ativar os dois mecanismos para o mesmo diretório. A ferramenta externa create não aplica o limite de 168 cópias.
 
 Se o banco existente estiver ilegível, o backend agora interrompe a inicialização em vez de iniciar vazio. Use uma cópia verificada para a recuperação. A aplicação ainda usa JSON e deve operar em uma única instância até a migração transacional.

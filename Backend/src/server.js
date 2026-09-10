@@ -2902,6 +2902,17 @@ Object.assign(api, {
       members: db.state.storeMembers.filter((m) => m.storeId === store.id),
     };
   },
+  "POST /api/partner-team-email": async (params, query, body, ctx) => {
+    const store = platform.storeForUser(ctx.user);
+    const member = db.state.storeMembers.find(item => item.id === body.memberId && item.storeId === store?.id && item.active !== false && item.userId);
+    if (!member) return { status: 404, body: { error: 'Colaborador ativo e vinculado não encontrado.' } };
+    try {
+      const result = await require('./lib/team-mail').send(member, store);
+      platform.audit(ctx.user, 'team.email', 'member', member.id);
+      db.saveNow();
+      return result;
+    } catch (error) { return { status: error.status || 502, body: { error: error.status ? error.message : 'Não foi possível enviar o e-mail. Verifique a configuração do servidor e tente novamente.' } }; }
+  },
   "POST /api/partner-team-member": (params, query, body, ctx) => {
     if (!platform.partnerRole(ctx.user)) return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
@@ -4579,8 +4590,11 @@ const server = http.createServer(async (req, res) => {
 });
 
 let paymentReconciliationTimer;
+let stopBackups = () => {};
+server.on('close', () => stopBackups());
 server.on("close", () => clearInterval(paymentReconciliationTimer));
 function start(port = PORT) {
+  stopBackups = require('./lib/backup-scheduler').start(db.path);
   paymentReconciliationTimer = setInterval(() => paymentService.reconcile(), 60000);
   paymentReconciliationTimer.unref();
   server.listen(port, () => {

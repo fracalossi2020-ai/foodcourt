@@ -61,6 +61,10 @@ Testes automatizados cobrem observações, adicionais, estoque, cobertura de CEP
 
 Os detalhes do pedido oferecem Relatar problema, com o número preenchido na central de ajuda. O servidor vincula o chamado à loja do pedido e valida o titular. Ferramentas de backup/recuperação e verificação de disponibilidade estão descritas em BACKUP-RECOVERY.md e OPERATIONS-PENDING.md; não estão agendadas na produção.
 
+## Acesso por e-mail e backup automático
+
+Equipe oferece envio de instruções de acesso para colaboradores ativos e vinculados, mediante clique do proprietário. Consulte TEAM-EMAIL.md. A configuração do provedor e testes de entrega real continuam pendentes. O backend pode agendar backups ao definir FC_BACKUP_DIR; consulte BACKUP-RECOVERY.md. Ambas as funcionalidades foram testadas localmente, sem ativação na produção.
+
 ## Etapas ainda não implementadas
 
 - Frete por distância e mapa do entregador.

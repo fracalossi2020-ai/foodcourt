@@ -97,6 +97,7 @@ export const api = {
   savePartnerPromotion: (promotion) =>
     post("/api/partner-promotion", promotion),
   savePartnerTeamMember: (member) => post("/api/partner-team-member", member),
+  emailPartnerTeamMember: (memberId) => post('/api/partner-team-email', { memberId }),
   replyPartnerReview: (reviewId, reply) =>
     post("/api/partner-review-reply", { reviewId, reply }),
   savePartnerSupport: (ticket) => post("/api/partner-support-ticket", ticket),
