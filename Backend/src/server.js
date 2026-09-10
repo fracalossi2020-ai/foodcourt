@@ -2763,6 +2763,10 @@ Object.assign(api, {
         0,
         Math.min(100000, Number(body.freeShippingMin) || 0),
       );
+    if (body.extraHours !== undefined || body.hours !== undefined) {
+      try { store.extraHours = require('./lib/shifts').normalize(body.extraHours ?? store.extraHours ?? {}, body.hours ?? store.hours); }
+      catch (error) { return { status: 400, body: { error: error.message } }; }
+    }
     if (body.closures !== undefined) {
       try { store.closures = require('./lib/closures').normalizeClosures(body.closures); }
       catch (error) { return { status: 400, body: { error: error.message } }; }

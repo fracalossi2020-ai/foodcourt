@@ -47,11 +47,7 @@ function brazilClock(date=new Date()) {
 function applyStoreSchedule(store,date=new Date()) {
   if(store && require('./closures').isClosedDate(store,date)) { store.open=false; return store }
   if(!store||!store.autoSchedule)return store
-  const clock=brazilClock(date),days=['sun','mon','tue','wed','thu','fri','sat'],range=store.hours?.[clock.day],toMinutes=value=>{const [hour,minute]=String(value).split(':').map(Number);return hour*60+minute}
-  let open=false
-  if(Array.isArray(range)&&range[0]&&range[1]){const start=toMinutes(range[0]),end=toMinutes(range[1]);open=start===end?true:end>start?clock.minutes>=start&&clock.minutes<end:clock.minutes>=start}
-  if(!open){const previousDay=days[(days.indexOf(clock.day)+6)%7],previous=store.hours?.[previousDay];if(Array.isArray(previous)&&previous[0]&&previous[1]){const start=toMinutes(previous[0]),end=toMinutes(previous[1]);if(end<start&&clock.minutes<end)open=true}}
-  store.open=open
+  store.open=require('./shifts').isOpen(store,brazilClock(date))
   return store
 }
 function audit(user, action, entityType, entityId, detail='') { db.state.auditLog.unshift({ id:uid('audit'), userId:user.id, role:user.role, action, entityType, entityId, detail, at:now() }); db.save() }
