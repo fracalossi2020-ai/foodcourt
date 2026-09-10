@@ -1,6 +1,8 @@
 import { api } from "../core/api.js";
 import { esc, money, toast } from "../core/ui.js";
 import { icon } from "../core/icons.js";
+import { optionsEditor, readOptions } from '../core/options-editor.js';
+import { openOrderDetails } from '../core/order-details.js';
 
 const nav = [
   ["dashboard", "Visão geral", "dashboard"],
@@ -32,18 +34,26 @@ export async function render(
   _params = {},
   query = new URLSearchParams(),
 ) {
-  const section = nav.some(([id]) => id === query.get("secao"))
+  let section = nav.some(([id]) => id === query.get("secao"))
     ? query.get("secao")
     : "dashboard";
   view.innerHTML = `<div class="partner-loading">Carregando central do parceiro...</div>`;
   try {
+    const access = await api.partnerAccess();
+    const allowedNav = nav.filter(([id]) => access.sections.includes(id));
+    if (!access.sections.includes(section)) section = access.sections[0];
     if (section === 'plano' && query.get('recorrencia') === 'retorno') {
       try { await api.syncRecurring(); }
       catch { toast('Não foi possível atualizar a recorrência agora. Use Atualizar situação.', 'error'); }
     }
     const payload = await load(section);
-    view.innerHTML = `<div class="partner-shell"><aside class="partner-sidebar"><a class="partner-brand" href="#/parceiro"><i>FC</i><span>Central do<br><b>Parceiro</b></span></a><p class="partner-nav-label">GERENCIAR</p><nav>${nav.map(([id, label, iconName], index) => `<a class="${section === id ? "active" : ""}" style="--nav-index:${index}" href="#/parceiro?secao=${id}" title="Abrir ${label}"><span>${icon(iconName)}</span><b>${label}</b>${section === id ? "<i>Você está aqui</i>" : ""}</a>`).join("")}</nav><div class="partner-user"><span>${boot.user.avatarEmoji}</span><div><b>${esc(boot.user.fullName)}</b><small>Proprietário da loja</small></div></div></aside><main class="partner-main"><div class="partner-mobile-context"><b>${nav.find((item) => item[0] === section)?.[1]}</b><span>Gerencie sua operação com dados reais.</span></div>${content(section, payload)}</main></div>`;
+    payload.access = access;
+    view.innerHTML = `<div class="partner-shell"><aside class="partner-sidebar"><a class="partner-brand" href="#/parceiro"><i>FC</i><span>Central do<br><b>Parceiro</b></span></a><p class="partner-nav-label">GERENCIAR</p><nav>${allowedNav.map(([id, label, iconName], index) => `<a class="${section === id ? "active" : ""}" style="--nav-index:${index}" href="#/parceiro?secao=${id}" title="Abrir ${label}"><span>${icon(iconName)}</span><b>${label}</b>${section === id ? "<i>Você está aqui</i>" : ""}</a>`).join("")}</nav><div class="partner-user"><span>${boot.user.avatarEmoji}</span><div><b>${esc(boot.user.fullName)}</b><small>${esc(roleLabel(access.role))}</small></div></div></aside><main class="partner-main"><div class="partner-mobile-context"><b>${nav.find((item) => item[0] === section)?.[1]}</b><span>Gerencie sua operação com dados reais.</span></div>${content(section, payload)}</main></div>`;
     bind(view, section, payload);
+    if (access.role === 'kitchen') {
+      view.querySelectorAll('[data-order][data-status]').forEach(button => { if (!['preparing','ready'].includes(button.dataset.status)) button.remove(); });
+      view.querySelectorAll('[data-invite-courier], [data-assign-courier]').forEach(button => button.remove());
+    }
   } catch (error) {
     if (error.code === "SUBSCRIPTION_INACTIVE") {
       view.innerHTML = pendingSubscription(error);
@@ -303,7 +313,7 @@ function content(section, data) {
   if (section === "promocoes")
     return `${head("CRESCIMENTO", "Promoções", "Crie ofertas com regras claras e acompanhe seus resultados.", `<button class="btn btn-primary" data-new-promotion>+ Criar promoção</button>`)}<section class="promotion-summary"><div><span>Campanhas</span><b>${data.promotions.length}</b></div><div><span>Ativas agora</span><b>${data.promotions.filter((p) => p.active && (!p.endsAt || Date.parse(p.endsAt) >= Date.now())).length}</b></div><div><span>Utilizações</span><b>${data.promotions.reduce((sum, p) => sum + (p.uses || 0), 0)}</b></div></section><div class="promotion-grid">${data.promotions.map((p) => promotionCard(p)).join("") || emptyState(icon("percent"), "Nenhuma promoção criada", "Crie uma oferta com período, valor mínimo e código opcional.")}</div>`;
   if (section === "financeiro")
-    return `${head("FINANCEIRO", "Recebimentos e repasses", "Valores calculados sobre pedidos entregues.")}<section class="partner-metrics">${metric("💵", "Vendas brutas", money(data.gross), `${data.orders} pedidos concluídos`)}${metric("📉", "Comissão", money(data.commission), "desconto da plataforma")}${metric("✅", "Você recebe", money(data.net), "valor líquido estimado")}${metric("📅", "Próximo repasse", new Date(data.nextPayout).toLocaleDateString("pt-BR"), "data prevista")}</section><div class="partner-panel partner-finance-explain"><h2>Como chegamos ao valor líquido?</h2><div><span>Vendas brutas <b>${money(data.gross)}</b></span><i>−</i><span>Comissão <b>${money(data.commission)}</b></span><i>=</i><span class="total">Você recebe <b>${money(data.net)}</b></span></div><button class="btn btn-outline" data-export-finance>Exportar relatório CSV</button></div>`;
+    return `${head("FINANCEIRO", "Recebimentos e repasses", "Valores calculados sobre pedidos entregues.")}<section class="partner-metrics">${metric("💵", "Vendas brutas", money(data.gross), `${data.orders} pedidos concluídos`)}${metric("📉", "Comissão", money(data.commission), "desconto da plataforma")}${metric("✅", "Você recebe", money(data.net), "valor líquido estimado")}${metric("📅", "Próximo repasse", data.nextPayout ? new Date(data.nextPayout).toLocaleDateString("pt-BR") : "Não programado", "aguardando programação de repasse")}</section><div class="partner-panel partner-finance-explain"><h2>Como chegamos ao valor líquido?</h2><div><span>Vendas brutas <b>${money(data.gross)}</b></span><i>−</i><span>Comissão <b>${money(data.commission)}</b></span><i>=</i><span class="total">Você recebe <b>${money(data.net)}</b></span></div><button class="btn btn-outline" data-export-finance>Exportar relatório CSV</button></div>`;
   if (section === "avaliacoes")
     return `${head("REPUTAÇÃO", "Avaliações dos clientes", "Responda comentários e acompanhe a percepção da loja.")}<div class="partner-panel">${data.reviews.map((r) => `<article class="review-row"><span>${r.customerName.slice(0, 2).toUpperCase()}</span><div><b>${esc(r.customerName)}</b><strong aria-label="${r.rating} de 5 estrelas">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</strong><p>${esc(r.comment)}</p>${r.reply ? `<blockquote><b>Sua resposta</b>${esc(r.reply)}</blockquote>` : ""}<button data-review-reply="${r.id}">${r.reply ? "Editar resposta" : "Responder avaliação"}</button></div></article>`).join("") || emptyState("★", "Ainda não há avaliações", "As avaliações aparecerão depois dos pedidos entregues.")}</div>`;
   if (section === "equipe") return teamContent(data);
@@ -324,7 +334,7 @@ function teamContent(data) {
   return `${head('PESSOAS', 'Equipe da loja', 'Organize os colaboradores e mantenha seus cadastros atualizados.', '<button class="btn btn-primary" data-new-member>+ Adicionar pessoa</button>')}
     <section class="team-summary" aria-label="Resumo da equipe"><div><span>Total de pessoas</span><b>${members.length}</b></div><div><span>Ativas</span><b>${active}</b></div><div><span>Inativas</span><b>${members.length - active}</b></div><div><span>Gerentes</span><b>${members.filter(member => member.role === 'manager').length}</b></div></section>
     <section class="partner-panel team-directory"><header><div><h2>Colaboradores</h2><p>Busque por nome ou e-mail e filtre a lista.</p></div><span data-team-count>${members.length} pessoas</span></header><div class="team-filters"><label>Buscar<input class="input" type="search" data-team-search placeholder="Nome ou e-mail"></label><label>Função<select class="input" data-team-role><option value="">Todas</option><option value="manager">Gerente</option><option value="kitchen">Cozinha</option></select></label><label>Status<select class="input" data-team-status><option value="">Todos</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select></label></div>
-    <div class="team-directory-list">${members.map(member => `<article class="team-person" data-team-person="${esc(member.id)}" data-role="${esc(member.role)}" data-status="${member.active === false ? 'inactive' : 'active'}"><span class="team-avatar" aria-hidden="true">${esc(member.name.slice(0, 2).toUpperCase())}</span><div class="team-person-info"><h3>${esc(member.name)}</h3><p>${esc(member.email)}</p><span>${esc(roleLabel(member.role))}</span> <b class="team-status ${member.active === false ? 'inactive' : ''}">${member.active === false ? 'Inativo' : 'Ativo'}</b></div><div class="team-person-actions"><button class="btn btn-outline" data-edit-member="${esc(member.id)}" aria-label="Editar ${esc(member.name)}">Editar</button><button class="btn btn-outline" data-toggle-member="${esc(member.id)}">${member.active === false ? 'Reativar' : 'Desativar'}</button></div></article>`).join('')}</div><div class="team-empty" data-team-empty ${members.length ? 'hidden' : ''}><h3>${members.length ? 'Nenhum resultado' : 'Sua equipe começa aqui'}</h3><p>${members.length ? 'Tente outro nome ou ajuste os filtros.' : 'Adicione as pessoas que trabalham com você.'}</p></div></section><p class="team-help">O cadastro registra a pessoa na equipe. Nenhum convite por e-mail é enviado por esta tela.</p>`;
+    <div class="team-directory-list">${members.map(member => `<article class="team-person" data-team-person="${esc(member.id)}" data-role="${esc(member.role)}" data-status="${member.active === false ? 'inactive' : 'active'}"><span class="team-avatar" aria-hidden="true">${esc(member.name.slice(0, 2).toUpperCase())}</span><div class="team-person-info"><h3>${esc(member.name)}</h3><p>${esc(member.email)}</p><span>${esc(roleLabel(member.role))}</span> <b class="team-status ${member.active === false ? 'inactive' : ''}">${member.active === false ? 'Inativo' : 'Ativo'}</b></div><div class="team-person-actions"><button class="btn btn-outline" data-edit-member="${esc(member.id)}" aria-label="Editar ${esc(member.name)}">Editar</button><button class="btn btn-outline" data-toggle-member="${esc(member.id)}">${member.active === false ? 'Reativar' : 'Desativar'}</button></div></article>`).join('')}</div><div class="team-empty" data-team-empty ${members.length ? 'hidden' : ''}><h3>${members.length ? 'Nenhum resultado' : 'Sua equipe começa aqui'}</h3><p>${members.length ? 'Tente outro nome ou ajuste os filtros.' : 'Adicione as pessoas que trabalham com você.'}</p></div></section><p class="team-help">A pessoa deve criar uma conta FoodCourt antes de ser adicionada. Cadastros antigos precisam ser editados e salvos para vincular a conta. Nenhum convite por e-mail é enviado.</p>`;
 }
 
 function scheduleContent(data) {
@@ -493,7 +503,7 @@ function downloadFinanceCsv(data) {
       ["Pedidos concluídos", data.orders],
       [
         "Próximo repasse",
-        new Date(data.nextPayout).toLocaleDateString("pt-BR"),
+        data.nextPayout ? new Date(data.nextPayout).toLocaleDateString("pt-BR") : "Não programado",
       ],
     ],
     csv =
@@ -520,7 +530,7 @@ function orderRows(orders, actions = false, couriers = []) {
     orders
       .map(
         (o) =>
-          `<article class="partner-order" data-order-status="${o.status}"><span class="order-time">${new Date(o.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span><div><b>${esc(o.id)}</b><small><strong>${esc(o.customerName)}</strong> pediu ${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</small></div><em class="status-${o.status}">${statusLabel[o.status]}</em><strong>${money(o.total)}</strong>${actions ? orderAction(o, couriers) : ""}</article>`,
+          `<article class="partner-order" data-order-status="${o.status}"><span class="order-time">${new Date(o.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span><div><b>${esc(o.id)}</b><small><strong>${esc(o.customerName)}</strong> pediu ${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</small></div><em class="status-${o.status}">${statusLabel[o.status]}</em><strong>${money(o.total)}</strong><button class="btn btn-outline btn-sm" data-order-details="${esc(o.id)}">Ver comanda</button>${o.scheduledAt ? `<small>Agendado: ${new Date(o.scheduledAt).toLocaleString("pt-BR", {timeZone:"America/Sao_Paulo"})}</small>` : ""}${actions ? orderAction(o, couriers) : ""}</article>`,
       )
       .join("") ||
     emptyState(
@@ -551,6 +561,17 @@ function productCard(p) {
   return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
+  view.querySelectorAll('[data-order-details]').forEach(button => button.addEventListener('click', () => {
+    const order = (data.orders || data.recentOrders || []).find(item => item.id === button.dataset.orderDetails);
+    if (order) openOrderDetails(view, order);
+  }));
+  const deliveryForm = view.querySelector('[data-delivery-form]');
+  if (deliveryForm) {
+    const label = document.createElement('label');
+    label.className = 'wide';
+    label.innerHTML = `<span>Área de entrega por CEP</span><small>Prefixos separados por vírgula (ex.: 35180, 35181). Vazio mantém a cobertura sem restrição de CEP.</small><input class="input" name="deliveryCepPrefixes" value="${esc((data.store.deliveryCepPrefixes || []).join(', '))}" placeholder="Ex.: 35180, 35181">`;
+    deliveryForm.querySelector('button').before(label);
+  }
   const filterTeam = () => {
     const normalize = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const query = normalize(view.querySelector('[data-team-search]').value.trim());
@@ -1267,6 +1288,7 @@ function bind(view, section, data) {
     productForm.elements.price.value = product?.price ?? "";
     productForm.elements.stock.value = product?.stock ?? "";
     productForm.elements.image.value = product?.image || "";
+    optionsEditor(productForm, product?.options || []);
     const preview = productForm.querySelector("[data-product-image-preview]");
     preview.textContent = product?.image ? "" : "📷";
     preview.style.backgroundImage = product?.image
@@ -1329,6 +1351,7 @@ function bind(view, section, data) {
         price: form.get("price"),
         stock: form.get("stock"),
         image: form.get("image"),
+        options: readOptions(productForm),
         active: existing?.active ?? true,
       });
       toast(existing ? "Produto atualizado." : "Produto criado.", "success");

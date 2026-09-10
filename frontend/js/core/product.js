@@ -10,6 +10,7 @@ function basePrice(p) {
 }
 
 export function openProduct(restaurant, product) {
+  if (product.available === false) { toast("Produto esgotado.", "error"); return; }
   drawer = document.getElementById("productDrawer");
   const sel = new Map();
   let qty = 1;

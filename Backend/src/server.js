@@ -569,7 +569,9 @@ function registeredRestaurant(store) {
       emoji: product.emoji || "🍽️",
       image: safeUploadedImage(product.image),
       popular: Number(product.sold || 0) > 0,
-      options: [],
+      options: Array.isArray(product.options) ? product.options : [],
+      stock: Number(product.stock),
+      available: Number(product.stock) > 0,
     });
   }
   const reviewItems = db.state.reviews.filter(
@@ -611,6 +613,8 @@ function registeredRestaurant(store) {
     deliveryFee: Math.max(0, Number(store.deliveryFee) || 0),
     freeShippingMin: Math.max(0, Number(store.freeShippingMin) || 0),
     distance: 0,
+    schedulingEnabled: Boolean(store.autoSchedule),
+    scheduleSlots: store.autoSchedule ? Array.from({ length: 336 }, (_, index) => new Date(Math.ceil((Date.now() + Math.max(15, prep) * 60000) / 1800000) * 1800000 + index * 1800000)).filter(date => date.getTime() <= Date.now() + 7 * 86400000 && platform.applyStoreSchedule({ ...store }, date).open).map(date => date.toISOString()) : [],
     priceRange: averagePrice > 60 ? "$$$" : averagePrice > 30 ? "$$" : "$",
     open: store.status === "active" && Boolean(store.open),
     promo: promotion
@@ -699,7 +703,7 @@ function searchProducts(q, restaurants = marketplaceRestaurants()) {
 function canAccessOrder(user, order) {
   if (!user || !order) return false;
   if (isPlatformAdmin(user) || order.customerId === user.id) return true;
-  if (user.role === "merchant")
+  if (platform.partnerRole(user))
     return platform.storeForUser(user)?.id === order.storeId;
   if (user.role === "courier")
     return db.state.deliveries.some(
@@ -1605,7 +1609,7 @@ function partnerReport(store, type) {
             `Comissao: R$ ${finance.commission.toFixed(2)}`,
             `Valor liquido: R$ ${finance.net.toFixed(2)}`,
             `Pedidos concluidos: ${finance.orders}`,
-            `Proximo repasse: ${new Date(finance.nextPayout).toLocaleDateString("pt-BR")}`,
+            `Proximo repasse: ${finance.nextPayout ? new Date(finance.nextPayout).toLocaleDateString("pt-BR") : "Nao programado"}`,
           ],
         },
         {
@@ -2327,8 +2331,12 @@ Object.assign(api, {
       },
     };
   },
+  "GET /api/partner-access": (_params, _query, _body, ctx) => {
+    const role = platform.partnerRole(ctx.user);
+    return { role, sections: require('./lib/team-access').sections[role] || [] };
+  },
   "GET /api/partner-dashboard": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     const subscription = db.state.subscriptions.find(
@@ -2338,7 +2346,7 @@ Object.assign(api, {
     return { store, subscription: require("./lib/subscriptions").summary(subscription, owner), ...platform.dashboard(store.id) };
   },
   "GET /api/partner-orders": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     const status = String(query.get("status") || "").trim();
@@ -2378,7 +2386,7 @@ Object.assign(api, {
     };
   },
   "POST /api/partner-order-status": async (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     const order = db.state.platformOrders.find(
@@ -2475,7 +2483,7 @@ Object.assign(api, {
     return { order };
   },
   "POST /api/partner-assign-courier": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     const order = db.state.platformOrders.find(
@@ -2540,7 +2548,7 @@ Object.assign(api, {
     return { delivery };
   },
   "GET /api/partner-catalog": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     return {
@@ -2560,10 +2568,20 @@ Object.assign(api, {
     };
   },
   "POST /api/partner-product": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
+    if (!auth.sanitize(body.name) || !Number.isFinite(Number(body.price)) || Number(body.price) < 0 || !Number.isInteger(Number(body.stock)) || Number(body.stock) < 0)
+      return { status: 400, body: { error: "Informe nome, preço válido e estoque inteiro não negativo." } };
     let product = store.products.find((item) => item.id === body.id);
+    const optionGroups = body.options === undefined ? product?.options || [] : body.options;
+    const optionNames = new Set();
+    if (!Array.isArray(optionGroups) || optionGroups.length > 12 || optionGroups.some(group =>
+      !group || typeof group.name !== 'string' || !group.name.trim() || group.name.length > 80 || !['single','multiple'].includes(group.type) || !Array.isArray(group.choices) || !group.choices.length || group.choices.length > 30 || group.choices.some(choice => {
+        if (!choice || typeof choice.name !== 'string' || !choice.name.trim() || choice.name.length > 80 || optionNames.has(choice.name) || !Number.isFinite(Number(choice.price)) || Number(choice.price) < 0) return true;
+        optionNames.add(choice.name); return false;
+      }))) return { status: 400, body: { error: 'Confira os grupos: nomes únicos, opções preenchidas e preços não negativos.' } };
+    const options = optionGroups.map(group => ({ name: auth.sanitize(group.name), type: group.type, required: Boolean(group.required), choices: group.choices.map(choice => ({ name: auth.sanitize(choice.name), price: payments.money(Number(choice.price)) })) }));
     if (product)
       Object.assign(product, {
         name: auth.sanitize(body.name).slice(0, 100),
@@ -2572,6 +2590,7 @@ Object.assign(api, {
         price: Number(body.price),
         stock: Number(body.stock),
         active: Boolean(body.active),
+        options,
         image: safeUploadedImage(body.image),
         updatedAt: platform.now(),
       });
@@ -2584,6 +2603,7 @@ Object.assign(api, {
         price: Number(body.price || 0),
         stock: Number(body.stock || 0),
         active: true,
+        options,
         image: safeUploadedImage(body.image),
         sold: 0,
         createdAt: platform.now(),
@@ -2600,7 +2620,7 @@ Object.assign(api, {
     return { product };
   },
   "POST /api/partner-menu-analyze": async (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     try {
@@ -2636,7 +2656,7 @@ Object.assign(api, {
     }
   },
   "POST /api/partner-menu-import": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user),
       items = Array.isArray(body.products) ? body.products.slice(0, 100) : [];
@@ -2692,6 +2712,11 @@ Object.assign(api, {
         status: 404,
         body: { error: "Estabelecimento não encontrado." },
       };
+    if (body.deliveryCepPrefixes !== undefined) {
+      const prefixes = String(body.deliveryCepPrefixes).split(/[\s,;]+/).filter(Boolean);
+      if (prefixes.length > 100 || prefixes.some(value => !/^\d{3,8}$/.test(value))) return { status: 400, body: { error: 'Informe prefixos de CEP com 3 a 8 dígitos, separados por vírgula.' } };
+      store.deliveryCepPrefixes = [...new Set(prefixes)];
+    }
     if (typeof body.open === "boolean") {
       store.open = body.open;
       store.autoSchedule = false;
@@ -2754,7 +2779,7 @@ Object.assign(api, {
     return { store };
   },
   "GET /api/partner-promotions": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     return {
@@ -2845,12 +2870,12 @@ Object.assign(api, {
     return { promotion };
   },
   "GET /api/partner-finance": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     return platform.finance(platform.storeForUser(ctx.user).id);
   },
   "GET /api/partner-team": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     return {
@@ -2858,7 +2883,7 @@ Object.assign(api, {
     };
   },
   "POST /api/partner-team-member": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role)) return forbidden("parceiros");
+    if (!platform.partnerRole(ctx.user)) return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     let member = db.state.storeMembers.find(
       (m) => m.id === body.id && m.storeId === store.id,
@@ -2878,6 +2903,8 @@ Object.assign(api, {
         .toLowerCase(),
       role = ["manager", "kitchen"].includes(body.role) ? body.role : "kitchen";
     if (body.id && !member) return { status: 404, body: { error: "Pessoa não encontrada." } };
+    const memberAccount = db.findByEmail(email);
+    if (!memberAccount) return { status: 400, body: { error: 'A pessoa precisa criar uma conta FoodCourt com este e-mail antes de ser vinculada à equipe.' } };
     if (db.state.storeMembers.some(item => item.storeId === store.id && item.id !== member?.id && item.email.toLowerCase() === email))
       return { status: 409, body: { error: "Este e-mail já faz parte da equipe." } };
     if (name.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -2902,6 +2929,7 @@ Object.assign(api, {
         email,
         role,
         active: true,
+        userId: memberAccount.id,
       };
       db.state.storeMembers.push(member);
     } else
@@ -2910,6 +2938,7 @@ Object.assign(api, {
         email,
         role,
         active: body.active !== false,
+        userId: memberAccount.id,
       });
     platform.audit(
       ctx.user,
@@ -2920,7 +2949,7 @@ Object.assign(api, {
     return { member };
   },
   "GET /api/partner-reviews": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     return { reviews: db.state.reviews.filter((r) => r.storeId === store.id) };
@@ -2945,7 +2974,7 @@ Object.assign(api, {
     return { review };
   },
   "GET /api/partner-support": (params, query, body, ctx) => {
-    if (!["merchant", "admin"].includes(ctx.user.role))
+    if (!platform.partnerRole(ctx.user))
       return forbidden("parceiros");
     const store = platform.storeForUser(ctx.user);
     return {
@@ -3853,9 +3882,9 @@ Object.assign(api, {
       ? catalogRestaurant.menu.flatMap((section) => section.items)
       : partnerStore.products;
     try {
-      if (partnerStore && (partnerStore.status !== "active" || !partnerStore.open))
+      if (partnerStore && (partnerStore.status !== "active" || (!body.scheduledAt && !partnerStore.open)))
         throw new Error("Este estabelecimento está fechado ou indisponível.");
-      if (catalogRestaurant && !catalogRestaurant.open)
+      if (catalogRestaurant && !partnerStore && !catalogRestaurant.open)
         throw new Error("Este estabelecimento está fechado.");
       const requestedStock = new Map();
       const items = body.items.map((line) => {
@@ -3888,6 +3917,7 @@ Object.assign(api, {
           quantity,
           unitPrice: payments.money(Number(product.promoPrice ?? product.price) + extra),
           options,
+          note: auth.sanitize(line.note || "").slice(0, 500),
         };
       });
       const subtotal = items.reduce(
@@ -3960,6 +3990,8 @@ Object.assign(api, {
         : null;
       if (!savedAddress)
         throw new Error("Endereço de entrega inválido.");
+      if (partnerStore?.deliveryCepPrefixes?.length && !partnerStore.deliveryCepPrefixes.some(prefix => String(savedAddress.cep || '').replace(/\D/g, '').startsWith(prefix)))
+        throw new Error('Este endereço está fora da área de entrega da loja. Escolha outro endereço.');
       let scheduledAt = null;
       if (body.scheduledAt) {
         const scheduleTime = Date.parse(body.scheduledAt);
@@ -3970,6 +4002,8 @@ Object.assign(api, {
         )
           throw new Error("Escolha um agendamento entre 15 minutos e 7 dias.");
         scheduledAt = new Date(scheduleTime).toISOString();
+        if (partnerStore && (!partnerStore.autoSchedule || !platform.applyStoreSchedule({ ...partnerStore }, new Date(scheduleTime)).open))
+          throw new Error("A loja não atende no horário escolhido ou não habilitou a programação automática.");
       }
       const order = {
         id: "FC-" + crypto.randomUUID(),
@@ -4429,7 +4463,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (clean.startsWith("/api/partner-")) {
-      if (!["merchant", "admin"].includes(ctxUser.role)) {
+      if (!platform.partnerRole(ctxUser)) {
         sendJson(res, 403, {
           error: "Acesso exclusivo para parceiros.",
           code: "PARTNER_ROLE_REQUIRED",
@@ -4474,6 +4508,10 @@ const server = http.createServer(async (req, res) => {
             new URLSearchParams(Buffer.concat(chunks).toString("utf8")),
           );
         } else body = await readBody(req);
+      }
+      if (clean.startsWith('/api/partner-') && !require('./lib/team-access').allowed(platform.partnerRole(ctxUser), req.method, clean, body || {})) {
+        sendJson(res, 403, { error: 'Sua função não permite esta ação.' });
+        return;
       }
       const result = await route.handler(
         route.params,

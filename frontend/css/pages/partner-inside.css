@@ -103,3 +103,10 @@ html[data-theme="dark"] .partner-shell .menu-phone-preview footer { background: 
 .team-empty { text-align:center; padding:36px 12px; }
 .team-help { margin-top:16px; }
 @media(max-width:700px) { .team-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .team-filters { grid-template-columns:1fr; } .team-person { flex-wrap:wrap; } .team-person-actions { width:100%; padding-left:64px; } }
+[data-options-editor] { grid-column:1/-1; min-width:0; }
+[data-options-editor] fieldset { min-width:0; border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0; display:grid; gap:10px; }
+.option-editor-choice { display:grid; grid-template-columns:minmax(0,1fr) 85px 30px; gap:6px; margin:8px 0; }
+.option-editor-choice input { min-width:0; }
+.order-detail-card { width:min(600px,100%); max-height:calc(100dvh - 40px); overflow:auto; background:var(--surface); color:var(--text); padding:24px; border-radius:18px; }
+.order-detail-card section { margin:16px 0; padding:10px; border:1px solid var(--border); border-radius:10px; }
+.order-detail-card footer { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }

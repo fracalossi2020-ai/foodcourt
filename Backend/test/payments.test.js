@@ -545,6 +545,80 @@ test("subscription Pix is provider-backed and signed approval activates the subs
   assert.equal(billing.nextBillingAt, due);
 });
 
+test("observations survive checkout and scheduling respects opening hours", async () => {
+  const body = cart();
+  body.groups[0].items[0].note = "Sem cebola";
+  await create(body);
+  assert.equal(db.state.platformOrders[0].items[0].note, "Sem cebola");
+  shop.autoSchedule = true;
+  shop.hours = Object.fromEntries(
+    ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => [
+      day,
+      ["", ""],
+    ]),
+  );
+  const scheduled = cart({
+    scheduledAt: new Date(Date.now() + 3600000).toISOString(),
+  });
+  assert.equal((await api("/api/checkout/quote", scheduled)).status, 400);
+  shop.hours = Object.fromEntries(
+    ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => [
+      day,
+      ["00:00", "00:00"],
+    ]),
+  );
+  assert.equal((await api("/api/checkout/quote", scheduled)).status, 200);
+});
+
+test("merchant options are persisted and delivery coverage rejects an outside address", async () => {
+  const product = shop.products.find((item) => item.id === "meal");
+  const options = [
+    {
+      name: "Tamanho",
+      type: "single",
+      required: true,
+      choices: [{ name: "Grande", price: 5 }],
+    },
+  ];
+  const result = await api(
+    "/api/partner-product",
+    { ...product, options },
+    merchantCookie,
+  );
+  assert.equal(result.status, 200);
+  assert.deepEqual(product.options, options);
+  assert.equal(
+    (
+      await api(
+        "/api/partner-product",
+        { ...product, stock: -1 },
+        merchantCookie,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await api(
+        "/api/partner-product",
+        {
+          ...product,
+          options: [
+            { ...options[0], choices: [{ name: "Grande", price: -1 }] },
+          ],
+        },
+        merchantCookie,
+      )
+    ).status,
+    400,
+  );
+  const body = cart();
+  body.groups[0].items[0].options = ["Grande"];
+  assert.equal((await api("/api/checkout/quote", body)).status, 200);
+  shop.deliveryCepPrefixes = ["99999"];
+  assert.equal((await api("/api/checkout/quote", body)).status, 400);
+});
+
 test("free shipping coupon does not waive the separately requested priority service", async () => {
   db.state.promotions.push({
     id: "shipping",

@@ -70,6 +70,7 @@ export const api = {
   search: (q) => get(`/api/search?q=${encodeURIComponent(q)}`),
   flashDeals: () => get("/api/flash-deals"),
   partnerDashboard: () => get("/api/partner-dashboard"),
+  partnerAccess: () => get('/api/partner-access'),
   startRecurring: () => post("/api/partner-subscription-recurring", { consent: true }),
   cancelRecurring: () => post("/api/partner-subscription-recurring-cancel", {}),
   syncRecurring: () => post("/api/partner-subscription-recurring-sync", {}),

@@ -91,7 +91,7 @@ export async function render(view, boot, params) {
           <article class="digital-product" data-product="${product.id}" data-search="${esc(normalize(`${product.name} ${product.description} ${section.name}`))}" role="button" tabindex="0" aria-label="${esc(product.name)}, ${money(product.promoPrice ?? product.price)}">
             <div class="digital-product-photo" ${product.image ? `style="background-image:url('${esc(product.image)}')"` : ""}>
               ${product.image ? "" : `<span>${product.emoji || "🍽️"}</span>`}
-              ${product.discount ? `<b>-${product.discount}%</b>` : ""}<button type="button" tabindex="-1" aria-hidden="true">+</button>
+              ${product.available === false ? "<b>Esgotado</b>" : ""}${product.discount ? `<b>-${product.discount}%</b>` : ""}<button type="button" tabindex="-1" aria-hidden="true">+</button>
             </div>
             <div class="digital-product-info">
               <div class="digital-product-flags">${product.popular ? "<span>🔥 Mais pedido</span>" : ""}${(
@@ -125,7 +125,7 @@ export async function render(view, boot, params) {
         <div><b>${free ? "Frete grátis" : money(r.deliveryFee)}</b><small>${!free && r.freeShippingMin ? `Grátis acima de ${money(r.freeShippingMin)}` : "Taxa de entrega"}</small></div><div><b>${r.priceRange}</b><small>Faixa de preço</small></div>
       </section>
       ${r.promo ? `<aside class="menu-promo"><span>OFERTA ATIVA</span><b>${esc(r.promo)}</b><small>Aproveite enquanto estiver disponível</small></aside>` : ""}
-      ${!r.open ? '<aside class="menu-closed">O cardápio continua disponível para consulta. Você poderá pedir quando a loja abrir.</aside>' : ""}
+      ${!r.open ? '<aside class="menu-closed">Loja fechada agora. Se houver agendamento habilitado, escolha um horário de atendimento no checkout.</aside>' : ""}
       ${
         products.length
           ? `<div class="menu-toolbar"><label><span aria-hidden="true">⌕</span><input id="menuSearch" type="search" aria-label="Buscar neste cardápio" placeholder="Buscar neste cardápio..." autocomplete="off"></label>
@@ -160,7 +160,11 @@ export async function render(view, boot, params) {
   );
 
   const openItem = (node) => {
-    if (!r.open) {
+    if (productIndex.get(node.dataset.product)?.available === false) {
+      toast("Este produto está esgotado.", "error");
+      return;
+    }
+    if (!r.open && !r.schedulingEnabled) {
       toast("A loja está fechada no momento.", "error", "◷");
       return;
     }

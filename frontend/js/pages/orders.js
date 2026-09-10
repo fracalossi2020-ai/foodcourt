@@ -33,16 +33,14 @@ export async function render(view, _boot) {
   ];
 
   function draw() {
-    const dayMs = 1000 * 60 * 40;
+
     const active = allOrders.filter(
       (o) =>
-        !["delivered", "cancelled"].includes(o.status) &&
-        Date.now() - o.createdAt < dayMs * 72,
+        !["delivered", "cancelled"].includes(o.status),
     );
     const past = allOrders.filter(
       (o) =>
-        ["delivered", "cancelled"].includes(o.status) ||
-        Date.now() - o.createdAt >= dayMs * 72,
+        ["delivered", "cancelled"].includes(o.status),
     );
     const list = tab === "active" ? active : past;
 
@@ -50,7 +48,7 @@ export async function render(view, _boot) {
     <div class="page account-destination-page">
       <a class="profile-back" href="#/perfil">← <span>Voltar ao perfil</span></a>
       <header class="destination-heading"><span class="destination-icon">${icon("package")}</span><div><span class="account-kicker">MINHA CONTA</span><h1>Meus pedidos</h1><p>Acompanhe entregas e peça seus favoritos novamente.</p></div></header>
-      <div class="destination-summary"><div><b>${active.length}</b><span>Em andamento</span></div><div><b>${past.length}</b><span>Entregues</span></div><a href="#/inicio">+ Novo pedido</a></div>
+      <div class="destination-summary"><div><b>${active.length}</b><span>Em andamento</span></div><div><b>${past.length}</b><span>Finalizados</span></div><a href="#/inicio">+ Novo pedido</a></div>
       <div class="tabs modern-tabs">
         ${Object.entries(TABS)
           .map(

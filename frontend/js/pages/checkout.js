@@ -21,6 +21,8 @@ export async function render(view, boot, _params, query = new URLSearchParams())
 
   const rest = await api.restaurant(cart.restaurantId).then(d => d.restaurant).catch(() => null)
   const cartGroups = Object.values(cart.items.reduce((groups,item) => { const restaurantId=item.restaurantId||cart.restaurantId; (groups[restaurantId] ||= { restaurantId, restaurantName:item.restaurantName, items:[] }).items.push(item); return groups }, {}))
+  const restaurants = await Promise.all(cartGroups.map(group => group.restaurantId === rest?.id ? rest : api.restaurant(group.restaurantId).then(result => result.restaurant)))
+  const scheduleSlots = (restaurants[0]?.scheduleSlots || []).filter(slot => restaurants.every(restaurant => restaurant.scheduleSlots?.includes(slot)))
   const savedAddresses = () => store.addresses.filter(address => address.street)
   const fee = rest?.deliveryFee ?? 0
   const freeMin = rest?.freeShippingMin ?? 0
@@ -118,14 +120,14 @@ export async function render(view, boot, _params, query = new URLSearchParams())
         ${deliveryCard('standard', 'Entrega padrão', `${rest?.deliveryTime?.[0] ?? 25}–${rest?.deliveryTime?.[1] ?? 40} min`, fee === 0 ? 'Grátis' : money(fee), 'A loja prepara o pedido na fila normal e o entregador segue o fluxo regular até seu endereço.', 'RECOMENDADA')}
         ${deliveryCard('priority', 'Prioridade FC', `${Math.max(10, (rest?.deliveryTime?.[0] ?? 25) - 8)}–${Math.max(15, (rest?.deliveryTime?.[1] ?? 40) - 10)} min`, money(fee + 4.9), 'Seu pedido recebe prioridade operacional para ser preparado e enviado mais rapidamente.')}
       </div>
-      <label class="card" style="display:block;padding:16px;margin-top:14px"><b>Agendar entrega (opcional)</b><small style="display:block;margin:5px 0 10px">Escolha uma data e horário nos próximos 7 dias.</small><input class="input" type="datetime-local" data-scheduled-at value="${state.scheduledAt||''}"></label><div class="delivery-estimate-note"><span>⏱</span><p><b>Os prazos são estimativas</b><small>Podem variar conforme o preparo da loja, trânsito e disponibilidade de entregadores.</small></p></div>`
+      <label class="card" style="display:block;padding:16px;margin-top:14px"><b>Agendar entrega (opcional)</b><small style="display:block;margin:5px 0 10px">Horários de Brasília disponíveis para todas as lojas do pedido nos próximos 7 dias.</small><select class="input" data-scheduled-at><option value="">Pedir agora</option>${scheduleSlots.map(slot => '<option value="' + slot + '" ' + (state.scheduledAt === slot ? 'selected' : '') + '>' + new Date(slot).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) + '</option>').join('')}</select></label><div class="delivery-estimate-note"><span>⏱</span><p><b>Os prazos são estimativas</b><small>Podem variar conforme o preparo da loja, trânsito e disponibilidade de entregadores.</small></p></div>`
     body.querySelector('[data-scheduled-at]')?.addEventListener('change',event=>{state.scheduledAt=event.currentTarget.value})
     bindSelects(body, 'delivery', drawDelivery, state)
   }
 
   function checkoutBody() {
     const totals = store.cartTotals(fee, freeMin)
-    return { groups: cartGroups.map(group => ({ storeId: group.restaurantId, items: group.items.map(item => ({ productId: item.id, quantity: item.qty, options: item.optionNames || [] })) })), addressId: state.addressId, delivery: state.delivery, scheduledAt: state.scheduledAt || null, couponCode: totals.coupon?.code || '', method: state.payment }
+    return { groups: cartGroups.map(group => ({ storeId: group.restaurantId, items: group.items.map(item => ({ productId: item.id, quantity: item.qty, options: item.optionNames || [], note: item.note || "" })) })), addressId: state.addressId, delivery: state.delivery, scheduledAt: state.scheduledAt || null, couponCode: totals.coupon?.code || '', method: state.payment }
   }
 
   function drawPayment(body) {
@@ -158,6 +160,7 @@ export async function render(view, boot, _params, query = new URLSearchParams())
             <div class="ci-info">
               <div class="ci-name">${i.quantity}× ${esc(i.name)}</div>
               ${i.options?.length ? `<div class="ci-detail">${esc(i.options.join(', '))}</div>` : ''}
+              ${i.note ? `<div class="ci-detail"><b>Observação:</b> ${esc(i.note)}</div>` : ''}
             </div>
             <span class="ci-price">${money(i.unitPrice * i.quantity)}</span>
           </div>`).join('')}

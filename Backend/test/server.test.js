@@ -584,6 +584,13 @@ test("order applies a store coupon, reserves stock and accepts scheduling", asyn
   store.status = "active";
   store.open = true;
   store.freeShippingMin = 100;
+  store.autoSchedule = true;
+  store.hours = Object.fromEntries(
+    ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => [
+      day,
+      ["00:00", "00:00"],
+    ]),
+  );
   const customer = db.findByEmail("joao@foodcourt.com");
   const address = db.state.customerAddresses.find(
     (item) => item.userId === customer.id,
@@ -1009,4 +1016,52 @@ test("authenticated users cannot access another order", async () => {
 
   assert.equal(response.status, 404);
   assert.match((await response.json()).error, /não encontrado/i);
+});
+
+test("kitchen account is scoped to operational actions and loses access when disabled", async () => {
+  const { cookie } = await loginDemo();
+  const user = db.findByEmail("joao@foodcourt.com");
+  const store = db.state.stores.find((item) => item.id === "store_real_test");
+  const member = {
+    id: "team-kitchen-test",
+    storeId: store.id,
+    userId: user.id,
+    email: user.email,
+    role: "kitchen",
+    active: true,
+  };
+  db.state.storeMembers.push(member);
+  try {
+    const headers = { Cookie: cookie, "Content-Type": "application/json" };
+    const access = await fetch(`${baseUrl}/api/partner-access`, { headers });
+    assert.equal(access.status, 200);
+    assert.deepEqual((await access.json()).sections, ["pedidos"]);
+    assert.equal(
+      (await fetch(`${baseUrl}/api/partner-orders`, { headers })).status,
+      200,
+    );
+    assert.equal(
+      (await fetch(`${baseUrl}/api/partner-finance`, { headers })).status,
+      403,
+    );
+    assert.equal(
+      (
+        await fetch(`${baseUrl}/api/partner-order-status`, {
+          headers,
+          method: "POST",
+          body: JSON.stringify({ orderId: "none", status: "cancelled" }),
+        })
+      ).status,
+      403,
+    );
+    member.active = false;
+    assert.equal(
+      (await fetch(`${baseUrl}/api/partner-orders`, { headers })).status,
+      403,
+    );
+  } finally {
+    db.state.storeMembers = db.state.storeMembers.filter(
+      (item) => item.id !== member.id,
+    );
+  }
 });
