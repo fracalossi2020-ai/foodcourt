@@ -1,3 +1,4 @@
+import { mountAdminLists } from '../core/admin-list-controls.js';
 import { operationsPanel } from '../core/operations-panel.js';
 import { api } from "../core/api.js";
 import { esc, money, toast } from "../core/ui.js";
@@ -212,6 +213,7 @@ export async function render(view) {
       sistema: "settings",
     };
     view.innerHTML = `<div class="admin-shell"><aside class="admin-sidebar"><a class="admin-brand" href="#/admin"><span>FC</span><b>FoodCourt<small>Administração geral</small></b></a><nav aria-label="Seções administrativas">${tabs.map(([id, label]) => `<a class="${section === id ? "active" : ""}" href="#/admin?secao=${id}"><i>${adminIcon(navIcons[id])}</i><span>${label}</span>${id === "entregadores" && data.metrics.pendingCourierApplications ? `<b>${data.metrics.pendingCourierApplications}</b>` : ""}</a>`).join("")}</nav><a class="admin-account-link" href="#/perfil">← Voltar ao FoodCourt</a></aside><main class="admin-page"><header class="admin-head"><div><span>ADMINISTRAÇÃO GERAL</span><h1>${tabs.find(([id]) => id === section)?.[1]}</h1><p>Controle centralizado de toda a operação FoodCourt.</p></div><span class="admin-live"><i></i>Sistema online</span></header>${content}</main></div>`;
+    mountAdminLists(view);
     view.querySelectorAll("[data-store-status]").forEach((select) =>
       select.addEventListener("change", async () => {
         select.disabled = true;
