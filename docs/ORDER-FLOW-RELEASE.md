@@ -69,9 +69,13 @@ Equipe oferece envio de instruções de acesso para colaboradores ativos e vincu
 
 O entregador pode compartilhar a posição com o titular do pedido durante a entrega; o cliente abre a posição no mapa externo. O perfil permite ativar push quando as chaves estiverem configuradas. Equipe inclui convite por e-mail com aceite, cancelamento e expiração. Consulte PUSH-LOCATION.md e TEAM-EMAIL.md. Provedores e geolocalização foram simulados nos testes; entrega real e publicação estão pendentes.
 
+## Frete por trajeto
+
+Integração opcional com Google Routes, taxa base, valor por km e alcance. O checkout consulta e valida uma cotação no servidor antes de pagar. O entregador possui atalhos de navegação para loja e cliente. Consulte DISTANCE-DELIVERY.md; configuração do provedor e validação real ainda estão pendentes.
+
 ## Etapas ainda não implementadas
 
-- Frete por distância de trajeto e mapa com rota/previsão de chegada.
+- Mapa de rota integrado e previsão dinâmica de chegada dentro do site (a navegação atual abre o aplicativo de mapas).
 - Repasses bancários reais, conciliação financeira completa e política comercial de carência.
 - Migração do arquivo JSON para banco transacional, backups operacionais e monitoramento de produção.
 - Ativação e validação em produção do e-mail, push e localização.

@@ -54,7 +54,7 @@ export function abbr(n) {
 }
 
 export function restaurantCard(r) {
-  const free = r.deliveryFee === 0
+  const free = !r.distancePricingEnabled && r.deliveryFee === 0
   const disc = r.promo ? `<span class="badge badge-brand">${icon('tag')} ${esc(r.promo)}</span>` : ''
   const badge = r.badge ? `<span class="badge badge-green">${esc(r.badge)}</span>` : ''
   return `
@@ -74,7 +74,7 @@ export function restaurantCard(r) {
       <div class="rcard-meta">
         ${ratingPill(r)}
         <span>${icon('clock')} ${r.deliveryTime[0]}–${r.deliveryTime[1]} min</span>
-        <span class="${free ? 'free' : ''}">${icon('bike')} ${free ? 'Grátis' : money(r.deliveryFee)}</span>
+        <span class="${free ? 'free' : ''}">${icon('bike')} ${r.distancePricingEnabled ? 'Frete por trajeto' : free ? 'Grátis' : money(r.deliveryFee)}</span>
         ${!r.open ? `<span class="badge badge-red">Fechado${r.opensAt ? ` • abre ${r.opensAt}` : ''}</span>` : ''}
       </div>
     </div>

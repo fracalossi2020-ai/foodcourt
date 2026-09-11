@@ -43,8 +43,8 @@ export function closeAllDrawers() {
 }
 
 let feeCtx = { fee: 0, freeMin: 0 };
-export function setFeeContext(fee, freeMin) {
-  feeCtx = { fee, freeMin };
+export function setFeeContext(fee, freeMin, distance = false) {
+  feeCtx = { fee, freeMin, distance };
 }
 
 function render() {
@@ -102,9 +102,9 @@ function render() {
         </div>
         <div class="totals" style="margin-top:18px">
           <div class="totals-row"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
-          <div class="totals-row"><span>Taxa de entrega</span><span class="${t.fee === 0 ? "brand-text" : ""}">${t.fee === 0 ? "Grátis" : money(t.fee)}</span></div>
+          <div class="totals-row"><span>Taxa de entrega</span><span class="${t.fee === 0 ? "brand-text" : ""}">${feeCtx.distance ? "Calculado no checkout" : t.fee === 0 ? "Grátis" : money(t.fee)}</span></div>
           ${t.discount ? `<div class="totals-row discount"><span>Desconto (${t.coupon.code})</span><span>-${money(t.discount)}</span></div>` : ""}
-          <div class="totals-row total"><span>Total</span><span class="val">${money(t.total)}</span></div>
+          <div class="totals-row total"><span>${feeCtx.distance ? "Subtotal dos itens" : "Total estimado"}</span><span class="val">${money(feeCtx.distance ? t.subtotal : t.total)}</span></div>
         </div>`
       }
     </div>
@@ -234,7 +234,7 @@ export function renderCartUI() {
     bar.innerHTML = `
       <span class="cb-count">${n}</span>
       <span>Ver carrinho</span>
-      <span class="cb-total">${money(t.total)}</span>`;
+      <span class="cb-total">${money(feeCtx.distance ? t.subtotal : t.total)}</span>`;
     if (shouldBump) {
       bar.classList.remove("bump");
       void bar.offsetWidth;

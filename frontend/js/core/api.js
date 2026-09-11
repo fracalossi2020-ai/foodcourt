@@ -116,6 +116,7 @@ export const api = {
   updateAdminCourierPayout: (payoutId, status) =>
     post("/api/admin-courier-payout", { payoutId, status }),
   courierDashboard: () => get("/api/courier-dashboard"),
+  deliveryQuote: (storeId, addressId) => post('/api/delivery-quote', { storeId, addressId }),
   pushConfig: () => get('/api/push-config'),
   savePushSubscription: (subscription, remove = false) => post('/api/push-subscription', { subscription, remove }),
   courierLocation: (body) => post('/api/courier-location', body),

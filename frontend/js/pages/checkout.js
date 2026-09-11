@@ -25,13 +25,16 @@ export async function render(view, boot, _params, query = new URLSearchParams())
   const scheduleSlots = (restaurants[0]?.scheduleSlots || []).filter(slot => restaurants.every(restaurant => restaurant.scheduleSlots?.includes(slot)))
   const canPickup = restaurants.length === 1 && restaurants[0]?.deliveryModes?.includes('pickup') && restaurants[0]?.pickupAddress
   const canDelivery = restaurants.every(restaurant => (restaurant.deliveryModes || ['delivery']).includes('delivery'))
+  const distanceQuotes = new Map()
+  const hasDistancePricing = restaurants.some(restaurant => restaurant.distancePricingEnabled)
   if (!canDelivery && !canPickup) { view.innerHTML = '<div class="page"><h1>Modalidade indisponível</h1><p>Para retirar na loja, mantenha produtos de apenas um estabelecimento no carrinho. A loja precisa ter um endereço de retirada cadastrado.</p><a href="#/inicio" class="btn btn-primary">Voltar ao início</a></div>'; return }
   const savedAddresses = () => store.addresses.filter(address => address.street)
   const fee = rest?.deliveryFee ?? 0
   const freeMin = rest?.freeShippingMin ?? 0
-  setFeeContext(fee, freeMin)
+  setFeeContext(fee, freeMin, hasDistancePricing)
 
   let step = 1
+  let reviewRequest = 0
   const state = {
     addressId: savedAddresses()[0]?.id || null,
     delivery: canDelivery ? 'standard' : canPickup ? 'pickup' : 'standard',
@@ -130,19 +133,20 @@ export async function render(view, boot, _params, query = new URLSearchParams())
         <div class="text-sm muted">${state.delivery === 'pickup' ? 'Retirada em' : 'Entrega em'} <b style="color:var(--text)">${esc(addr.label)}</b> — ${esc(addr.street)}</div>
       </div>
       <div class="delivery-choice-list">
-        ${deliveryCard('standard', 'Entrega padrão', `${rest?.deliveryTime?.[0] ?? 25}–${rest?.deliveryTime?.[1] ?? 40} min`, fee === 0 ? 'Grátis' : money(fee), 'A loja prepara o pedido na fila normal e o entregador segue o fluxo regular até seu endereço.', 'RECOMENDADA')}
-        ${deliveryCard('priority', 'Prioridade FC', `${Math.max(10, (rest?.deliveryTime?.[0] ?? 25) - 8)}–${Math.max(15, (rest?.deliveryTime?.[1] ?? 40) - 10)} min`, money(fee + 4.9), 'Seu pedido recebe prioridade operacional para ser preparado e enviado mais rapidamente.')}
+        ${deliveryCard('standard', 'Entrega padrão', `${rest?.deliveryTime?.[0] ?? 25}–${rest?.deliveryTime?.[1] ?? 40} min`, hasDistancePricing ? 'Calculado na revisão' : fee === 0 ? 'Grátis' : money(fee), 'A loja prepara o pedido na fila normal e o entregador segue o fluxo regular até seu endereço.', 'RECOMENDADA')}
+        ${deliveryCard('priority', 'Prioridade FC', `${Math.max(10, (rest?.deliveryTime?.[0] ?? 25) - 8)}–${Math.max(15, (rest?.deliveryTime?.[1] ?? 40) - 10)} min`, hasDistancePricing ? 'Frete calculado + R$ 4,90' : money(fee + 4.9), 'Seu pedido recebe prioridade operacional para ser preparado e enviado mais rapidamente.')}
       </div>
       <label class="card" style="display:block;padding:16px;margin-top:14px"><b>Agendar pedido (opcional)</b><small style="display:block;margin:5px 0 10px">Horários de Brasília disponíveis para todas as lojas do pedido nos próximos 7 dias.</small><select class="input" data-scheduled-at><option value="">Pedir agora</option>${scheduleSlots.map(slot => '<option value="' + slot + '" ' + (state.scheduledAt === slot ? 'selected' : '') + '>' + new Date(slot).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) + '</option>').join('')}</select></label><div class="delivery-estimate-note"><span>⏱</span><p><b>Os prazos são estimativas</b><small>Podem variar conforme o preparo da loja, trânsito e disponibilidade de entregadores.</small></p></div>`
     body.querySelector('[data-scheduled-at]')?.addEventListener('change',event=>{state.scheduledAt=event.currentTarget.value})
     if (state.delivery === 'pickup') body.querySelector('.delivery-estimate-note small').textContent = 'Aguarde a loja avisar que o pedido está pronto para retirada.'
     if (state.delivery === 'pickup') body.querySelector('.delivery-choice-list').innerHTML = '<div class="card" style="padding:18px"><b>Retirada na loja</b><p>Você busca o pedido. Não há taxa de entrega.</p></div>'
+    if (hasDistancePricing && state.delivery !== 'pickup') body.insertAdjacentHTML('beforeend', '<p>Ao revisar, o endereço da loja e o endereço selecionado serão consultados no Google Routes para calcular o frete. Você verá o valor antes de confirmar o pagamento.</p>')
     bindSelects(body, 'delivery', drawDelivery, state)
   }
 
   function checkoutBody() {
     const totals = store.cartTotals(fee, freeMin)
-    return { groups: cartGroups.map(group => ({ storeId: group.restaurantId, items: group.items.map(item => ({ productId: item.id, quantity: item.qty, options: item.optionNames || [], note: item.note || "" })) })), addressId: state.delivery === 'pickup' ? null : state.addressId, delivery: state.delivery, scheduledAt: state.scheduledAt || null, couponCode: totals.coupon?.code || '', method: state.payment }
+    return { groups: cartGroups.map(group => ({ storeId: group.restaurantId, ...(state.delivery !== 'pickup' && distanceQuotes.has(group.restaurantId) ? { deliveryQuoteId: distanceQuotes.get(group.restaurantId).id } : {}), items: group.items.map(item => ({ productId: item.id, quantity: item.qty, options: item.optionNames || [], note: item.note || "" })) })), addressId: state.delivery === 'pickup' ? null : state.addressId, delivery: state.delivery, scheduledAt: state.scheduledAt || null, couponCode: totals.coupon?.code || '', method: state.payment }
   }
 
   function drawPayment(body) {
@@ -185,6 +189,7 @@ export async function render(view, boot, _params, query = new URLSearchParams())
         <div class="pair text-sm"><span>🚴</span> <span class="muted">${state.delivery === 'pickup' ? 'Retirada na loja' : state.delivery === 'priority' ? 'Entrega prioritária' : 'Entrega padrão'}</span></div>
         <div class="pair text-sm"><span>💳</span> <span class="muted">${esc(pm.name)}</span></div>
       </div>
+      ${state.delivery !== "pickup" && distanceQuotes.size ? `<section class="card" style="padding:16px;margin:12px 0"><b>Frete por trajeto</b>${cartGroups.map((group, index) => { const quote = distanceQuotes.get(group.restaurantId); return quote ? `<p>${esc(restaurants[index].name)}: ${quote.distanceKm.toLocaleString("pt-BR", {maximumFractionDigits:2})} km ? ${money(quote.fee)} antes de descontos e prioridade</p>` : ""; }).join("")}<span translate="no" style="display:inline-block;background:#fff;color:#5e5e5e;padding:6px;font:400 14px sans-serif;white-space:nowrap">Google Maps</span></section>` : ""}
       <div class="totals">
         <div class="totals-row"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
         <div class="totals-row"><span>Taxa de entrega</span><span>${t.fee === 0 ? '<b class="brand-text">Grátis</b>' : money(t.fee)}</span></div>
@@ -244,7 +249,7 @@ export async function render(view, boot, _params, query = new URLSearchParams())
   }
 
   view.addEventListener('click', async event => {
-    if (event.target.closest('[data-back]')) { step = Math.max(1, step - 1); draw(); return }
+    if (event.target.closest('[data-back]')) { reviewRequest++; step = Math.max(1, step - 1); draw(); return }
     if (event.target.closest('[data-next]')) {
       if (step === 1 && state.delivery !== 'pickup' && !savedAddresses().find(address => address.id === state.addressId)) { toast('Adicione e selecione um endereço para continuar','error','⚠️'); return }
       if (step === 3) {
@@ -253,7 +258,22 @@ export async function render(view, boot, _params, query = new URLSearchParams())
         if (button.disabled) return
         button.disabled = true
         button.textContent = 'Conferindo total...'
-        try { state.quote = await api.checkoutQuote(checkoutBody()) }
+        const request = ++reviewRequest
+        const addressId = state.addressId
+        try {
+          distanceQuotes.clear()
+          const calculated = new Map()
+          if (state.delivery !== 'pickup') await Promise.all(cartGroups.map(async (group, index) => {
+            if (restaurants[index].distancePricingEnabled) {
+              const result = await api.deliveryQuote(group.restaurantId, addressId)
+              calculated.set(group.restaurantId, result.quote)
+            }
+          }))
+          if (request !== reviewRequest || !view.contains(button)) return
+          calculated.forEach((quote, id) => distanceQuotes.set(id, quote))
+          state.quote = await api.checkoutQuote(checkoutBody())
+          if (request !== reviewRequest || !view.contains(button)) return
+        }
         catch (error) { toast(error.message, 'error'); button.disabled = false; button.textContent = 'Revisar pedido'; return }
       }
       step = Math.min(4, step + 1)

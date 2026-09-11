@@ -615,6 +615,7 @@ function registeredRestaurant(store) {
     distance: 0,
     schedulingEnabled: Boolean(store.autoSchedule),
     deliveryModes: store.deliveryModes || ['delivery'],
+    distancePricingEnabled: Boolean(store.distancePricing?.enabled),
     pickupAddress: [store.address?.street, store.address?.number, store.address?.neighborhood, store.address?.city, store.address?.state].filter(Boolean).join(', '),
     scheduleSlots: store.autoSchedule ? Array.from({ length: 336 }, (_, index) => new Date(Math.ceil((Date.now() + Math.max(15, prep) * 60000) / 1800000) * 1800000 + index * 1800000)).filter(date => date.getTime() <= Date.now() + 7 * 86400000 && platform.applyStoreSchedule({ ...store }, date).open && require('./lib/capacity').available(store, db.state.platformOrders, date)).map(date => date.toISOString()) : [],
     priceRange: averagePrice > 60 ? "$$$" : averagePrice > 30 ? "$$" : "$",
@@ -1309,7 +1310,7 @@ const api = {
           title: "Frete grátis",
           subtitle: "Entrega por conta da casa",
           restaurants: all
-            .filter((r) => r.deliveryFee === 0 || r.freeShippingMin > 0)
+            .filter((r) => (!r.distancePricingEnabled && r.deliveryFee === 0) || r.freeShippingMin > 0)
             .map(restaurantCard),
         },
         {
@@ -2717,6 +2718,20 @@ Object.assign(api, {
         status: 404,
         body: { error: "Estabelecimento não encontrado." },
       };
+    if (body.address !== undefined) {
+      if (!body.address || typeof body.address !== 'object' || Array.isArray(body.address)) return { status: 400, body: { error: 'Endereço inválido.' } };
+      const address = Object.fromEntries(['street', 'number', 'neighborhood', 'city', 'state', 'cep', 'complement'].map(field => [field, auth.sanitize(body.address[field]).slice(0, 160)]));
+      address.state = address.state.toUpperCase(); address.cep = address.cep.replace(/\D/g, '');
+      if (!address.street || !address.number || !address.city || !/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/.test(address.state) || !/^\d{8}$/.test(address.cep)) return { status: 400, body: { error: 'Preencha rua, número, cidade, UF válida e CEP com oito dígitos.' } };
+      store.address = address;
+    }
+    if (body.distancePricing !== undefined) {
+      try {
+        const pricing = require('./lib/distance-pricing').normalize(body.distancePricing);
+        if (pricing.enabled && !process.env.GOOGLE_ROUTES_API_KEY) throw new Error('Configure o serviço Google Routes no servidor antes de ativar frete por trajeto.');
+        store.distancePricing = pricing;
+      } catch (error) { return { status: 400, body: { error: error.message } }; }
+    }
     if (body.deliveryCepPrefixes !== undefined) {
       const prefixes = String(body.deliveryCepPrefixes).split(/[\s,;]+/).filter(Boolean);
       if (prefixes.length > 100 || prefixes.some(value => !/^\d{3,8}$/.test(value))) return { status: 400, body: { error: 'Informe prefixos de CEP com 3 a 8 dígitos, separados por vírgula.' } };
@@ -3905,6 +3920,13 @@ Object.assign(api, {
     db.saveNow();
     return { application, user: auth.publicUser(user) };
   },
+  "POST /api/delivery-quote": async (params, query, body, ctx) => {
+    const store = db.state.stores.find(item => item.id === body.storeId || item.slug === body.storeId);
+    const address = db.state.customerAddresses.find(item => item.id === body.addressId && item.userId === ctx.user.id);
+    if (!store || store.status !== 'active' || !address) return { status: 400, body: { error: 'Loja ou endereço indisponível.' } };
+    try { return { quote: await require('./lib/distance-pricing').create(store, address, ctx.user.id) }; }
+    catch (error) { return { status: 400, body: { error: error.message } }; }
+  },
   "GET /api/orders": (params, query, body, ctx) => ({
     orders: db.state.platformOrders.filter(
       (order) => order.customerId === ctx.user.id,
@@ -3990,7 +4012,14 @@ Object.assign(api, {
         throw new Error(
           `Este estabelecimento exige pedido mínimo de R$ ${Number(partnerStore.minimumOrder).toFixed(2).replace(".", ",")}.`,
         );
-      const baseDeliveryFee = Number(
+      const savedAddress = body.delivery !== 'pickup' && body.addressId
+        ? db.state.customerAddresses.find(
+            (address) =>
+              address.id === body.addressId && address.userId === ctx.user.id,
+          )
+        : null;
+      const routeQuote = partnerStore?.distancePricing?.enabled && body.delivery !== 'pickup' ? require('./lib/distance-pricing').validate(body.deliveryQuoteId, partnerStore, savedAddress, ctx.user.id) : null;
+      const baseDeliveryFee = routeQuote ? routeQuote.fee : Number(
         catalogRestaurant?.deliveryFee ?? partnerStore?.deliveryFee ?? 0,
       );
       const freeShippingMin = Number(
@@ -4047,12 +4076,6 @@ Object.assign(api, {
                 : (subtotal * Number(promotion.value)) / 100,
             )
         : 0;
-      const savedAddress = !pickup && body.addressId
-        ? db.state.customerAddresses.find(
-            (address) =>
-              address.id === body.addressId && address.userId === ctx.user.id,
-          )
-        : null;
       if (!pickup && !savedAddress)
         throw new Error("Endereço de entrega inválido.");
       if (!pickup && partnerStore?.deliveryCepPrefixes?.length && !partnerStore.deliveryCepPrefixes.some(prefix => String(savedAddress.cep || '').replace(/\D/g, '').startsWith(prefix)))
@@ -4095,7 +4118,7 @@ Object.assign(api, {
         paymentStatus: "pending",
         addressId: savedAddress?.id || null,
         address: pickup ? [partnerStore.address.street, partnerStore.address.number, partnerStore.address.neighborhood, partnerStore.address.city].filter(Boolean).join(', ') : savedAddress
-          ? `${savedAddress.label} — ${savedAddress.street}, ${savedAddress.number}`
+          ? `${savedAddress.label} — ${[savedAddress.street, savedAddress.number, savedAddress.neighborhood, savedAddress.city, savedAddress.state, savedAddress.cep].filter(Boolean).join(', ')}`
           : body.address || "",
         scheduledAt,
         createdAt: platform.now(),

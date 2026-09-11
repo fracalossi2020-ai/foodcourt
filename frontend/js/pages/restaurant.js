@@ -73,9 +73,9 @@ export async function render(view, boot, params) {
   const productIndex = new Map(
     products.map((product) => [product.id, product]),
   );
-  const free = r.deliveryFee === 0;
+  const free = !r.distancePricingEnabled && r.deliveryFee === 0;
   const isFav = store.isFavoriteRestaurant(r.id);
-  setFeeContext(r.deliveryFee, r.freeShippingMin);
+  setFeeContext(r.deliveryFee, r.freeShippingMin, r.distancePricingEnabled);
   renderCartUI();
 
   const sectionsHtml = menu
@@ -122,7 +122,7 @@ export async function render(view, boot, params) {
       </section>
       <section class="menu-service-strip">
         <div>${ratingPill(r)}<small>Avaliação dos clientes</small></div><div><b>${r.deliveryTime[0]}–${r.deliveryTime[1]} min</b><small>Tempo estimado</small></div>
-        <div><b>${free ? "Frete grátis" : money(r.deliveryFee)}</b><small>${!free && r.freeShippingMin ? `Grátis acima de ${money(r.freeShippingMin)}` : "Taxa de entrega"}</small></div><div><b>${r.priceRange}</b><small>Faixa de preço</small></div>
+        <div><b>${r.distancePricingEnabled ? "Frete por trajeto" : free ? "Frete grátis" : money(r.deliveryFee)}</b><small>${!free && r.freeShippingMin ? `Grátis acima de ${money(r.freeShippingMin)}` : "Taxa de entrega"}</small></div><div><b>${r.priceRange}</b><small>Faixa de preço</small></div>
       </section>
       ${r.promo ? `<aside class="menu-promo"><span>OFERTA ATIVA</span><b>${esc(r.promo)}</b><small>Aproveite enquanto estiver disponível</small></aside>` : ""}
       ${!r.open ? '<aside class="menu-closed">Loja fechada agora. Se houver agendamento habilitado, escolha um horário de atendimento no checkout.</aside>' : ""}

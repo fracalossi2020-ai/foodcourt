@@ -588,6 +588,96 @@ test("courier location endpoints isolate the assigned courier and order customer
   );
 });
 
+test("checkout requires the server route quote and ignores client freight amounts", async () => {
+  const old = process.env.GOOGLE_ROUTES_API_KEY;
+  process.env.GOOGLE_ROUTES_API_KEY = "fixture";
+  try {
+    shop.distancePricing = { enabled: true, baseFee: 3, perKm: 2, maxKm: 10 };
+    assert.equal(
+      (
+        await api(
+          "/api/partner-store",
+          {
+            address: {
+              street: "Store",
+              number: "1",
+              city: "Test",
+              state: "MG",
+              cep: "35180000",
+            },
+          },
+          merchantCookie,
+        )
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await api(
+          "/api/partner-store",
+          {
+            address: {
+              street: "Wrong",
+              number: "1",
+              city: "Test",
+              state: "XX",
+              cep: "35180000",
+            },
+          },
+          merchantCookie,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(shop.address.street, "Store");
+    db.state.customerAddresses[0].state = "MG";
+    const quote = await require("../src/lib/distance-pricing").create(
+      shop,
+      db.state.customerAddresses[0],
+      "buyer",
+      async () => ({
+        ok: true,
+        json: async () => ({ routes: [{ distanceMeters: 2500 }] }),
+      }),
+    );
+    assert.equal((await api("/api/checkout/quote", cart())).status, 400);
+    const body = cart({
+      delivery: "standard",
+      expectedTotal: 64,
+      deliveryFee: 0,
+    });
+    body.groups[0].deliveryQuoteId = quote.id;
+    assert.equal(
+      (
+        await api("/api/delivery-quote", {
+          storeId: shop.id,
+          addressId: "address",
+        })
+      ).body.quote.id,
+      quote.id,
+    );
+    assert.equal(
+      (
+        await api(
+          "/api/delivery-quote",
+          { storeId: shop.id, addressId: "address" },
+          otherCookie,
+        )
+      ).status,
+      400,
+    );
+    const response = await api("/api/checkout/quote", body);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.deliveryFee, 8);
+    const payment = await create(body);
+    assert.equal(payment.amount, 64);
+    assert.equal(db.state.platformOrders[0].deliveryFee, 8);
+  } finally {
+    if (old === undefined) delete process.env.GOOGLE_ROUTES_API_KEY;
+    else process.env.GOOGLE_ROUTES_API_KEY = old;
+  }
+});
+
 test("server prices extras, quantity, delivery and priority instead of client totals", async () => {
   const body = cart({ amount: 0.01, expectedTotal: 0.01 });
   const quote = await api("/api/checkout/quote", body);

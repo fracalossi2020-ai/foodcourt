@@ -15,7 +15,7 @@ Para monitoramento contínuo, execute em um agendador externo e configure o aler
 - Tipo de hospedagem Hostinger e banco disponível: necessários para definir a migração transacional e o procedimento de implantação, recuperação e agendamento. A produção ainda usa JSON; não execute múltiplas instâncias.
 - E-mail: o projeto já possui integração SMTP/Resend. É preciso definir o remetente e a configuração no servidor antes de ativar o envio de acesso documentado em TEAM-EMAIL.md. Convites com aceite para pessoas com ou sem conta estão implementados; falta ativar e testar o envio real. Não compartilhe segredos no chat.
 - Push: código implementado; exige chaves VAPID no servidor e adesão do cliente no navegador. Ativação e entrega real pendentes. Consulte PUSH-LOCATION.md.
-- Frete por distância: falta definir o serviço de geocodificação/rotas e as regras de tarifa. Ainda não implementado. Localização opcional do entregador e link para mapa foram implementados; não incluem rota ou previsão de chegada.
+- Frete por distância: implementado com Google Routes e tarifas configuráveis por loja. Falta configurar a chave, revisar as políticas públicas e validar os trajetos reais. Consulte DISTANCE-DELIVERY.md. Localização opcional do entregador e link para mapa foram implementados; não incluem rota ou previsão de chegada.
 - Repasses e conciliação: dependem do modelo financeiro e da ativação dos pagamentos. Permanecem adiados conforme solicitado.
 
 Essas dependências não significam que as integrações estejam prontas. A lista acima separa as ferramentas entregues das alterações ainda necessárias; a publicação na Hostinger permanece pendente.

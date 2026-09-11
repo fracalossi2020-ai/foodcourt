@@ -112,7 +112,7 @@ export async function render(view, boot, _params = {}, query = new URLSearchPara
 
     let rests = data.restaurants
     if (filter === 'open') rests = rests.filter(r => r.open)
-    if (filter === 'free') rests = rests.filter(r => r.deliveryFee === 0 || r.freeShippingMin > 0)
+    if (filter === 'free') rests = rests.filter(r => (!r.distancePricingEnabled && r.deliveryFee === 0) || r.freeShippingMin > 0)
     if (filter === 'promo') rests = rests.filter(r => r.promo)
     if (filter === 'fast') rests = rests.filter(r => r.deliveryTime[1] <= 35)
     if (filter === 'rating') rests = rests.filter(r => r.rating >= 4.7)
