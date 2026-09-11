@@ -25,7 +25,7 @@ export function openReview(order, onSaved) {
     const button = modal.querySelector('[type=submit]'); saving = true; button.disabled = true;
     try {
       const result = await api.createReview({ orderId: order.id, rating: Number(values.get('rating')), comment: values.get('comment') });
-      saving = false; close(); onSaved(result.review); toast('Avaliação enviada. Você ganhou 10 pontos FC.', 'success');
+      saving = false; close(); onSaved(result.review); toast('Avaliação enviada. Você ganhou 10 pontos FoodCourt.', 'success');
     } catch (error) { saving = false; button.disabled = false; toast(error.message, 'error'); }
   };
   document.body.append(modal); modal.querySelector('input').focus();

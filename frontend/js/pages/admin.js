@@ -177,7 +177,7 @@ export async function render(view) {
             .map((part) => part[0])
             .join("")
             .toUpperCase();
-          return `<article class="admin-audit-item"><span>${esc(initials)}</span><div><b>${esc(label)}</b><p><strong>${esc(entity)}</strong> · ${esc(item.entityName || item.entityId)}</p><small>Por ${esc(item.actorName || "Sistema FoodCourt")} · ${new Date(item.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</small></div><i></i></article>`;
+          return `<article class="admin-audit-item"><span>${initials === "FC" ? '<img class="foodcourt-brand-logo" src="/assets/images/foodcourt-logo.png" alt="FoodCourt">' : esc(initials)}</span><div><b>${esc(label)}</b><p><strong>${esc(entity)}</strong> · ${esc(item.entityName || item.entityId)}</p><small>Por ${esc(item.actorName || "Sistema FoodCourt")} · ${new Date(item.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</small></div><i></i></article>`;
         })
         .join("") || empty("As ações operacionais aparecerão aqui.");
     const content =
@@ -212,7 +212,7 @@ export async function render(view) {
       auditoria: "audit",
       sistema: "settings",
     };
-    view.innerHTML = `<div class="admin-shell"><aside class="admin-sidebar"><a class="admin-brand" href="#/admin"><span>FC</span><b>FoodCourt<small>Administração geral</small></b></a><nav aria-label="Seções administrativas">${tabs.map(([id, label]) => `<a class="${section === id ? "active" : ""}" href="#/admin?secao=${id}"><i>${adminIcon(navIcons[id])}</i><span>${label}</span>${id === "entregadores" && data.metrics.pendingCourierApplications ? `<b>${data.metrics.pendingCourierApplications}</b>` : ""}</a>`).join("")}</nav><a class="admin-account-link" href="#/perfil">← Voltar ao FoodCourt</a></aside><main class="admin-page"><header class="admin-head"><div><span>ADMINISTRAÇÃO GERAL</span><h1>${tabs.find(([id]) => id === section)?.[1]}</h1><p>Controle centralizado de toda a operação FoodCourt.</p></div><span class="admin-live"><i></i>Sistema online</span></header>${content}</main></div>`;
+    view.innerHTML = `<div class="admin-shell"><aside class="admin-sidebar"><a class="admin-brand" href="#/admin"><span class="foodcourt-brand-mark"><img class="foodcourt-brand-logo" src="/assets/images/foodcourt-logo.png" alt="FoodCourt"></span><b>FoodCourt<small>Administração geral</small></b></a><nav aria-label="Seções administrativas">${tabs.map(([id, label]) => `<a class="${section === id ? "active" : ""}" href="#/admin?secao=${id}"><i>${adminIcon(navIcons[id])}</i><span>${label}</span>${id === "entregadores" && data.metrics.pendingCourierApplications ? `<b>${data.metrics.pendingCourierApplications}</b>` : ""}</a>`).join("")}</nav><a class="admin-account-link" href="#/perfil">← Voltar ao FoodCourt</a></aside><main class="admin-page"><header class="admin-head"><div><span>ADMINISTRAÇÃO GERAL</span><h1>${tabs.find(([id]) => id === section)?.[1]}</h1><p>Controle centralizado de toda a operação FoodCourt.</p></div><span class="admin-live"><i></i>Sistema online</span></header>${content}</main></div>`;
     mountAdminLists(view);
     view.querySelectorAll("[data-store-status]").forEach((select) =>
       select.addEventListener("change", async () => {
