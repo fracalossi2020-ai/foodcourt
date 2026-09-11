@@ -17,6 +17,7 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
   const selectedCategory = validCategory(query.get('category') || 'all', boot.categories)
 
   view.innerHTML = `<div class="page consumer-page home-effects-root"><div class="home-scroll-progress" aria-hidden="true"><i></i></div>
+    <a class="install-entry" href="#/instalar"><img src="/assets/images/foodcourt-logo.png" alt="" width="56" height="32"><span><strong>FoodCourt na tela inicial</strong><small>Veja como adicionar no seu celular</small></span><b aria-hidden="true">↗</b></a>
     <header class="home-intro home-visual-hero">
       <div class="home-hero-slides" aria-hidden="true"><i class="home-hero-slide home-hero-pasta active"></i><i class="home-hero-slide home-hero-burger"></i><i class="home-hero-slide home-hero-variety"></i></div>
       <div><span class="home-kicker">SABORES PERTO DE VOCÊ</span><h1>${greeting()}, ${firstName(boot.user.fullName || boot.user.name)} <span aria-hidden="true">👋</span></h1>

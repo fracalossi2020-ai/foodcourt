@@ -22,3 +22,9 @@ html[data-theme="dark"] .install-page{--brand:#42d98a;--brand-soft:#42d98a18}
 .install-guide strong{color:var(--text);font-weight:650}
 .install-note{text-align:center;color:var(--text-2);font-size:.75rem;margin:20px 12px;line-height:1.6}
 @media(max-width:650px){.install-page{margin:12px auto 32px}.install-hero{grid-template-columns:1fr;padding:24px;gap:24px;border-radius:22px}.install-visual{grid-row:1;min-height:140px;flex-direction:row;gap:22px}.install-app-icon{width:76px;height:76px;border-radius:20px}.install-app-label{text-align:left}.install-copy h1{font-size:2.15rem}.install-copy [data-install]{width:100%}.install-guides{grid-template-columns:1fr}.install-guide{padding:22px}.install-back{margin-bottom:16px}}
+.install-entry{display:flex;align-items:center;gap:12px;padding:12px 16px;margin:16px 0;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text)}
+.install-entry img{object-fit:contain;background:#fff;border-radius:6px;flex:none}
+.install-entry span{flex:1;min-width:0}.install-entry strong{display:block;font-size:.85rem}.install-entry small{display:block;margin-top:3px;font-size:.75rem;color:var(--text-2)}
+.fc-landing-v2>.install-entry{max-width:1160px;margin:16px auto;width:calc(100% - 32px)}
+.install-guide-head{scroll-margin-top:100px}
+@media(display-mode:standalone){.install-entry{display:none}}

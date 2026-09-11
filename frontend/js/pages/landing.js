@@ -42,6 +42,7 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
       <div><a class="fcv2-enter" href="#/login">${uiIcon('user')} <span>Entrar</span></a><a class="fcv2-create" href="#/cadastro">Criar conta</a><button class="fcv2-menu" aria-label="Abrir menu" aria-expanded="false">${uiIcon('menu')}</button></div>
     </header>
 
+    <a class="install-entry" href="#/instalar"><img src="/assets/images/foodcourt-logo.png" alt="" width="56" height="32"><span><strong>FoodCourt na tela inicial</strong><small>Veja como adicionar no seu celular</small></span><b aria-hidden="true">↗</b></a>
     <section id="top" class="fcv2-hero">
       <div class="hero-float-layer" aria-hidden="true">
         <span class="hero-float-card hero-delivery"><i>${uiIcon('scooter')}</i><span><b>Entrega rápida</b><small>Chega em 20–30 min</small></span></span>
