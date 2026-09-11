@@ -121,6 +121,7 @@ export const api = {
   savePushSubscription: (subscription, remove = false) => post('/api/push-subscription', { subscription, remove }),
   courierLocation: (body) => post('/api/courier-location', body),
   orderLocation: (id) => get('/api/order-location/' + encodeURIComponent(id)),
+  orderRoute: (id) => get('/api/order-route/' + encodeURIComponent(id)),
   courierApplication: () => get("/api/courier-application"),
   submitCourierApplication: (payload) =>
     post("/api/courier-application", payload),

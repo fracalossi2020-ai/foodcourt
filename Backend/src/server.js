@@ -326,7 +326,7 @@ function applySecurityHeaders(res) {
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://viacep.com.br https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://viacep.com.br https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com https://www.google.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   );
 }
 
@@ -3361,7 +3361,20 @@ Object.assign(api, {
     const order = db.state.platformOrders.find(item => item.id === params.id && item.customerId === ctx.user.id);
     if (!order) return { status: 404, body: { error: 'Pedido não encontrado.' } };
     const delivery = db.state.deliveries.find(item => item.orderId === order.id);
-    return { position: order.status === 'out_for_delivery' ? require('./lib/delivery-location').read(delivery) : null };
+    return { position: order.status === 'out_for_delivery' ? require('./lib/delivery-location').read(delivery) : null, routeEnabled: require('./lib/delivery-route').configured() };
+  },
+  "GET /api/order-route/:id": async (params, query, body, ctx) => {
+    const order = db.state.platformOrders.find(item => item.id === params.id && item.customerId === ctx.user.id);
+    if (!order) return { status: 404, body: { error: 'Pedido não encontrado.' } };
+    const delivery = db.state.deliveries.find(item => item.orderId === order.id);
+    const location = require('./lib/delivery-location');
+    if (order.status !== 'out_for_delivery' || !location.read(delivery)) return { status: 409, body: { error: 'Não há localização ativa para esta entrega.' } };
+    const courierId = delivery.courierId;
+    try {
+      const result = await require('./lib/delivery-route').calculate(order, delivery, location.read(delivery));
+      if (order.status !== 'out_for_delivery' || !location.read(delivery) || delivery.courierId !== courierId) return { status: 409, body: { error: 'O compartilhamento desta entrega terminou.' } };
+      return result;
+    } catch (error) { return { status: 503, body: { error: error.message } }; }
   },
   "POST /api/courier-availability": (params, query, body, ctx) => {
     if (!["courier", "admin"].includes(ctx.user.role))
@@ -3681,6 +3694,7 @@ Object.assign(api, {
         };
       }),
       system: {
+        operations: require('./lib/operations-status').snapshot(db, require('./lib/backup-scheduler')),
         persistentStorage: Boolean(
           process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.FC_DB_PATH,
         ),
@@ -4500,12 +4514,16 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname.startsWith("/api/")) {
     if (pathname === "/api/health" && req.method === "GET") {
-      sendJson(res, 200, {
-        status: "ok",
+      sendJson(res, db.health().status === 'ok' ? 200 : 503, {
+        status: db.health().status === 'ok' ? "ok" : "degraded",
         uptime: Math.round(process.uptime()),
         persistentStorage: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH),
         timestamp: new Date().toISOString(),
       });
+      return;
+    }
+    if (db.health().status !== 'ok') {
+      sendJson(res, 503, { error: 'Serviço temporariamente indisponível para preservar os dados.' });
       return;
     }
     if (
@@ -4635,6 +4653,10 @@ const server = http.createServer(async (req, res) => {
         body,
         ctx,
       );
+      if (db.health().status !== 'ok' && !res.headersSent) {
+        sendJson(res, 503, { error: 'Falha ao salvar os dados. A operação não foi confirmada.' });
+        return;
+      }
       if (result?.handled) return;
       if (result && result.status) sendJson(res, result.status, result.body);
       else sendJson(res, 200, result);

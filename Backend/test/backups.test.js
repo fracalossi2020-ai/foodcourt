@@ -41,6 +41,8 @@ test("automatic backup is opt-in and rejects public directories or invalid inter
       },
     );
     stop();
+    assert.ok(scheduler.health().lastSuccessAt);
+    assert.equal(scheduler.health().error, null);
     assert.equal(messages.length, 1);
     assert.equal(fs.readdirSync(path.join(directory, "backups")).length, 1);
   } finally {

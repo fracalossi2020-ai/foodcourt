@@ -1,5 +1,19 @@
 # Operação e próximas integrações
 
+## Diagnóstico no painel e recuperação de gravação
+
+Administração → Sistema mostra configuração de integrações, última gravação e última cópia de backup verificada. Ter variáveis preenchidas não comprova que o provedor aceita as credenciais. Nenhum segredo é devolvido no diagnóstico.
+
+Falhas de gravação agora interrompem novas operações da API e fazem `/api/health` responder 503. O arquivo anterior é preservado quando a escrita temporária falha. Corrija espaço/permissões, verifique o último arquivo salvo e reinicie o backend após conferir os pedidos no provedor. Não repita cobranças manualmente sem essa conferência. Isso não substitui transações SQL; gravações agendadas ainda possuem uma janela de 50 ms e operações externas exigem reconciliação.
+
+## Mapa integrado e previsão
+
+O acompanhamento agora oferece Mostrar rota e previsão quando `GOOGLE_ROUTES_API_KEY` e `GOOGLE_MAPS_EMBED_KEY` estão configuradas. O cliente precisa abrir o mapa; posição e endereço são enviados ao Google. A chave de Embed é pública e deve ser separada da chave privada de Routes, com restrição de API e domínio. A política CSP do backend permite o iframe do Google; uma hospedagem que aplique sua própria CSP também precisa permiti-lo.
+
+A estimativa usa trajeto de carro com trânsito, pode divergir do veículo do entregador e não inclui paradas. A consulta usa posição recente com precisão de até 200 m, é reutilizada por até um minuto e só fica acessível ao titular de um pedido em entrega. Ao terminar ou suspender a localização, o mapa é retirado na próxima atualização. Não é gravado histórico de trajetos no banco. Testes locais usam respostas simuladas; ativação e validação reais continuam pendentes.
+
+Referências: [Maps Embed](https://developers.google.com/maps/documentation/embed/embedding-map) e [Routes API](https://developers.google.com/maps/documentation/routes/reference/rest/v2/TopLevel/computeRoutes).
+
 ## Conferência financeira local
 
 O financeiro considera apenas pedidos entregues com pagamento confirmado no cálculo de vendas, comissão e líquido estimado. Separa pagamentos em andamento, estornos confirmados, estornos pendentes e contestações. Pedidos entregues sem confirmação e cancelados ainda pagos aparecem para conferência. O CSV inclui essas divergências; o PDF segue o critério de vendas confirmadas. Isso não consulta extratos bancários nem executa repasses: a conciliação com o provedor e a ativação comercial continuam pendentes.

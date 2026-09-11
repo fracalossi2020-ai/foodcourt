@@ -52,6 +52,8 @@ let emailIndex = new Map();
 let phoneIndex = new Map();
 let domainFingerprint = "";
 let changeRevision = 0;
+let persistenceError = false;
+let lastSavedAt = null;
 const changeListeners = new Set();
 
 function fingerprintDomainState() {
@@ -85,15 +87,21 @@ function load() {
 let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveNow, 50);
+  saveTimer = setTimeout(() => { try { saveNow(); } catch {} }, 50);
 }
 function saveNow() {
   clearTimeout(saveTimer);
+  if (persistenceError) throw new Error('DB_PERSISTENCE_FAILED');
   try {
     ensureDbDirectory();
     const tmp = DB_PATH + ".tmp";
-    fs.writeFileSync(tmp, JSON.stringify(state, null, 2));
+    const fd = fs.openSync(tmp, 'w', 0o600);
+    try {
+      fs.writeFileSync(fd, JSON.stringify(state, null, 2));
+      fs.fsyncSync(fd);
+    } finally { fs.closeSync(fd); }
     fs.renameSync(tmp, DB_PATH);
+    lastSavedAt = new Date().toISOString();
     const nextFingerprint = fingerprintDomainState();
     if (nextFingerprint !== domainFingerprint) {
       domainFingerprint = nextFingerprint;
@@ -105,7 +113,9 @@ function saveNow() {
       }
     }
   } catch (e) {
+    persistenceError = true;
     console.error("[db] falha ao salvar:", e.message);
+    throw new Error('DB_PERSISTENCE_FAILED', { cause: e });
   }
 }
 
@@ -117,6 +127,7 @@ module.exports = {
   rebuildIndexes,
   save,
   saveNow,
+  health: () => ({ status: persistenceError ? 'error' : 'ok', lastSavedAt, engine: 'json' }),
   subscribeChanges(listener) {
     changeListeners.add(listener);
     return () => changeListeners.delete(listener);

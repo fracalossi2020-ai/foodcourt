@@ -75,7 +75,7 @@ Integração opcional com Google Routes, taxa base, valor por km e alcance. O ch
 
 ## Etapas ainda não implementadas
 
-- Mapa de rota integrado e previsão dinâmica de chegada dentro do site (a navegação atual abre o aplicativo de mapas).
+- Ativação e validação real do mapa integrado e previsão de chegada. O código com Google Maps Embed e Routes está implementado; exige chaves separadas, restrições de API/domínio e testes em trajetos reais.
 - Repasses bancários reais, conciliação financeira completa e política comercial de carência.
 - Migração do arquivo JSON para banco transacional, backups operacionais e monitoramento de produção.
 - Ativação e validação em produção do e-mail, push e localização.

@@ -1,3 +1,4 @@
+import { operationsPanel } from '../core/operations-panel.js';
 import { api } from "../core/api.js";
 import { esc, money, toast } from "../core/ui.js";
 
@@ -196,7 +197,7 @@ export async function render(view) {
                     : section === "auditoria"
                       ? `<section class="partner-panel"><header><h2>Auditoria recente</h2></header>${audit}</section>`
                       : section === "sistema"
-                        ? `<section class="admin-system-grid"><article class="partner-panel"><header><h2>Infraestrutura</h2></header><div class="admin-check"><b>Banco persistente</b><em>${data.system.persistentStorage ? "✓ Ativo" : "⚠ Verificar"}</em></div><div class="admin-check"><b>Mercado Pago</b><em>${data.system.mercadoPagoConfigured ? "✓ Configurado" : "⚠ Sem credenciais"}</em></div><div class="admin-check"><b>Envio de e-mail</b><em>${data.system.mailConfigured ? "✓ Configurado" : "⚠ Sem credenciais"}</em></div><div class="admin-check"><b>Duração da sessão</b><em>${data.system.sessionHours} hora(s)</em></div></article><article class="partner-panel"><header><h2>Segurança operacional</h2></header><p class="admin-system-copy">Alterações de contas, estabelecimentos, entregadores, pagamentos e suporte ficam registradas na auditoria. Credenciais e segredos devem ser gerenciados nas variáveis protegidas do Railway.</p><a class="btn btn-outline" href="#/admin?secao=auditoria">Abrir auditoria</a></article></section>`
+                        ? operationsPanel(data.system.operations)
                         : `${metrics}<section class="admin-action-strip"><div><b>Central de operações</b><span>Gerencie rapidamente o que precisa da sua atenção.</span></div><a href="#/admin?secao=lojas"><strong>${data.metrics.pendingStores}</strong>Lojas pendentes</a><a href="#/admin?secao=entregadores"><strong>${data.metrics.pendingCourierApplications}</strong>Entregadores em análise</a><a href="#/admin?secao=suporte"><strong>${data.metrics.openTickets}</strong>Chamados abertos</a></section><div class="admin-overview-grid"><section class="partner-panel"><header><div><small>REDE FOODCOURT</small><h2>Estabelecimentos</h2></div><a href="#/admin?secao=lojas">Gerenciar todos →</a></header>${storeRows({ ...data, stores: data.stores.slice(0, 5) })}</section><section class="partner-panel"><header><div><small>ATIVIDADE</small><h2>Auditoria recente</h2></div><a href="#/admin?secao=auditoria">Ver histórico →</a></header>${audit}</section></div>`;
     const navIcons = {
       visao: "overview",
