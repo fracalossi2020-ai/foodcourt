@@ -1,4 +1,11 @@
 /* Admin layout is isolated from shared merchant panels and page animations. */
+body.app-mode.admin-mode .main,
+body.admin-mode .main {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
 body.admin-mode #view { padding: 0; margin: 0; width: 100%; }
 body.admin-mode #view .admin-shell,
 body.admin-mode #view .admin-shell > * { animation: none !important; transform: none; filter: none; }
