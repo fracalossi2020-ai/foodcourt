@@ -71,6 +71,7 @@ function renderOverview(view) {
       ${item("chat", "Ajuda e suporte", "Pedidos, pagamentos e atendimento", "#/suporte")}
       ${u.email?.toLowerCase() === "fracalossi2020@gmail.com" ? item("shield", "Administração geral", "Gerenciar toda a plataforma FoodCourt", "#/admin") : ""}
       ${u.role === "courier" ? item("bike", "Portal do Entregador", "Corridas, rotas e ganhos", "#/entregador") : u.role === "merchant" || u.role === "admin" ? item("shop", "Portal do Parceiro", "Administrar estabelecimento", "#/parceiro") : `${item("bike", "Quero ser entregador", "Cadastre-se para realizar entregas", "#/quero-ser-entregador")}${item("store", "Venda no FoodCourt", "Tem um estabelecimento? Seja parceiro.", "#/para-estabelecimentos")}`}
+      ${item("phone", "Instalar FoodCourt", "Adicionar à tela inicial", "#/instalar")}
       ${item("settings", "Configurações", "Privacidade e preferências", "#/perfil?secao=configuracoes")}
     </div></div></section>
     <button class="btn btn-dark btn-block" id="logoutBtn">Sair da conta</button>

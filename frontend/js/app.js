@@ -1,3 +1,4 @@
+import './core/app-install.js';
 import { api } from "./core/api.js";
 import { store, hydrateBootstrap, setAuthUser } from "./core/store.js";
 import { esc, toast } from "./core/ui.js";
@@ -7,6 +8,7 @@ import { icon } from "./core/icons.js";
 window.FC = { store };
 
 const routes = [
+  { pattern: /^\/instalar$/, page: "install", public: true },
   { pattern: /^\/$/, page: "landing", public: true, landing: true },
   { pattern: /^\/login$/, page: "landing", public: true, landing: true },
   {
