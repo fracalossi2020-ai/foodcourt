@@ -571,7 +571,10 @@ function registeredRestaurant(store) {
       popular: Number(product.sold || 0) > 0,
       options: Array.isArray(product.options) ? product.options : [],
       stock: Number(product.stock),
-      available: Number(product.stock) > 0,
+      available: Number(product.stock) > 0 && !require("./lib/product-details").paused(product),
+      pausedUntil: product.pausedUntil || null,
+      dietary: product.dietary || [],
+      allergens: product.allergens || [],
     });
   }
   const reviewItems = db.state.reviews.filter(
@@ -2585,6 +2588,8 @@ Object.assign(api, {
     if (!auth.sanitize(body.name) || !Number.isFinite(Number(body.price)) || Number(body.price) < 0 || !Number.isInteger(Number(body.stock)) || Number(body.stock) < 0)
       return { status: 400, body: { error: "Informe nome, preço válido e estoque inteiro não negativo." } };
     let product = store.products.find((item) => item.id === body.id);
+    let details;
+    try { details = require("./lib/product-details").normalize(body, product); } catch (error) { return { status: 400, body: { error: error.message } }; }
     const optionGroups = body.options === undefined ? product?.options || [] : body.options;
     const optionNames = new Set();
     if (!Array.isArray(optionGroups) || optionGroups.length > 12 || optionGroups.some(group =>
@@ -2595,6 +2600,7 @@ Object.assign(api, {
     const options = optionGroups.map(group => ({ name: auth.sanitize(group.name), type: group.type, required: Boolean(group.required), choices: group.choices.map(choice => ({ name: auth.sanitize(choice.name), price: payments.money(Number(choice.price)) })) }));
     if (product)
       Object.assign(product, {
+        ...details,
         name: auth.sanitize(body.name).slice(0, 100),
         category: auth.sanitize(body.category).slice(0, 80),
         description: auth.sanitize(body.description).slice(0, 500),
@@ -2608,6 +2614,7 @@ Object.assign(api, {
     else {
       product = {
         id: db.uid("product"),
+        ...details,
         name: auth.sanitize(body.name || "Novo produto").slice(0, 100),
         category: auth.sanitize(body.category || "Geral").slice(0, 80),
         description: auth.sanitize(body.description).slice(0, 500),
@@ -3999,6 +4006,7 @@ Object.assign(api, {
         if (
           !product ||
           product.active === false ||
+          require("./lib/product-details").paused(product) ||
           (Number.isFinite(Number(product.stock)) &&
             Number(product.stock) < requestedStock.get(line.productId))
         )

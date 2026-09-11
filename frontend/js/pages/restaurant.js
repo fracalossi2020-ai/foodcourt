@@ -91,7 +91,7 @@ export async function render(view, boot, params) {
           <article class="digital-product" data-product="${product.id}" data-search="${esc(normalize(`${product.name} ${product.description} ${section.name}`))}" role="button" tabindex="0" aria-label="${esc(product.name)}, ${money(product.promoPrice ?? product.price)}">
             <div class="digital-product-photo" ${product.image ? `style="background-image:url('${esc(product.image)}')"` : ""}>
               ${product.image ? "" : `<span>${product.emoji || "🍽️"}</span>`}
-              ${product.available === false ? "<b>Esgotado</b>" : ""}${product.discount ? `<b>-${product.discount}%</b>` : ""}<button type="button" tabindex="-1" aria-hidden="true">+</button>
+              ${product.available === false ? (Date.parse(product.pausedUntil) > Date.now() ? "<b>Temporariamente indisponível</b>" : "<b>Esgotado</b>") : ""}${product.discount ? `<b>-${product.discount}%</b>` : ""}<button type="button" tabindex="-1" aria-hidden="true">+</button>
             </div>
             <div class="digital-product-info">
               <div class="digital-product-flags">${product.popular ? "<span>🔥 Mais pedido</span>" : ""}${(

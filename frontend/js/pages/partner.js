@@ -1,3 +1,4 @@
+import { productDetailsEditor, readProductDetails } from '../core/product-details-editor.js';
 import { reconciliation } from '../core/finance-reconciliation.js';
 import { mountClosures, readClosures } from '../core/closure-editor.js';
 import { mountShifts, readShifts } from '../core/shift-editor.js';
@@ -570,7 +571,7 @@ function orderAction(o, couriers) {
 }
 function productCard(p) {
   const draft = p.active === false && Number(p.price) === 0;
-  return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
+  return `<article class="partner-product"><div class="partner-product-image" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ""}>${p.image ? "" : icon("image")}<span>${draft ? "Rascunho" : `${p.stock} un.`}</span></div><div><span>${esc(p.category)}</span><h3>${esc(p.name)}</h3><b>${draft ? "Preço a definir" : money(p.promoPrice ?? p.price)}</b><p class="partner-product-note">${draft ? "Edite preço e estoque antes de disponibilizar." : `${p.stock} unidades em estoque${Date.parse(p.pausedUntil) > Date.now() ? " - Pausado ate " + new Date(p.pausedUntil).toLocaleString("pt-BR") : ""}`}</p><label><input type="checkbox" data-product-active="${p.id}" ${p.active ? "checked" : ""}> Disponível</label></div><button type="button" data-edit-product="${p.id}" aria-label="Editar ${esc(p.name)}">Editar produto</button></article>`;
 }
 function bind(view, section, data) {
   if (section === 'minhaloja') mountStoreAddress(view, data.store);
@@ -1322,6 +1323,7 @@ function bind(view, section, data) {
     productForm.elements.price.value = product?.price ?? "";
     productForm.elements.stock.value = product?.stock ?? "";
     productForm.elements.image.value = product?.image || "";
+    productDetailsEditor(productForm, product || {});
     optionsEditor(productForm, product?.options || []);
     const preview = productForm.querySelector("[data-product-image-preview]");
     preview.textContent = product?.image ? "" : "📷";
@@ -1386,6 +1388,7 @@ function bind(view, section, data) {
         stock: form.get("stock"),
         image: form.get("image"),
         options: readOptions(productForm),
+        ...readProductDetails(productForm),
         active: existing?.active ?? true,
       });
       toast(existing ? "Produto atualizado." : "Produto criado.", "success");
