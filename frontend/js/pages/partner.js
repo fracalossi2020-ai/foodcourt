@@ -1,3 +1,4 @@
+import { reconciliation } from '../core/finance-reconciliation.js';
 import { mountClosures, readClosures } from '../core/closure-editor.js';
 import { mountShifts, readShifts } from '../core/shift-editor.js';
 import { mountInvites } from '../core/team-invite-editor.js';
@@ -318,7 +319,7 @@ function content(section, data) {
   if (section === "promocoes")
     return `${head("CRESCIMENTO", "Promoções", "Crie ofertas com regras claras e acompanhe seus resultados.", `<button class="btn btn-primary" data-new-promotion>+ Criar promoção</button>`)}<section class="promotion-summary"><div><span>Campanhas</span><b>${data.promotions.length}</b></div><div><span>Ativas agora</span><b>${data.promotions.filter((p) => p.active && (!p.endsAt || Date.parse(p.endsAt) >= Date.now())).length}</b></div><div><span>Utilizações</span><b>${data.promotions.reduce((sum, p) => sum + (p.uses || 0), 0)}</b></div></section><div class="promotion-grid">${data.promotions.map((p) => promotionCard(p)).join("") || emptyState(icon("percent"), "Nenhuma promoção criada", "Crie uma oferta com período, valor mínimo e código opcional.")}</div>`;
   if (section === "financeiro")
-    return `${head("FINANCEIRO", "Recebimentos e repasses", "Valores calculados sobre pedidos entregues.")}<section class="partner-metrics">${metric("💵", "Vendas brutas", money(data.gross), `${data.orders} pedidos concluídos`)}${metric("📉", "Comissão", money(data.commission), "desconto da plataforma")}${metric("✅", "Você recebe", money(data.net), "valor líquido estimado")}${metric("📅", "Próximo repasse", data.nextPayout ? new Date(data.nextPayout).toLocaleDateString("pt-BR") : "Não programado", "aguardando programação de repasse")}</section><div class="partner-panel partner-finance-explain"><h2>Como chegamos ao valor líquido?</h2><div><span>Vendas brutas <b>${money(data.gross)}</b></span><i>−</i><span>Comissão <b>${money(data.commission)}</b></span><i>=</i><span class="total">Você recebe <b>${money(data.net)}</b></span></div><button class="btn btn-outline" data-export-finance>Exportar relatório CSV</button></div>`;
+    return `${reconciliation(data)}${head("FINANCEIRO", "Recebimentos e repasses", "Valores calculados sobre pedidos entregues com pagamento confirmado.")}<section class="partner-metrics">${metric("💵", "Vendas brutas", money(data.gross), `${data.orders} pedidos concluídos`)}${metric("📉", "Comissão", money(data.commission), "desconto da plataforma")}${metric("✅", "Líquido estimado", money(data.net), "valor líquido estimado")}${metric("📅", "Próximo repasse", data.nextPayout ? new Date(data.nextPayout).toLocaleDateString("pt-BR") : "Não programado", "aguardando programação de repasse")}</section><div class="partner-panel partner-finance-explain"><h2>Como chegamos ao valor líquido?</h2><div><span>Vendas brutas <b>${money(data.gross)}</b></span><i>−</i><span>Comissão <b>${money(data.commission)}</b></span><i>=</i><span class="total">Líquido estimado <b>${money(data.net)}</b></span></div><button class="btn btn-outline" data-export-finance>Exportar relatório CSV</button></div>`;
   if (section === "avaliacoes")
     return `${head("REPUTAÇÃO", "Avaliações dos clientes", "Responda comentários e acompanhe a percepção da loja.")}<div class="partner-panel">${data.reviews.map((r) => `<article class="review-row"><span>${r.customerName.slice(0, 2).toUpperCase()}</span><div><b>${esc(r.customerName)}</b><strong aria-label="${r.rating} de 5 estrelas">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</strong><p>${esc(r.comment)}</p>${r.reply ? `<blockquote><b>Sua resposta</b>${esc(r.reply)}</blockquote>` : ""}<button data-review-reply="${r.id}">${r.reply ? "Editar resposta" : "Responder avaliação"}</button></div></article>`).join("") || emptyState("★", "Ainda não há avaliações", "As avaliações aparecerão depois dos pedidos entregues.")}</div>`;
   if (section === "equipe") return teamContent(data);
@@ -503,6 +504,11 @@ function downloadFinanceCsv(data) {
   const rows = [
       ["Resumo financeiro", "Valor"],
       ["Vendas brutas", data.gross],
+      ["Pagos em andamento", data.paidInProgress],
+      ["Estornos confirmados", data.refunded],
+      ["Estornos pendentes", data.refundPending],
+      ["Pagamentos contestados", data.chargedBack],
+      ...(data.issues || []).map(item => [String(item.id) + ": " + item.reason, item.total ?? ""]),
       ["Comissão", data.commission],
       ["Valor líquido", data.net],
       ["Pedidos concluídos", data.orders],

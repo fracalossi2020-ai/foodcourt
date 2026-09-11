@@ -61,6 +61,6 @@ function dashboard(storeId) {
   return { metrics:{ pending:orders.filter(o=>['pending','accepted','preparing','ready'].includes(o.status)).length, todayOrders:todayOrders.length, revenue:delivered.reduce((sum,o)=>sum+o.total,0), averageTicket:delivered.length?delivered.reduce((sum,o)=>sum+o.total,0)/delivered.length:0, rating:storeForId(storeId)?.rating||0 }, analytics:{daily,status}, recentOrders:orders.slice(0,8), lowStock:(storeForId(storeId)?.products||[]).filter(p=>p.stock<=10) }
 }
 function storeForId(id){return applyStoreSchedule(db.state.stores.find(store=>store.id===id))}
-function finance(storeId){const orders=db.state.platformOrders.filter(o=>o.storeId===storeId&&o.status==='delivered');const gross=orders.reduce((s,o)=>s+o.total,0);const rate=storeForId(storeId)?.commissionRate??12;return { gross,commission:gross*rate/100,net:gross*(1-rate/100),orders:orders.length,nextPayout:null }}
+function finance(storeId){return require('./finance-summary')(db.state.platformOrders,storeId,storeForId(storeId)?.commissionRate??12)}
 
 module.exports={ partnerRole, seed, storeForUser, storeForId, dashboard, finance, audit, now, applyStoreSchedule }

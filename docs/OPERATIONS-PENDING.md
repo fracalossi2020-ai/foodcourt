@@ -1,5 +1,9 @@
 # Operação e próximas integrações
 
+## Conferência financeira local
+
+O financeiro considera apenas pedidos entregues com pagamento confirmado no cálculo de vendas, comissão e líquido estimado. Separa pagamentos em andamento, estornos confirmados, estornos pendentes e contestações. Pedidos entregues sem confirmação e cancelados ainda pagos aparecem para conferência. O CSV inclui essas divergências; o PDF segue o critério de vendas confirmadas. Isso não consulta extratos bancários nem executa repasses: a conciliação com o provedor e a ativação comercial continuam pendentes.
+
 ## Verificação do servidor
 
 ```sh

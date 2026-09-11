@@ -1611,24 +1611,29 @@ function partnerReport(store, type) {
           rows: [
             `Vendas brutas: R$ ${finance.gross.toFixed(2)}`,
             `Comissao: R$ ${finance.commission.toFixed(2)}`,
-            `Valor liquido: R$ ${finance.net.toFixed(2)}`,
+            `Valor liquido estimado: R$ ${finance.net.toFixed(2)}`,
+            `Pagos em andamento: R$ ${finance.paidInProgress.toFixed(2)}`,
+            `Estornos confirmados: R$ ${finance.refunded.toFixed(2)}`,
+            `Estornos pendentes: R$ ${finance.refundPending.toFixed(2)}`,
+            `Pagamentos contestados: R$ ${finance.chargedBack.toFixed(2)}`,
+            "Confirmacao de pagamento nao confirma repasse bancario.",
             `Pedidos concluidos: ${finance.orders}`,
             `Proximo repasse: ${finance.nextPayout ? new Date(finance.nextPayout).toLocaleDateString("pt-BR") : "Nao programado"}`,
           ],
         },
         {
-          title: "Pedidos entregues",
+          title: "Pedidos entregues com pagamento confirmado",
           rows: [
             "#Pedido | Cliente | Valor | Data",
             ...orders
-              .filter((o) => o.status === "delivered")
+              .filter((o) => o.status === "delivered" && o.paymentStatus === "paid")
               .map(
                 (o) =>
                   `${o.id} | ${o.customerName} | R$ ${Number(o.total).toFixed(2)} | ${new Date(o.createdAt).toLocaleDateString("pt-BR")}`,
               )
               .slice(0, 250),
-            ...(!orders.some((o) => o.status === "delivered")
-              ? ["Nenhum pedido entregue no periodo."]
+            ...(!orders.some((o) => o.status === "delivered" && o.paymentStatus === "paid")
+              ? ["Nenhum pedido entregue com pagamento confirmado."]
               : []),
           ],
         },
