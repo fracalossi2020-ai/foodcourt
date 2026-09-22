@@ -1,4 +1,10 @@
 import { api } from '../core/api.js'
+import { animate } from '../vendor/anime.esm.min.js'
+
+export function cleanup() {
+  window.__fcLandingScrollCleanup?.()
+  window.__fcOrderDemoCleanup?.()
+}
 
 let turnstileToken=''
 let turnstileWidgetId=null
@@ -104,7 +110,236 @@ function variety(){const cats=[['Hambúrguer','burger'],['Pizza','pizza'],['Japo
 function whyFoodCourt(){const items=[['location','Opções perto de você','Encontre estabelecimentos disponíveis na sua região.'],['speed','Rápido e simples','Faça seu pedido sem complicação.'],['offer','Ofertas exclusivas','Descubra promoções e oportunidades para economizar.'],['security','Pagamento seguro','Mais proteção durante suas compras.'],['favorite','Seus favoritos','Tenha seus estabelecimentos preferidos sempre por perto.'],['support','Suporte quando precisar','Uma experiência pensada para acompanhar você.']];return `<section class="fcv2-why reveal" id="vantagens"><div class="fcv2-section"><header class="section-title"><span class="section-kicker">VANTAGENS</span><h2>Por que escolher o FoodCourt?</h2><p>Mais facilidade para pedir. Mais opções para escolher.</p></header><div class="why-grid">${items.map(x=>`<article><i>${outlineIcon(x[0])}</i><h3>${x[1]}</h3><p>${x[2]}</p></article>`).join('')}</div></div></section>`}
 function outlineIcon(name){const paths={location:'<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',speed:'<path d="M13 2 4 14h8l-1 8 9-12h-8l1-8Z"/>',offer:'<path d="M3 4h8l10 10-7 7L4 11V4Z"/><circle cx="8" cy="8" r="1.25"/>',security:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',favorite:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.6a5.5 5.5 0 0 0-.1-7.8Z"/>',support:'<circle cx="12" cy="12" r="9"/><path d="M5 15v-3a7 7 0 0 1 14 0v3M5 15h3v4H6a1 1 0 0 1-1-1v-3Zm14 0h-3v4h2a1 1 0 0 0 1-1v-3Z"/><path d="M16 19c0 1-1 2-3 2"/>'};return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`}
 function promotion(){return `<section class="fcv2-section promo-banner reveal"><div><span class="section-kicker light">COMECE AGORA</span><h2>Seu próximo pedido<br>pode estar a poucos cliques.</h2><p>Crie sua conta grátis e descubra tudo o que o FoodCourt pode oferecer.</p><div><a href="#/cadastro">CRIAR CONTA GRÁTIS</a><button data-scroll="como">Saiba como funciona</button></div><ul><li>Cadastro gratuito</li><li>Fácil de usar</li><li>Diversas opções</li></ul></div></section>`}
-function mobileExperience(){return `<section class="fcv2-section mobile-exp reveal"><div class="phone-mock" aria-label="Representação do FoodCourt em um smartphone"><div class="phone-screen"><b>FOOD<span>COURT</span></b><small>${uiIcon('location')} Entregar em Casa</small><h3>O que você quer pedir?</h3><label>Buscar comida...</label><div class="mini-cats"><i>Hambúrguer</i><i>Pizza</i><i>Sushi</i></div><div class="mini-order"><strong>Seu pedido está a caminho</strong><span>●────●────○</span><small>Chega em 18–25 min</small></div></div></div><div><span class="section-kicker">EXPERIÊNCIA MOBILE</span><h2>FoodCourt onde<br><em>você estiver.</em></h2><p>Encontre, escolha, peça e acompanhe tudo pelo celular.</p><ul><li>${uiIcon('location')}<span><b>Descubra novos lugares</b><small>Explore opções ao seu redor.</small></span></li><li>${outlineIcon('favorite')}<span><b>Salve seus favoritos</b><small>Encontre o que ama rapidamente.</small></span></li><li>${stepIcon('delivery')}<span><b>Acompanhe seus pedidos</b><small>Saiba cada etapa da entrega.</small></span></li><li>${uiIcon('tag')}<span><b>Receba ofertas</b><small>Economize em seus favoritos.</small></span></li></ul><div class="app-buttons"><a href="#/cadastro"><small>ACESSE PELO</small>Navegador</a><a href="#/cadastro"><small>CRIE SUA CONTA</small>Grátis</a></div></div></section>`}
+function mobileExperience(){return `<section class="fcv2-section mobile-exp reveal"><div class="phone-mock" aria-label="Demonstração de um pedido sendo feito no FoodCourt pelo celular"><div class="phone-screen" data-phone-demo><b>FOOD<span>COURT</span></b><small>${uiIcon('location')} Entregar em Casa</small><div class="ph-stage"><div class="ph-scene is-on" data-scene="home"><h3>O que você quer pedir?</h3><div class="ph-search" data-demo-search><svg class="social-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="ph-typed" data-demo-typed></span><i class="ph-caret"></i><em class="ph-placeholder" data-demo-placeholder>Buscar comida...</em></div><div class="mini-cats"><i data-demo-chip>Hambúrguer</i><i>Pizza</i><i>Sushi</i></div><small class="ph-label">PERTO DE VOCÊ</small><div class="ph-store" data-demo-store><span class="ph-thumb burger"></span><span><b>Burger House</b><small>★ 4.8 · 20–30 min · Entrega grátis</small></span></div><div class="ph-store"><span class="ph-thumb pizza"></span><span><b>Pizza da Praça</b><small>★ 4.7 · 30–40 min</small></span></div></div><div class="ph-scene" data-scene="menu"><div class="ph-store-head"><span class="ph-thumb burger"></span><span><b>Burger House</b><small>★ 4.8 · 20–30 min · Aberto</small></span></div><small class="ph-label">MAIS PEDIDOS</small><div class="ph-item"><span class="ph-thumb burger"></span><span><b>Smash Burger</b><small>Pão brioche, queijo e cebola caramelizada</small><em>R$ 29,90</em></span><button type="button" tabindex="-1" data-demo-add aria-hidden="true">+</button></div><div class="ph-item"><span class="ph-thumb drink"></span><span><b>Milkshake de morango</b><small>400 ml</small><em>R$ 14,90</em></span><button type="button" tabindex="-1" aria-hidden="true">+</button></div><div class="ph-cartbar" data-demo-cartbar><span><i>1</i> item</span><b>Ver sacola · R$ 29,90</b></div></div><div class="ph-scene" data-scene="checkout"><h3>Finalizar pedido</h3><div class="ph-summary"><div><span>1x Smash Burger</span><b>R$ 29,90</b></div><div><span>Entrega</span><b>R$ 4,90</b></div><div class="total"><span>Total</span><b>R$ 34,80</b></div></div><div class="ph-pay"><i>PIX</i><span>Pagamento via Pix</span><em>✓</em></div><button type="button" tabindex="-1" class="ph-confirm" data-demo-confirm aria-hidden="true"><span data-demo-confirm-label>Confirmar pedido</span></button></div><div class="ph-scene" data-scene="track"><h3>Acompanhe seu pedido</h3><small class="ph-label">BURGER HOUSE · PEDIDO #4821</small><div class="mini-order" data-order-demo><div class="mini-order-top"><strong data-order-label>Pedido confirmado</strong><span class="mini-live-badge"><i></i>AO VIVO</span></div><p class="mini-order-sub" data-order-sub>O restaurante recebeu seu pedido agora.</p><div class="mini-track"><div class="mini-track-line"><i class="mini-track-fill" data-order-fill></i></div><i class="mini-track-stop" data-order-stop="0"></i><i class="mini-track-stop" data-order-stop="1"></i><i class="mini-track-stop" data-order-stop="2"></i><span class="mini-bike" data-order-bike aria-hidden="true">${uiIcon('scooter')}</span></div><small class="mini-eta">Chega em <b data-order-eta>27</b> min</small></div><div class="ph-item ph-item-quiet"><span class="ph-thumb burger"></span><span><b>Smash Burger</b><small>1 item · R$ 34,80 · Pix</small></span></div></div></div><span class="ph-finger" data-demo-finger aria-hidden="true"></span></div></div><div class="mobile-copy"><span class="section-kicker">EXPERIÊNCIA MOBILE</span><h2>FoodCourt onde<br><em>você estiver.</em></h2><p>Encontre, escolha, peça e acompanhe tudo pelo celular. Sem instalar nada: abre direto no navegador.</p><ul><li><i>${uiIcon('location')}</i><span><b>Descubra novos lugares</b><small>Explore opções ao seu redor.</small></span></li><li><i>${outlineIcon('favorite')}</i><span><b>Salve seus favoritos</b><small>Encontre o que ama rapidamente.</small></span></li><li><i>${stepIcon('delivery')}</i><span><b>Acompanhe seus pedidos</b><small>Saiba cada etapa da entrega.</small></span></li><li><i>${uiIcon('tag')}</i><span><b>Receba ofertas</b><small>Economize em seus favoritos.</small></span></li></ul><div class="app-buttons"><a class="app-btn dark" href="#/login">${uiIcon('phone')}<span><small>Acesse pelo</small><b>Navegador</b></span></a><a class="app-btn light" href="#/cadastro">${uiIcon('user')}<span><small>Crie sua conta</small><b>Grátis</b></span></a></div><small class="app-note">Funciona em qualquer celular, sem ocupar espaço na memória.</small></div></section>`}
+
+// seção "Experiência mobile": o celular encena um pedido completo em loop —
+// alguém digita na busca, escolhe o restaurante, adiciona um lanche à sacola,
+// confirma o pagamento e acompanha a entrega. Um "dedo" translúcido toca em
+// cada elemento antes de a tela reagir, e o anime.js cuida das transições de
+// tela, da barra de progresso, do entregador e do contador de minutos.
+const ORDER_DEMO_STAGES = [
+  { fromMin: 27, toMin: 18, fromProgress: 0, toProgress: .32, duration: 2600, label: 'Pedido confirmado', sub: 'O restaurante recebeu seu pedido agora.' },
+  { fromMin: 18, toMin: 6, fromProgress: .32, toProgress: .74, duration: 2800, label: 'Preparando com carinho', sub: 'Sua comida está sendo preparada na cozinha.' },
+  { fromMin: 6, toMin: 1, fromProgress: .74, toProgress: 1, duration: 2200, label: 'Saiu para entrega', sub: 'O entregador está a caminho até você.' }
+]
+const ORDER_DEMO_QUERY = 'Hambúrguer'
+function bindOrderDemo(view) {
+  window.__fcOrderDemoCleanup?.()
+  const screen = view.querySelector('[data-phone-demo]')
+  if (!screen) return
+  const $ = selector => screen.querySelector(selector)
+  const scenes = [...screen.querySelectorAll('[data-scene]')]
+  const finger = $('[data-demo-finger]')
+  const search = $('[data-demo-search]')
+  const typed = $('[data-demo-typed]')
+  const placeholder = $('[data-demo-placeholder]')
+  const chip = $('[data-demo-chip]')
+  const store = $('[data-demo-store]')
+  const addButton = $('[data-demo-add]')
+  const cartbar = $('[data-demo-cartbar]')
+  const confirm = $('[data-demo-confirm]')
+  const confirmLabel = $('[data-demo-confirm-label]')
+  const card = $('[data-order-demo]')
+  const label = card.querySelector('[data-order-label]')
+  const sub = card.querySelector('[data-order-sub]')
+  const fill = card.querySelector('[data-order-fill]')
+  const bike = card.querySelector('[data-order-bike]')
+  const eta = card.querySelector('[data-order-eta]')
+  const track = card.querySelector('.mini-track')
+  const stops = [...card.querySelectorAll('[data-order-stop]')]
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  const showScene = name => scenes.forEach(scene => scene.classList.toggle('is-on', scene.dataset.scene === name))
+  function paintStops(activeIndex) {
+    stops.forEach((stop, index) => {
+      stop.classList.toggle('done', index < activeIndex)
+      stop.classList.toggle('active', index === activeIndex)
+    })
+  }
+
+  // Sem motion, o celular fica parado na tela de acompanhamento, numa etapa
+  // intermediária, para continuar comunicando o que o app faz.
+  if (reduce) {
+    const stage = ORDER_DEMO_STAGES[1]
+    showScene('track')
+    label.textContent = stage.label
+    sub.textContent = stage.sub
+    eta.textContent = stage.toMin
+    fill.style.transform = `scaleX(${stage.toProgress})`
+    bike.style.transform = `translateX(${stage.toProgress * track.clientWidth}px)`
+    paintStops(1)
+    return
+  }
+
+  let stopped = false
+  let live = []
+  let timers = []
+  let observer = null
+  window.__fcOrderDemoCleanup = () => {
+    stopped = true
+    live.forEach(animation => animation.pause())
+    timers.forEach(clearTimeout)
+    observer?.disconnect()
+  }
+
+  const wait = ms => new Promise(resolve => { timers.push(setTimeout(resolve, ms)) })
+  const run = (target, params) => new Promise(resolve => {
+    if (stopped) return
+    live.push(animate(target, { ...params, onComplete: () => { params.onComplete?.(); resolve() } }))
+  })
+
+  function center(element) {
+    const rect = element.getBoundingClientRect()
+    const base = screen.getBoundingClientRect()
+    return { x: rect.left - base.left + rect.width / 2, y: rect.top - base.top + rect.height / 2 }
+  }
+  async function tap(element, offsetX = 0) {
+    const point = center(element)
+    await run(finger, { translateX: point.x + offsetX, translateY: point.y, opacity: 1, duration: 480, ease: 'outQuad' })
+    element.classList.add('pressed')
+    await run(finger, { scale: [1, .7, 1], duration: 260, ease: 'inOutQuad' })
+    element.classList.remove('pressed')
+  }
+  const hideFinger = () => run(finger, { opacity: 0, duration: 220, ease: 'linear' })
+
+  async function switchScene(name) {
+    const current = scenes.find(scene => scene.classList.contains('is-on'))
+    const next = scenes.find(scene => scene.dataset.scene === name)
+    await run(current, { translateX: [0, -36], opacity: [1, 0], duration: 240, ease: 'inQuad' })
+    current.classList.remove('is-on')
+    current.style.cssText = ''
+    next.classList.add('is-on')
+    await run(next, { translateX: [48, 0], opacity: [0, 1], duration: 340, ease: 'outQuad' })
+    next.style.cssText = ''
+  }
+
+  function reset() {
+    typed.textContent = ''
+    placeholder.classList.remove('hide')
+    search.classList.remove('focus')
+    chip.classList.remove('sel')
+    addButton.classList.remove('added')
+    addButton.textContent = '+'
+    cartbar.classList.remove('show')
+    cartbar.style.cssText = ''
+    confirm.classList.remove('loading', 'done')
+    confirmLabel.textContent = 'Confirmar pedido'
+    card.classList.remove('delivered')
+    eta.textContent = ORDER_DEMO_STAGES[0].fromMin
+    fill.style.transform = 'scaleX(0)'
+    bike.style.transform = 'translateX(0)'
+    paintStops(-1)
+    finger.style.opacity = 0
+  }
+
+  async function trackStage(index) {
+    const stage = ORDER_DEMO_STAGES[index]
+    label.textContent = stage.label
+    sub.textContent = stage.sub
+    paintStops(index)
+    if (stops[index]) live.push(animate(stops[index], { scale: [.6, 1.25, 1], duration: 420, ease: 'outBack' }))
+    const width = track.clientWidth
+    const counter = { value: stage.fromMin }
+    live.push(animate(fill, { scaleX: [stage.fromProgress, stage.toProgress], duration: stage.duration, ease: 'linear' }))
+    live.push(animate(bike, { translateX: [stage.fromProgress * width, stage.toProgress * width], duration: stage.duration, ease: 'linear' }))
+    await run(counter, {
+      value: stage.toMin,
+      duration: stage.duration,
+      ease: 'linear',
+      onUpdate: () => {
+        const next = Math.round(counter.value)
+        if (eta.textContent !== String(next)) {
+          eta.textContent = next
+          eta.classList.remove('tick'); void eta.offsetWidth; eta.classList.add('tick')
+        }
+      }
+    })
+  }
+
+  async function cycle() {
+    reset()
+    showScene('home')
+    await wait(900)
+
+    // 1. busca: toca no campo e digita
+    await tap(search, -40)
+    search.classList.add('focus')
+    for (const char of ORDER_DEMO_QUERY) {
+      if (stopped) return
+      placeholder.classList.add('hide')
+      typed.textContent += char
+      await wait(70 + Math.random() * 60)
+    }
+    await wait(350)
+    await tap(chip)
+    chip.classList.add('sel')
+    search.classList.remove('focus')
+    await wait(450)
+
+    // 2. escolhe o restaurante
+    await tap(store)
+    await hideFinger()
+    await switchScene('menu')
+    await wait(600)
+
+    // 3. adiciona o lanche à sacola
+    await tap(addButton)
+    addButton.classList.add('added')
+    addButton.textContent = '1'
+    live.push(animate(addButton, { scale: [1, 1.3, 1], duration: 380, ease: 'outBack' }))
+    cartbar.classList.add('show')
+    await run(cartbar, { translateY: [24, 0], opacity: [0, 1], duration: 380, ease: 'outBack' })
+    await wait(650)
+    await tap(cartbar)
+    await hideFinger()
+    await switchScene('checkout')
+    await wait(700)
+
+    // 4. confirma o pagamento
+    await tap(confirm)
+    confirm.classList.add('loading')
+    confirmLabel.textContent = 'Confirmando…'
+    await hideFinger()
+    await wait(900)
+    confirm.classList.remove('loading')
+    confirm.classList.add('done')
+    confirmLabel.textContent = 'Pedido confirmado ✓'
+    await run(confirm, { scale: [1, 1.04, 1], duration: 420, ease: 'outBack' })
+    await wait(800)
+    await switchScene('track')
+    await wait(300)
+
+    // 5. acompanha até a entrega
+    for (let index = 0; index < ORDER_DEMO_STAGES.length; index++) {
+      if (stopped) return
+      await trackStage(index)
+    }
+    paintStops(ORDER_DEMO_STAGES.length)
+    card.classList.add('delivered')
+    label.textContent = 'Pedido entregue ✓'
+    sub.textContent = 'Bom apetite! Aproveite sua refeição. 🎉'
+    await run(card, { scale: [1, 1.025, 1], duration: 520, ease: 'outBack' })
+    await wait(2600)
+    await switchScene('home')
+  }
+
+  async function loop() {
+    while (!stopped) await cycle()
+  }
+
+  reset()
+  // Só começa quando o celular entra na tela, para o visitante pegar o
+  // pedido desde o início em vez de cair no meio da encenação.
+  if ('IntersectionObserver' in window) {
+    observer = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return
+      observer.disconnect()
+      observer = null
+      loop()
+    }, { threshold: .3 })
+    observer.observe(screen)
+  } else loop()
+}
 function trust(){return `<section class="fcv2-section trust reveal"><header class="section-title"><span class="section-kicker">FEITO PARA VOCÊ</span><h2>Uma experiência feita para você.</h2><p>Uma plataforma em evolução, construída para conectar clientes e estabelecimentos.</p></header><div>${[['Perto','Opções na sua região'],['Simples','Pedido em poucos passos'],['Seguro','Pagamento protegido'],['Real','Acompanhe cada etapa']].map(x=>`<article><b>${x[0]}</b><span>${x[1]}</span></article>`).join('')}</div></section>`}
 const demoTestimonials=[['AM','Ana Martins','Encontrei várias opções perto de casa e consegui fazer meu pedido sem complicação.'],['RL','Rafael Lima','Gostei principalmente da facilidade para encontrar lugares diferentes.'],['CS','Camila Souza','Acompanhar tudo pelo celular deixa o pedido muito mais tranquilo.']]
 function testimonials(){return `<section class="fcv2-section fcv2-testimonials reveal"><header class="section-title"><span class="section-kicker">EXPERIÊNCIA FOODCOURT</span><h2>Uma experiência pensada para o seu dia.</h2><p>Conheça a plataforma e descubra novos sabores perto de você.</p></header><div>${demoTestimonials.map(x=>`<article><div><i>${x[0]}</i><p><b>${x[1]}</b><span>★★★★★</span></p></div><blockquote>“${x[2]}”</blockquote><small>Exemplo de experiência</small></article>`).join('')}</div></section>`}
@@ -122,6 +357,7 @@ function bind(view,partnerLogin=false,query=new URLSearchParams(),turnstileConfi
     if(location.hash===destination) window.dispatchEvent(new HashChangeEvent('hashchange'))
     else location.hash=destination
   }))
+  bindOrderDemo(view)
   const root=view.querySelector('.fc-landing-v2')
   root.classList.add('js-reveal')
   window.__fcLandingScrollCleanup?.()
