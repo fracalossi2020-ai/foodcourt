@@ -183,6 +183,7 @@ function registerForm() {
       ${field({ id: 'phone', label: 'Número de telefone', type: 'tel', placeholder: '(00) 00000-0000', icon: 'phone', autocomplete: 'tel-national', mask: 'phone' })}
       ${field({ id: 'password', label: 'Senha', type: 'password', placeholder: 'Crie uma senha', icon: 'lock', autocomplete: 'new-password', eye: true, strength: true })}
       ${field({ id: 'confirmPassword', label: 'Confirmar senha', type: 'password', placeholder: 'Digite sua senha novamente', icon: 'lock', autocomplete: 'new-password', eye: true })}
+      ${termsConsent()}
       ${formError()}
       <button type="submit" class="btn btn-primary btn-lg btn-block auth-submit" data-loading="Criando conta...">Criar conta grátis</button>
       <div class="auth-divider"><span>ou</span></div>
@@ -302,10 +303,21 @@ function termsFooter() {
   <p class="auth-terms">
     <span class="auth-terms-icon">${ICONS.shield}</span>
     <span>Ao continuar, você concorda com nossos
-      <a href="#/login" onclick="return false" tabindex="-1">Termos de Uso</a> e
-      <a href="#/login" onclick="return false" tabindex="-1">Política de Privacidade</a>.
+      <a href="#/termos">Termos de Uso</a> e
+      <a href="#/privacidade">Política de Privacidade</a>.
     </span>
   </p>`
+}
+
+// No cadastro o aceite é explícito: a marcação é obrigatória e fica
+// registrada na conta (termsAcceptedAt) pelo servidor.
+function termsConsent() {
+  return `
+  <label class="auth-consent" id="field-acceptTerms" for="f-acceptTerms">
+    <input type="checkbox" id="f-acceptTerms" name="acceptTerms">
+    <span>Li e concordo com os <a href="#/termos" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="#/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>.</span>
+  </label>
+  <div class="field-error" id="err-acceptTerms" role="alert" hidden></div>`
 }
 
 /* ============ VALIDAÇÃO CLIENTE ============ */
@@ -528,10 +540,12 @@ async function submitRegister(view) {
   ok = setFieldError(view, 'phone', V.phone(phone)) && ok
   ok = setFieldError(view, 'password', V.password(password)) && ok
   ok = setFieldError(view, 'confirmPassword', password !== confirmPassword ? 'As senhas não coincidem.' : '') && ok
+  const acceptTerms = document.getElementById('f-acceptTerms')?.checked === true
+  ok = setFieldError(view, 'acceptTerms', acceptTerms ? '' : 'Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.') && ok
   if (!ok) return
 
   try {
-    const res = await api.register({ fullName, email, phone, password, confirmPassword })
+    const res = await api.register({ fullName, email, phone, password, confirmPassword, acceptTerms })
     completeAuth(res.user)
     location.hash = '#/inicio'
   } catch (e) {

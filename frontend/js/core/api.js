@@ -171,4 +171,13 @@ export const api = {
   },
   forgotPassword: (email) => post("/api/auth/forgot-password", { email }),
   resetPassword: (payload) => post("/api/auth/reset-password", payload),
+
+  // Empresa responsável (rodapé e páginas legais) e direitos do titular.
+  publicCompany: () => get("/api/public/company", { ttl: 600000 }),
+  updateProfile: (payload) => post("/api/account/profile", payload),
+  changePassword: (payload) => post("/api/account/password", payload),
+  exportAccount: () => get("/api/account/export"),
+  deleteAccount: (payload) => post("/api/account/delete", payload),
+  adminCourierDocument: (applicationId, kind) =>
+    get(`/api/admin-courier-application/${encodeURIComponent(applicationId)}/document/${kind}`),
 };

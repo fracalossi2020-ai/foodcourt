@@ -61,7 +61,7 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
         <p>Encontre restaurantes incríveis, peça com poucos cliques e receba onde estiver. Rápido, fácil e feito para você.</p>
         <div class="fcv2-actions"><a href="#/cadastro">Criar conta grátis</a><button data-scroll="como">${uiIcon('play')} Saiba mais</button></div>
         <section class="fcv2-proof" aria-label="Diferenciais FoodCourt">
-          ${proof('store','+2.000','restaurantes parceiros')}${proof('scooter','Entrega rápida','e segura')}${proof('tag','Ofertas exclusivas','todos os dias')}${proof('star','4,9 ★','avaliações de clientes')}
+          ${proof('store','Lojas locais','perto de você')}${proof('scooter','Entrega rápida','e segura')}${proof('tag','Ofertas','das lojas parceiras')}${proof('star','Avaliações','de clientes reais')}
         </section>
       </div>
 
@@ -90,6 +90,7 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
     ${introduction()}${howItWorks()}${variety()}${whyFoodCourt()}${promotion()}${mobileExperience()}${trust()}${testimonials()}${partnerSection()}${faq()}${finalCta()}${landingFooter()}${helpWidget()}
   </div>`
   bind(view,partnerLogin,query,turnstileConfig)
+  fillCompanyBlock(view)
   if(turnstileConfig.enabled)renderTurnstile(view,turnstileConfig)
   if (location.hash.replace(/^#/, '').split('?')[0] === '/login') {
     requestAnimationFrame(() => {
@@ -347,7 +348,21 @@ function partnerSection(){return `<section class="fcv2-partner reveal" id="parce
 function faq(){return `<section class="fcv2-section fcv2-faq reveal" id="duvidas"><header class="section-title"><span class="section-kicker">FAQ</span><h2>Ficou com alguma dúvida?</h2></header><div>${FAQ_ITEMS.map((q,i)=>`<details ${i===0?'open':''}><summary>${q[0]}<i>+</i></summary><p>${q[1]}</p></details>`).join('')}</div></section>`}
 function helpWidget(){return `<div class="fcv2-help"><button class="fcv2-help-button" type="button" aria-label="Abrir perguntas frequentes" aria-expanded="false"><span>?</span> Me ajude</button><section class="fcv2-help-panel" role="dialog" aria-label="Central de ajuda" hidden><header><div><small>CENTRAL DE AJUDA</small><h2>Como podemos ajudar?</h2></div><button type="button" class="fcv2-help-close" aria-label="Fechar ajuda">×</button></header><div class="fcv2-help-questions">${FAQ_ITEMS.map(q=>`<details><summary>${q[0]}<i>+</i></summary><p>${q[1]}</p></details>`).join('')}</div></section></div>`}
 function finalCta(){return `<section class="fcv2-section final-signup reveal"><span class="food-edge left">◔</span><div><span class="section-kicker light">O PRÓXIMO SABOR ESPERA POR VOCÊ</span><h2>Pronto para descobrir<br>seu próximo favorito?</h2><p>Crie sua conta e tenha o FoodCourt sempre por perto.</p><a href="#/cadastro">CRIAR MINHA CONTA</a><small>É rápido, simples e gratuito.</small></div><span class="food-edge right">◉</span></section>`}
-function landingFooter(){return `<footer class="fcv2-footer" id="contato"><div class="footer-main"><div class="footer-about"><a class="footer-brand-logo" href="#/" aria-label="Food Court - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a><p>Seu pedido, do seu jeito.</p></div><div><h3>FOODCOURT</h3><button data-scroll="top">Sobre nós</button><button data-scroll="como">Como funciona</button><button data-scroll="vantagens">Vantagens</button><button data-scroll="contato">Contato</button></div><div><h3>DESCUBRA</h3><a href="#/inicio?focus=categorias">Categorias</a><a href="#/ofertas">Ofertas</a><a href="#/buscar">Explorar restaurantes</a></div><div><h3>PARA ESTABELECIMENTOS</h3><a href="#/cadastro-parceiro">Cadastre seu negócio</a><a href="#/para-estabelecimentos">Como funciona</a><a href="#/login-parceiro">Central do parceiro</a></div><div><h3>SUPORTE</h3><a href="#/suporte">Central de ajuda</a><button data-scroll="contato">Fale conosco</button><button data-scroll="duvidas">Dúvidas frequentes</button></div></div><div class="footer-bottom">© ${new Date().getFullYear()} FoodCourt. Todos os direitos reservados.</div></footer>`}
+function landingFooter(){return `<footer class="fcv2-footer" id="contato"><div class="footer-main"><div class="footer-about"><a class="footer-brand-logo" href="#/" aria-label="Food Court - início"><img class="brand-logo-image" src="/assets/images/foodcourt-logo.png" alt="Food Court"></a><p>Seu pedido, do seu jeito.</p></div><div><h3>FOODCOURT</h3><button data-scroll="top">Sobre nós</button><button data-scroll="como">Como funciona</button><button data-scroll="vantagens">Vantagens</button><button data-scroll="contato">Contato</button></div><div><h3>DESCUBRA</h3><a href="#/inicio?focus=categorias">Categorias</a><a href="#/ofertas">Ofertas</a><a href="#/buscar">Explorar restaurantes</a></div><div><h3>PARA ESTABELECIMENTOS</h3><a href="#/cadastro-parceiro">Cadastre seu negócio</a><a href="#/para-estabelecimentos">Como funciona</a><a href="#/login-parceiro">Central do parceiro</a></div><div><h3>SUPORTE</h3><a href="#/suporte">Central de ajuda</a><a href="#contato" data-company-mail>Fale conosco</a><button data-scroll="duvidas">Dúvidas frequentes</button></div><div><h3>LEGAL</h3><a href="#/termos">Termos de Uso</a><a href="#/privacidade">Política de Privacidade</a><a href="#/cancelamento">Cancelamento e reembolso</a></div></div><div class="footer-company" data-company-block hidden></div><div class="footer-bottom">© ${new Date().getFullYear()} FoodCourt. Todos os direitos reservados.</div></footer>`}
+// Identificação da empresa responsável no rodapé (CDC e LGPD). Os dados vêm do
+// servidor; enquanto não estiverem cadastrados, o bloco permanece oculto.
+async function fillCompanyBlock(view){
+  const block=view.querySelector('[data-company-block]'),mail=view.querySelector('[data-company-mail]')
+  if(!block)return
+  let company
+  try{company=(await api.publicCompany()).company}catch{return}
+  if(!company)return
+  if(company.email&&mail){mail.href=`mailto:${company.email}`;mail.removeAttribute('data-company-mail')}
+  if(!company.complete)return
+  const escText=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
+  block.innerHTML=`<b>${escText(company.legalName)}</b><span>CNPJ ${escText(company.cnpj)}</span><span>${escText(company.address)}</span><span><a href="mailto:${escText(company.email)}">${escText(company.email)}</a>${company.phone?` · ${escText(company.phone)}`:''}</span>`
+  block.hidden=false
+}
 function bind(view,partnerLogin=false,query=new URLSearchParams(),turnstileConfig={enabled:false}){
   const partnerLink = view.querySelector('.fcv2-partner a[href="#/cadastro"]')
   partnerLink?.setAttribute('href', '#/para-estabelecimentos')

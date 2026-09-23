@@ -181,6 +181,10 @@ function publicUser(u) {
     role: u.role || 'customer',
     createdAt: u.createdAt,
     lastLogin: u.lastLogin || null,
+    // Contas criadas por login social não têm senha; a interface adapta os
+    // fluxos de troca de senha e exclusão de conta.
+    hasPassword: Boolean(u.passwordHash),
+    termsAcceptedAt: u.termsAcceptedAt || null,
   }
 }
 

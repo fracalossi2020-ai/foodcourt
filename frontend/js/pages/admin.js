@@ -108,7 +108,7 @@ const courierApplicationRows = (data) =>
   data.courierApplications
     .map(
       (application) =>
-        `<div class="admin-row courier-review-row"><span>📋</span><div><b>${esc(application.user?.fullName || "Conta não encontrada")}</b><small>${esc(application.user?.email || "")} · ${esc(application.vehicle)} · ${esc(application.city)} · Documento final ${esc(application.document.slice(-4))}</small><small>Prazo da análise: ${application.reviewDueAt ? new Date(application.reviewDueAt).toLocaleString("pt-BR") : "até 3 dias"}</small><details><summary>Ver critérios e documentos</summary><p>✓ Identidade e selfie enviadas<br>${application.vehicle === "Moto" ? `${application.cnhCategory?.includes("A") ? "✓" : "✕"} CNH A · ${application.ear ? "✓ EAR" : "✕ EAR"} · ${application.motofreteCourse ? "✓ curso motofrete" : "✕ curso motofrete"}` : application.vehicle === "Carro" ? "✓ CNH informada" : "✓ documento de identidade para bicicleta"}</p><a href="${application.identityImage}" target="_blank" rel="noopener">Abrir documento</a> · <a href="${application.selfieImage}" target="_blank" rel="noopener">Abrir selfie</a></details></div><em>${application.status === "pending" ? "Em análise" : application.status === "approved" ? "Aprovado" : "Recusado"}</em>${application.status === "pending" ? `<button class="btn btn-primary btn-sm" data-courier-application="${application.id}" data-application-action="approve">Aprovar</button><button class="btn btn-ghost btn-sm" data-courier-application="${application.id}" data-application-action="reject">Recusar</button>` : ""}</div>`,
+        `<div class="admin-row courier-review-row"><span>📋</span><div><b>${esc(application.user?.fullName || "Conta não encontrada")}</b><small>${esc(application.user?.email || "")} · ${esc(application.vehicle)} · ${esc(application.city)} · Documento final ${esc(application.document.slice(-4))}</small><small>Prazo da análise: ${application.reviewDueAt ? new Date(application.reviewDueAt).toLocaleString("pt-BR") : "até 3 dias"}</small><details><summary>Ver critérios e documentos</summary><p>✓ Identidade e selfie enviadas<br>${application.vehicle === "Moto" ? `${application.cnhCategory?.includes("A") ? "✓" : "✕"} CNH A · ${application.ear ? "✓ EAR" : "✕ EAR"} · ${application.motofreteCourse ? "✓ curso motofrete" : "✕ curso motofrete"}` : application.vehicle === "Carro" ? "✓ CNH informada" : "✓ documento de identidade para bicicleta"}</p>${application.hasIdentityImage ? `<button type="button" class="btn btn-link btn-sm" data-courier-document="${application.id}" data-document-kind="identity">Abrir documento</button>` : "<span>Documento não disponível</span>"} · ${application.hasSelfieImage ? `<button type="button" class="btn btn-link btn-sm" data-courier-document="${application.id}" data-document-kind="selfie">Abrir selfie</button>` : "<span>Selfie não disponível</span>"}${application.documentsPurgedAt ? `<br><small>Imagens apagadas após o prazo de retenção.</small>` : ""}</details></div><em>${application.status === "pending" ? "Em análise" : application.status === "approved" ? "Aprovado" : "Recusado"}</em>${application.status === "pending" ? `<button class="btn btn-primary btn-sm" data-courier-application="${application.id}" data-application-action="approve">Aprovar</button><button class="btn btn-ghost btn-sm" data-courier-application="${application.id}" data-application-action="reject">Recusar</button>` : ""}</div>`,
     )
     .join("") || empty("Nenhum cadastro recebido.");
 const deliveryRows = (data) =>
@@ -316,6 +316,27 @@ export async function render(view) {
           location.hash = `#/admin?secao=entregadores&at=${Date.now()}`;
         } catch (error) {
           toast(error.message, "error");
+          button.disabled = false;
+        }
+      }),
+    );
+    // Documentos de entregador são carregados sob demanda, com auditoria no
+    // servidor, e abertos em uma aba própria.
+    view.querySelectorAll("[data-courier-document]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          const { image } = await api.adminCourierDocument(
+            button.dataset.courierDocument,
+            button.dataset.documentKind,
+          );
+          const blob = await (await fetch(image)).blob();
+          const url = URL.createObjectURL(blob);
+          window.open(url, "_blank", "noopener");
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (error) {
+          toast(error.message, "error");
+        } finally {
           button.disabled = false;
         }
       }),

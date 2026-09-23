@@ -3168,3 +3168,17 @@ html[data-theme="dark"] .location-manage {
 html[data-theme="dark"] .location-manage:hover {
   background: #19261e !important;
 }
+
+/* Perfil: segurança e privacidade */
+.field-hint{display:block;margin-top:6px;font-size:.74rem;color:var(--text-2,#667085);line-height:1.5}
+.profile-form label>input[disabled]{opacity:.65;cursor:not-allowed}
+.profile-privacy-card{display:flex;flex-direction:column;gap:12px}
+.profile-privacy-card h2{font-size:1.05rem;margin:0}
+.profile-privacy-card p{margin:0;font-size:.88rem;line-height:1.6;color:var(--text-2,#667085)}
+.profile-privacy-card form{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+.profile-privacy-card form label{display:flex;flex-direction:column;gap:6px;font-size:.85rem;font-weight:600}
+.profile-danger-card{border-color:#f0b4b4}
+.profile-danger-card h2{color:#b42318}
+.btn-danger{background:#b42318;color:#fff;border:0}
+.btn-danger:hover{background:#912018}
+.detail-info-banner a{color:#07883f;font-weight:600;text-decoration:underline}

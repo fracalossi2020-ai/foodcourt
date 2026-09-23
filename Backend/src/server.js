@@ -11,6 +11,8 @@ const oauth = require("./lib/oauth");
 const turnstile = require("./lib/turnstile");
 const mailer = require("./lib/mailer");
 const platform = require("./lib/platform");
+const company = require("./lib/company");
+const account = require("./lib/account");
 
 const payments = require("./lib/payments");
 const orderAccess = Symbol("server checkout");
@@ -1026,6 +1028,9 @@ const authApi = {
       createdAt: now,
       updatedAt: now,
       lastLogin: now,
+      // Registro do aceite dos Termos de Uso e da Política de Privacidade no
+      // momento do cadastro (o formulário exige a marcação explícita).
+      termsAcceptedAt: body.acceptTerms ? now : null,
     });
     const token = auth.createSession(user.id);
     sessionCookie(ctx.req, ctx.res, token, auth.SESSION_TTL / 1000);
@@ -1223,6 +1228,136 @@ const authApi = {
 /* ============ API DE CONTEÚDO (PROTEGIDA) ============ */
 
 const api = {
+  "GET /api/public/company": () => ({ company: company.publicInfo() }),
+
+  /* ============ CONTA DO TITULAR (perfil, senha, LGPD) ============ */
+
+  "POST /api/account/profile": (params, query, body, ctx) => {
+    const fields = {};
+    const name = auth.validName(body.fullName);
+    if (!name.ok) fields.fullName = name.error;
+    const phone = auth.validPhone(body.phone);
+    if (!phone.ok) fields.phone = phone.error;
+    if (Object.keys(fields).length)
+      return {
+        status: 400,
+        body: { error: "Verifique os campos informados.", fields },
+      };
+    const other = db.findByPhone(phone.value);
+    if (other && other.id !== ctx.user.id)
+      return {
+        status: 409,
+        body: {
+          code: "PHONE_EXISTS",
+          error: "Este telefone já está cadastrado em outra conta.",
+        },
+      };
+    ctx.user.fullName = name.value;
+    ctx.user.phone = phone.value;
+    ctx.user.updatedAt = platform.now();
+    db.rebuildIndexes();
+    db.saveUser();
+    return { user: auth.publicUser(ctx.user) };
+  },
+
+  "POST /api/account/password": (params, query, body, ctx) => {
+    const hasPassword = Boolean(ctx.user.passwordHash);
+    if (hasPassword && !auth.verifyPassword(body.currentPassword, ctx.user.passwordHash)) {
+      auth.dummyVerify();
+      return {
+        status: 400,
+        body: {
+          error: "A senha atual não confere.",
+          fields: { currentPassword: "A senha atual não confere." },
+        },
+      };
+    }
+    const pw = auth.validPassword(body.newPassword);
+    if (!pw.ok)
+      return {
+        status: 400,
+        body: { error: pw.error, fields: { newPassword: pw.error } },
+      };
+    if (body.newPassword !== body.confirmPassword)
+      return {
+        status: 400,
+        body: {
+          error: "As senhas não coincidem.",
+          fields: { confirmPassword: "As senhas não coincidem." },
+        },
+      };
+    ctx.user.passwordHash = auth.hashPassword(pw.value);
+    ctx.user.updatedAt = platform.now();
+    // Encerra todas as sessões antigas e emite uma nova para este aparelho.
+    auth.revokeUserSessions(ctx.user.id);
+    const token = auth.createSession(ctx.user.id);
+    sessionCookie(ctx.req, ctx.res, token, auth.SESSION_TTL / 1000);
+    platform.audit(ctx.user, "account.password.change", "user", ctx.user.id);
+    db.saveUser();
+    return { ok: true, message: "Senha alterada. Outros aparelhos foram desconectados." };
+  },
+
+  "GET /api/account/export": (params, query, body, ctx) => {
+    platform.audit(ctx.user, "account.export", "user", ctx.user.id);
+    return account.exportUserData(ctx.user);
+  },
+
+  "POST /api/account/delete": (params, query, body, ctx) => {
+    if (isPlatformAdmin(ctx.user))
+      return {
+        status: 409,
+        body: {
+          code: "PLATFORM_ADMIN",
+          error: "A conta administradora da plataforma não pode ser excluída por aqui.",
+        },
+      };
+    const stores = account.ownedStores(ctx.user);
+    if (stores.length)
+      return {
+        status: 409,
+        body: {
+          code: "STORE_OWNER",
+          error:
+            "Sua conta é responsável por uma loja. Transfira ou encerre a loja com o suporte antes de excluir a conta.",
+        },
+      };
+    if (ctx.user.passwordHash) {
+      if (!auth.verifyPassword(body.password, ctx.user.passwordHash)) {
+        auth.dummyVerify();
+        return {
+          status: 400,
+          body: { error: "Senha incorreta.", fields: { password: "Senha incorreta." } },
+        };
+      }
+    } else if (String(body.confirmation || "").trim().toUpperCase() !== "EXCLUIR") {
+      return {
+        status: 400,
+        body: {
+          error: 'Digite EXCLUIR para confirmar.',
+          fields: { confirmation: 'Digite EXCLUIR para confirmar.' },
+        },
+      };
+    }
+    const openOrders = db.state.platformOrders.filter(
+      (order) =>
+        order.customerId === ctx.user.id &&
+        !["delivered", "cancelled", "canceled", "refunded"].includes(order.status),
+    );
+    if (openOrders.length)
+      return {
+        status: 409,
+        body: {
+          code: "OPEN_ORDERS",
+          error:
+            "Você tem pedidos em andamento. Aguarde a conclusão ou o cancelamento antes de excluir a conta.",
+        },
+      };
+    platform.audit(ctx.user, "account.delete", "user", ctx.user.id);
+    account.deleteAccount(ctx.user);
+    clearSessionCookie(ctx.res);
+    return { ok: true, message: "Sua conta foi excluída." };
+  },
+
   "GET /api/public/restaurants": () => ({
     restaurants: db.state.stores.map((store) => ({
       id: store.id,
@@ -3625,13 +3760,21 @@ Object.assign(api, {
       }),
       users: db.state.users.map(auth.publicUser),
       couriers,
+      // Documentos e chave Pix não trafegam na listagem: o admin abre cada
+      // imagem por um endpoint próprio, com registro de auditoria.
       courierApplications: db.state.courierApplications
         .slice(0, 100)
-        .map((application) => {
+        .map(({ identityImage, selfieImage, pixKey, ...application }) => {
           const user = db.state.users.find(
             (item) => item.id === application.userId,
           );
-          return { ...application, user: user ? auth.publicUser(user) : null };
+          return {
+            ...application,
+            hasIdentityImage: Boolean(identityImage),
+            hasSelfieImage: Boolean(selfieImage),
+            hasPixKey: Boolean(pixKey),
+            user: user ? auth.publicUser(user) : null,
+          };
         }),
       deliveries: db.state.deliveries.map((delivery) => ({
         ...delivery,
@@ -3889,6 +4032,38 @@ Object.assign(api, {
     platform.audit(ctx.user, `courier.${action}`, "user", user.id, user.email);
     db.saveNow();
     return { user: auth.publicUser(user) };
+  },
+  "GET /api/admin-courier-application/:id/document/:kind": (params, query, body, ctx) => {
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
+    const application = db.state.courierApplications.find(
+      (item) => item.id === params.id,
+    );
+    if (!application)
+      return { status: 404, body: { error: "Cadastro não encontrado." } };
+    const field =
+      params.kind === "identity"
+        ? "identityImage"
+        : params.kind === "selfie"
+          ? "selfieImage"
+          : null;
+    if (!field) return { status: 400, body: { error: "Documento inválido." } };
+    const image = application[field];
+    if (!image)
+      return {
+        status: 404,
+        body: {
+          error: application.documentsPurgedAt
+            ? "Documento apagado após o prazo de retenção."
+            : "Documento não enviado.",
+        },
+      };
+    platform.audit(
+      ctx.user,
+      `courier.application.document.${params.kind}`,
+      "courier-application",
+      application.id,
+    );
+    return { image };
   },
   "POST /api/admin-courier-application": (params, query, body, ctx) => {
     if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
@@ -4596,6 +4771,7 @@ const server = http.createServer(async (req, res) => {
     const isPublicEndpoint =
       req.method === "GET" &&
       (clean === "/api/public/restaurants" ||
+        clean === "/api/public/company" ||
         /^\/api\/cep\/\d{8}$/.test(clean));
     const requiresAuth =
       (!isAuthEndpoint && !isPublicEndpoint) || clean === "/api/auth/me";
@@ -4698,10 +4874,24 @@ let paymentReconciliationTimer;
 let stopBackups = () => {};
 server.on('close', () => stopBackups());
 server.on("close", () => clearInterval(paymentReconciliationTimer));
+let documentRetentionTimer = null;
+server.on("close", () => clearInterval(documentRetentionTimer));
 function start(port = PORT) {
   stopBackups = require('./lib/backup-scheduler').start(db.path);
   paymentReconciliationTimer = setInterval(() => paymentService.reconcile(), 60000);
   paymentReconciliationTimer.unref();
+  // Apaga documentos de entregador já analisados após o prazo de retenção.
+  const purgeDocuments = () => {
+    try {
+      const purged = account.purgeCourierDocuments();
+      if (purged) console.log(`  Documentos de entregador apagados após retenção: ${purged}`);
+    } catch (error) {
+      console.error("[retenção de documentos]", error);
+    }
+  };
+  purgeDocuments();
+  documentRetentionTimer = setInterval(purgeDocuments, 24 * 60 * 60 * 1000);
+  documentRetentionTimer.unref();
   server.listen(port, () => {
     console.log("");
     console.log(

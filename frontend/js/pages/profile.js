@@ -25,10 +25,20 @@ const sections = {
     title: "Programa de benefícios",
     subtitle: "Acompanhe seus pontos e vantagens",
   },
+  seguranca: {
+    icon: "shield",
+    title: "Segurança",
+    subtitle: "Senha e acesso à conta",
+  },
+  privacidade: {
+    icon: "lock",
+    title: "Privacidade",
+    subtitle: "Seus dados, exportação e exclusão da conta",
+  },
   configuracoes: {
     icon: "settings",
     title: "Configurações",
-    subtitle: "Privacidade, aparência e preferências",
+    subtitle: "Aparência e preferências",
   },
 };
 
@@ -72,7 +82,9 @@ function renderOverview(view) {
       ${u.email?.toLowerCase() === "fracalossi2020@gmail.com" ? item("shield", "Administração geral", "Gerenciar toda a plataforma FoodCourt", "#/admin") : ""}
       ${u.role === "courier" ? item("bike", "Portal do Entregador", "Corridas, rotas e ganhos", "#/entregador") : u.role === "merchant" || u.role === "admin" ? item("shop", "Portal do Parceiro", "Administrar estabelecimento", "#/parceiro") : `${item("bike", "Quero ser entregador", "Cadastre-se para realizar entregas", "#/quero-ser-entregador")}${item("store", "Venda no FoodCourt", "Tem um estabelecimento? Seja parceiro.", "#/para-estabelecimentos")}`}
       ${item("phone", "Instalar FoodCourt", "Adicionar à tela inicial", "#/instalar")}
-      ${item("settings", "Configurações", "Privacidade e preferências", "#/perfil?secao=configuracoes")}
+      ${item("shield", "Segurança", "Alterar senha", "#/perfil?secao=seguranca")}
+      ${item("lock", "Privacidade", "Exportar dados ou excluir conta", "#/perfil?secao=privacidade")}
+      ${item("settings", "Configurações", "Aparência e preferências", "#/perfil?secao=configuracoes")}
     </div></div></section>
     <button class="btn btn-dark btn-block" id="logoutBtn">Sair da conta</button>
   </div>`;
@@ -94,12 +106,38 @@ function renderSection(view, boot, sectionId) {
 function sectionContent(sectionId, boot) {
   const u = store.user;
   if (sectionId === "conta")
-    return `<div class="account-completion"><span><b>Perfil completo</b><small>Seus dados ajudam a tornar as entregas mais seguras.</small></span><strong>100%</strong></div><form class="card profile-detail-card profile-form" id="accountForm">
-    <label>Nome completo<input class="input" name="fullName" value="${esc(u.fullName)}" required minlength="3"></label>
-    <label>E-mail<input class="input" name="email" type="email" value="${esc(u.email)}" required></label>
-    <label>Telefone<input class="input" name="phone" type="tel" value="${esc(u.phone)}" required></label>
-    <button class="btn btn-primary" type="submit">Salvar alterações</button>
+    return `<div class="account-completion"><span><b>Dados salvos na sua conta</b><small>Nome e telefone são usados pela loja e pelo entregador para falar com você.</small></span></div><form class="card profile-detail-card profile-form" id="accountForm">
+    <label>Nome completo<input class="input" name="fullName" value="${esc(u.fullName)}" required minlength="3" autocomplete="name"></label>
+    <label>E-mail<input class="input" name="email" type="email" value="${esc(u.email)}" disabled><small class="field-hint">A troca de e-mail ainda não está disponível. Fale com o suporte se precisar alterar.</small></label>
+    <label>Telefone<input class="input" name="phone" type="tel" value="${esc(u.phone)}" required autocomplete="tel-national"></label>
+    <button class="btn btn-primary" type="submit" data-loading="Salvando...">Salvar alterações</button>
   </form>`;
+
+  if (sectionId === "seguranca")
+    return `<div class="detail-info-banner"><span>🔐</span><div><b>Senha da conta</b><small>Ao trocar a senha, os outros aparelhos conectados são desconectados.</small></div></div><form class="card profile-detail-card profile-form" id="passwordForm" autocomplete="off">
+    ${u.hasPassword === false ? "" : `<label>Senha atual<input class="input" name="currentPassword" type="password" required autocomplete="current-password"></label>`}
+    <label>Nova senha<input class="input" name="newPassword" type="password" required minlength="8" autocomplete="new-password"><small class="field-hint">Mínimo de 8 caracteres, com letras e números.</small></label>
+    <label>Confirmar nova senha<input class="input" name="confirmPassword" type="password" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn btn-primary" type="submit" data-loading="Alterando...">Alterar senha</button>
+  </form>`;
+
+  if (sectionId === "privacidade")
+    return `<div class="detail-info-banner"><span>🛡️</span><div><b>Seus direitos (LGPD)</b><small>Você pode baixar uma cópia dos seus dados ou excluir a conta a qualquer momento. Veja a <a href="#/privacidade">Política de Privacidade</a>.</small></div></div>
+    <section class="card profile-detail-card profile-privacy-card">
+      <h2>Exportar meus dados</h2>
+      <p>Gera um arquivo JSON com sua conta, endereços, pedidos, pagamentos, avaliações, cupons e notificações.</p>
+      <button class="btn btn-outline" type="button" data-export-account data-loading="Gerando...">Baixar cópia dos dados</button>
+    </section>
+    <section class="card profile-detail-card profile-privacy-card profile-danger-card">
+      <h2>Excluir minha conta</h2>
+      <p>Sua conta é encerrada e seus dados pessoais são removidos. Pedidos e pagamentos ficam guardados de forma anônima pelo prazo exigido por lei. Esta ação não pode ser desfeita.</p>
+      <form id="deleteAccountForm">
+        ${u.hasPassword === false
+          ? `<label>Digite <b>EXCLUIR</b> para confirmar<input class="input" name="confirmation" required autocomplete="off"></label>`
+          : `<label>Confirme com sua senha<input class="input" name="password" type="password" required autocomplete="current-password"></label>`}
+        <button class="btn btn-danger" type="submit" data-loading="Excluindo...">Excluir conta definitivamente</button>
+      </form>
+    </section>`;
 
   if (sectionId === "enderecos")
     return `<div class="detail-info-banner"><span>🚴</span><div><b>Destino da próxima entrega</b><small>Toque em um endereço para torná-lo o principal.</small></div></div><div class="profile-option-list">${store.addresses
@@ -147,16 +185,86 @@ function sectionContent(sectionId, boot) {
 
 function bindSection(view, sectionId) {
   if (sectionId === "conta")
-    view.querySelector("#accountForm")?.addEventListener("submit", (event) => {
+    view.querySelector("#accountForm")?.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const form = new FormData(event.currentTarget);
-      store.updateProfile({
-        fullName: form.get("fullName").trim(),
-        email: form.get("email").trim(),
-        phone: form.get("phone").trim(),
-      });
-      toast("Dados da conta atualizados.", "success");
+      const formElement = event.currentTarget;
+      const form = new FormData(formElement);
+      const button = formElement.querySelector("button[type=submit]");
+      button.disabled = true;
+      try {
+        const { user } = await api.updateProfile({
+          fullName: String(form.get("fullName") || "").trim(),
+          phone: String(form.get("phone") || "").trim(),
+        });
+        store.updateProfile(user);
+        toast("Dados da conta atualizados.", "success");
+      } catch (error) {
+        toast(fieldMessage(error), "error");
+      } finally {
+        button.disabled = false;
+      }
     });
+
+  if (sectionId === "seguranca")
+    view.querySelector("#passwordForm")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formElement = event.currentTarget;
+      const form = Object.fromEntries(new FormData(formElement));
+      const button = formElement.querySelector("button[type=submit]");
+      if (form.newPassword !== form.confirmPassword) {
+        toast("As senhas não coincidem.", "error");
+        return;
+      }
+      button.disabled = true;
+      try {
+        const result = await api.changePassword(form);
+        formElement.reset();
+        toast(result.message || "Senha alterada.", "success");
+      } catch (error) {
+        toast(fieldMessage(error), "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+  if (sectionId === "privacidade") {
+    view.querySelector("[data-export-account]")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const data = await api.exportAccount();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `foodcourt-meus-dados-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        toast("Arquivo gerado.", "success");
+      } catch (error) {
+        toast(error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+    view.querySelector("#deleteAccountForm")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formElement = event.currentTarget;
+      if (!confirm("Excluir sua conta definitivamente? Esta ação não pode ser desfeita.")) return;
+      const button = formElement.querySelector("button[type=submit]");
+      button.disabled = true;
+      try {
+        await api.deleteAccount(Object.fromEntries(new FormData(formElement)));
+        toast("Sua conta foi excluída.", "success");
+        window.dispatchEvent(new Event("fc:logout"));
+      } catch (error) {
+        toast(fieldMessage(error), "error");
+        button.disabled = false;
+      }
+    });
+  }
 
   view.querySelectorAll("[data-address]").forEach((button) =>
     button.addEventListener("click", () => {
@@ -214,6 +322,13 @@ function bindSection(view, sectionId) {
   );
 }
 
+// Erros de validação do servidor chegam em `fields`; mostra o primeiro.
+function fieldMessage(error) {
+  const fields = error?.data?.fields || error?.fields;
+  const first = fields && Object.values(fields)[0];
+  return first || error?.message || "Não foi possível concluir.";
+}
+
 function selectOnly(view, selector, selected) {
   view.querySelectorAll(selector).forEach((button) => {
     const active = button === selected;
@@ -238,7 +353,7 @@ function accountSubnav(active) {
     ${Object.entries(sections)
       .map(
         ([id, section]) =>
-          `<a class="${id === active ? "active" : ""}" href="#/perfil?secao=${id}"><span>${section.icon}</span>${section.title}</a>`,
+          `<a class="${id === active ? "active" : ""}" href="#/perfil?secao=${id}"><span>${icon(section.icon)}</span>${section.title}</a>`,
       )
       .join("")}
   </nav>`;

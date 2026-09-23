@@ -57,9 +57,9 @@ export const store = {
 
   get preferredPaymentId() { return persisted.preferredPaymentId },
 
-  updateProfile(fields) {
-    persisted.profileOverrides = { ...persisted.profileOverrides, ...fields }
-    store.user = { ...store.user, ...persisted.profileOverrides }
+  // Recebe o usuário já salvo pelo servidor (POST /api/account/profile).
+  updateProfile(user) {
+    store.user = { ...store.user, ...user }
     commit()
   },
 
@@ -195,7 +195,10 @@ export function setAuthUser(user) {
 }
 
 export function hydrateBootstrap(boot) {
-  if (boot.user) store.user = { ...boot.user, ...persisted.profileOverrides }
+  // O perfil vem sempre do servidor; o cache local antigo de alterações
+  // (profileOverrides) deixou de ser aplicado e é limpo aqui.
+  if (boot.user) store.user = { ...boot.user }
+  persisted.profileOverrides = {}
   store.addresses = [...boot.addresses, ...persisted.customAddresses]
   store.notifications = boot.notifications
   store.couponDefs = boot.coupons

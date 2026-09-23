@@ -529,3 +529,11 @@ body.auth-mode [data-theme] {
 @media (prefers-reduced-motion: reduce) {
   .auth-panel-inner { animation: none; }
 }
+
+/* Aceite explícito dos termos no cadastro */
+.auth-consent { display: flex; align-items: flex-start; gap: 10px; margin: 6px 0 4px; font-size: .82rem; line-height: 1.5; color: var(--text-2, #667085); cursor: pointer; }
+.auth-consent input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: #07883f; }
+.auth-consent a { color: #07883f; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.auth-consent.invalid { color: #b42318; }
+.auth-consent.invalid input { outline: 2px solid #b42318; outline-offset: 1px; border-radius: 3px; }
+#err-acceptTerms { margin-bottom: 8px; }

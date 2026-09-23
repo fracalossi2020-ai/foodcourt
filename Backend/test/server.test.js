@@ -1065,3 +1065,157 @@ test("kitchen account is scoped to operational actions and loses access when dis
     );
   }
 });
+
+test("account owner can update profile, change password, export data and delete the account", async () => {
+  const auth = require("../src/lib/auth");
+  const account = require("../src/lib/account");
+  const user = db.addUser({
+    id: "titular_lgpd_test",
+    fullName: "Titular Teste",
+    email: "titular@foodcourt.test",
+    phone: "(31) 97777-2222",
+    passwordHash: auth.hashPassword("senha123"),
+    status: "active",
+    role: "customer",
+    createdAt: new Date().toISOString(),
+  });
+  const login = async (password) =>
+    fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.email, password }),
+    });
+  const first = await login("senha123");
+  assert.equal(first.status, 200);
+  const cookie = first.headers.get("set-cookie").split(";")[0];
+  const headers = { Cookie: cookie, "Content-Type": "application/json" };
+
+  const company = await fetch(`${baseUrl}/api/public/company`);
+  assert.equal(company.status, 200);
+  assert.equal((await company.json()).company.tradeName, "FoodCourt");
+
+  const profile = await fetch(`${baseUrl}/api/account/profile`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ fullName: "Titular Renomeado", phone: "(31) 97777-3333" }),
+  });
+  assert.equal(profile.status, 200);
+  assert.equal((await profile.json()).user.fullName, "Titular Renomeado");
+  assert.equal(db.findByPhone("(31) 97777-3333")?.id, user.id);
+
+  const wrongCurrent = await fetch(`${baseUrl}/api/account/password`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ currentPassword: "errada", newPassword: "novaSenha1", confirmPassword: "novaSenha1" }),
+  });
+  assert.equal(wrongCurrent.status, 400);
+  const changed = await fetch(`${baseUrl}/api/account/password`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ currentPassword: "senha123", newPassword: "novaSenha1", confirmPassword: "novaSenha1" }),
+  });
+  assert.equal(changed.status, 200);
+  // A sessão antiga foi revogada e a nova senha passa a valer.
+  assert.equal((await fetch(`${baseUrl}/api/auth/me`, { headers: { Cookie: cookie } })).status, 401);
+  assert.equal((await login("senha123")).status, 401);
+  const second = await login("novaSenha1");
+  assert.equal(second.status, 200);
+  const cookie2 = second.headers.get("set-cookie").split(";")[0];
+  const headers2 = { Cookie: cookie2, "Content-Type": "application/json" };
+
+  const exported = await fetch(`${baseUrl}/api/account/export`, { headers: { Cookie: cookie2 } });
+  assert.equal(exported.status, 200);
+  const dump = await exported.json();
+  assert.equal(dump.account.email, user.email);
+  assert.ok(Array.isArray(dump.orders));
+
+  const badDelete = await fetch(`${baseUrl}/api/account/delete`, {
+    method: "POST",
+    headers: headers2,
+    body: JSON.stringify({ password: "errada" }),
+  });
+  assert.equal(badDelete.status, 400);
+  const deleted = await fetch(`${baseUrl}/api/account/delete`, {
+    method: "POST",
+    headers: headers2,
+    body: JSON.stringify({ password: "novaSenha1" }),
+  });
+  assert.equal(deleted.status, 200);
+  assert.equal(db.findByEmail("titular@foodcourt.test"), null);
+  assert.equal(user.status, "deleted");
+  assert.equal(user.fullName, "Conta excluída");
+  assert.equal((await fetch(`${baseUrl}/api/auth/me`, { headers: { Cookie: cookie2 } })).status, 401);
+  assert.equal((await login("novaSenha1")).status, 401);
+  assert.equal(typeof account.purgeCourierDocuments, "function");
+});
+
+test("admin dashboard hides courier documents and serves them through an audited endpoint", async () => {
+  const auth = require("../src/lib/auth");
+  const account = require("../src/lib/account");
+  const candidate = db.addUser({
+    id: "courier_docs_test",
+    fullName: "Documento Teste",
+    email: "documento@foodcourt.test",
+    phone: "(31) 96666-4444",
+    passwordHash: auth.hashPassword("entrega123"),
+    status: "active",
+    role: "customer",
+    createdAt: new Date().toISOString(),
+  });
+  const application = {
+    id: "courier-application_docs_test",
+    userId: candidate.id,
+    document: "12345678901",
+    vehicle: "Bicicleta",
+    city: "Belo Horizonte",
+    pixKey: "chave-pix-secreta",
+    identityImage: "data:image/png;base64,aWRlbnRpZGFkZQ==",
+    selfieImage: "data:image/png;base64,c2VsZmll",
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  db.state.courierApplications.unshift(application);
+  try {
+    const admin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "admin@foodcourt.com", password: "foodcourt123" }),
+    });
+    assert.equal(admin.status, 200);
+    const cookie = admin.headers.get("set-cookie").split(";")[0];
+    const dashboard = await fetch(`${baseUrl}/api/admin-dashboard`, { headers: { Cookie: cookie } });
+    assert.equal(dashboard.status, 200);
+    const raw = await dashboard.text();
+    assert.ok(!raw.includes("chave-pix-secreta"));
+    assert.ok(!raw.includes("aWRlbnRpZGFkZQ=="));
+    const listed = JSON.parse(raw).courierApplications.find((item) => item.id === application.id);
+    assert.equal(listed.hasIdentityImage, true);
+    assert.equal(listed.hasPixKey, true);
+
+    const image = await fetch(
+      `${baseUrl}/api/admin-courier-application/${application.id}/document/identity`,
+      { headers: { Cookie: cookie } },
+    );
+    assert.equal(image.status, 200);
+    assert.equal((await image.json()).image, application.identityImage);
+    assert.ok(
+      db.state.auditLog.some(
+        (entry) => entry.action === "courier.application.document.identity" && entry.entityId === application.id,
+      ),
+    );
+
+    // Depois da decisão e do prazo de retenção as imagens são apagadas.
+    application.status = "rejected";
+    application.reviewedAt = new Date(Date.now() - 100 * 86400000).toISOString();
+    assert.equal(account.purgeCourierDocuments(), 1);
+    assert.equal(application.identityImage, "");
+    const gone = await fetch(
+      `${baseUrl}/api/admin-courier-application/${application.id}/document/selfie`,
+      { headers: { Cookie: cookie } },
+    );
+    assert.equal(gone.status, 404);
+  } finally {
+    db.state.courierApplications = db.state.courierApplications.filter((item) => item.id !== application.id);
+  }
+});

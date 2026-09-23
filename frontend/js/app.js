@@ -9,6 +9,9 @@ window.FC = { store };
 
 const routes = [
   { pattern: /^\/instalar$/, page: "install", public: true },
+  { pattern: /^\/termos$/, page: "legal", public: true, mode: "termos" },
+  { pattern: /^\/privacidade$/, page: "legal", public: true, mode: "privacidade" },
+  { pattern: /^\/cancelamento$/, page: "legal", public: true, mode: "cancelamento" },
   { pattern: /^\/$/, page: "landing", public: true, landing: true },
   { pattern: /^\/login$/, page: "landing", public: true, landing: true },
   {
