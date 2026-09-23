@@ -1,4 +1,5 @@
 const test = require("node:test");
+process.env.PLATFORM_ADMIN_EMAIL = "admin@foodcourt.test";
 const assert = require("node:assert/strict");
 const { nextMonth, summary } = require("../src/lib/subscriptions");
 
@@ -34,7 +35,7 @@ test("only the designated owner has lifetime access; others expire", () => {
   );
   const owner = summary(
     subscription,
-    { email: "fracalossi2020@gmail.com" },
+    { email: process.env.PLATFORM_ADMIN_EMAIL },
     now,
   );
   assert.equal(owner.lifetime, true);

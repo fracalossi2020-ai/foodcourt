@@ -164,6 +164,13 @@ function validPassword(v) {
   return { ok: true, value: pw }
 }
 
+/* ============ ADMIN DA PLATAFORMA ============ */
+
+// Definido só pelo ambiente. Vazio = nenhum administrador.
+const PLATFORM_ADMIN_EMAIL = sanitize(process.env.PLATFORM_ADMIN_EMAIL).toLowerCase()
+const isPlatformAdmin = (u) =>
+  Boolean(PLATFORM_ADMIN_EMAIL && u && u.email?.toLowerCase() === PLATFORM_ADMIN_EMAIL)
+
 /* ============ SHAPE PÚBLICO DO USUÁRIO ============ */
 
 function publicUser(u) {
@@ -185,11 +192,16 @@ function publicUser(u) {
     // fluxos de troca de senha e exclusão de conta.
     hasPassword: Boolean(u.passwordHash),
     termsAcceptedAt: u.termsAcceptedAt || null,
+    // A interface usa esta flag para mostrar o painel administrativo, em vez
+    // de comparar e-mails no código do frontend.
+    platformAdmin: isPlatformAdmin(u),
   }
 }
 
 module.exports = {
   SESSION_TTL,
+  PLATFORM_ADMIN_EMAIL,
+  isPlatformAdmin,
   hashPassword,
   verifyPassword,
   dummyVerify,

@@ -327,7 +327,7 @@ test("partner customizes the menu theme and publishes product photos", async () 
   db.state.stores = db.state.stores.filter((store) => store !== testStore);
 });
 
-test("registered establishments automatically appear in the customer marketplace", async () => {
+test("approved establishments appear in the customer marketplace, pending ones do not", async () => {
   const { cookie } = await loginDemo();
   const store = {
     id: "store_real_test",
@@ -365,6 +365,17 @@ test("registered establishments automatically appear in the customer marketplace
   });
   db.saveNow();
 
+  // Enquanto o cadastro está pendente de aprovação, a loja não entra na
+  // vitrine; depois que o admin ativa, aparece automaticamente.
+  const pendingHome = await fetch(`${baseUrl}/api/home`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(pendingHome.status, 200);
+  assert.ok(
+    !(await pendingHome.json()).restaurants.some((item) => item.id === store.id),
+  );
+  store.status = "active";
+  db.saveNow();
   const home = await fetch(`${baseUrl}/api/home`, {
     headers: { Cookie: cookie },
   });

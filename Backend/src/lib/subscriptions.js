@@ -24,10 +24,9 @@ function nextMonth(value) {
 
 function summary(subscription, owner, now = Date.now()) {
   if (!subscription) return null;
-  const ownerEmail = "fracalossi2020@gmail.com";
-  const lifetime = Boolean(
-    ownerEmail && owner?.email?.toLowerCase() === ownerEmail,
-  );
+  // Isenção vitalícia apenas para a conta administradora da plataforma
+  // (PLATFORM_ADMIN_EMAIL); nenhum e-mail fixo no código.
+  const lifetime = require("./auth").isPlatformAdmin(owner);
   const paidAt = subscription.paidAt || null;
   const nextBillingAt = lifetime ? null : paidAt ? nextMonth(paidAt) : null;
   const remaining = nextBillingAt

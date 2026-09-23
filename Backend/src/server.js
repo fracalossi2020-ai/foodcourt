@@ -19,13 +19,14 @@ const orderAccess = Symbol("server checkout");
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "..", "..", "frontend");
-const PLATFORM_ADMIN_EMAIL = String(
-  process.env.PLATFORM_ADMIN_EMAIL || "fracalossi2020@gmail.com",
-)
-  .trim()
-  .toLowerCase();
-const isPlatformAdmin = (user) =>
-  Boolean(user && user.email?.toLowerCase() === PLATFORM_ADMIN_EMAIL);
+// O admin da plataforma vem exclusivamente da variável de ambiente. Sem ela,
+// ninguém tem acesso administrativo (nunca um e-mail fixo no código).
+const PLATFORM_ADMIN_EMAIL = auth.PLATFORM_ADMIN_EMAIL;
+const isPlatformAdmin = auth.isPlatformAdmin;
+if (!PLATFORM_ADMIN_EMAIL)
+  console.warn(
+    "  Aviso: PLATFORM_ADMIN_EMAIL não definido; o painel administrativo fica inacessível.",
+  );
 
 /* ============ BANCO + CONTAS INICIAIS ============ */
 
@@ -652,9 +653,11 @@ function registeredRestaurant(store) {
 
 function marketplaceRestaurants() {
   return db.state.stores
+    // Apenas lojas aprovadas pelo admin entram na vitrine; uma loja recém
+    // cadastrada (pending) fica visível só no Portal do Parceiro até a análise.
     .filter(
       (store) =>
-        ["active", "pending"].includes(store.status) &&
+        store.status === "active" &&
         normalize(store.name) !== "meu estabelecimento",
     )
     .map(registeredRestaurant);
@@ -1376,12 +1379,12 @@ const api = {
   }),
   "GET /api/bootstrap": (params, query, body, ctx) => ({
     user: auth.publicUser(ctx.user),
-    addresses: (() => {
-      const saved = db.state.customerAddresses.filter(
-        (address) => address.userId === ctx.user.id,
-      );
-      return saved.length ? saved : data.addresses;
-    })(),
+    // Só endereços cadastrados pelo próprio usuário. Sem nenhum salvo, a
+    // lista vem vazia e a interface pede o cadastro (os endereços de exemplo
+    // do catálogo nunca devem aparecer para clientes reais).
+    addresses: db.state.customerAddresses.filter(
+      (address) => address.userId === ctx.user.id,
+    ),
     categories: data.categories,
     banners: data.banners,
     coupons: [
@@ -4700,7 +4703,9 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, db.health().status === 'ok' ? 200 : 503, {
         status: db.health().status === 'ok' ? "ok" : "degraded",
         uptime: Math.round(process.uptime()),
-        persistentStorage: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH),
+        persistentStorage: Boolean(
+          process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.FC_DB_PATH,
+        ),
         timestamp: new Date().toISOString(),
       });
       return;

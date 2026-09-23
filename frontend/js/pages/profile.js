@@ -79,7 +79,7 @@ function renderOverview(view) {
       ${item("star", "Programa de benefícios", `${u.cashback}% cashback ativo`, "#/fidelidade")}
       ${item("bell", "Notificações", "Alertas e novidades", "#/notificacoes")}
       ${item("chat", "Ajuda e suporte", "Pedidos, pagamentos e atendimento", "#/suporte")}
-      ${u.email?.toLowerCase() === "fracalossi2020@gmail.com" ? item("shield", "Administração geral", "Gerenciar toda a plataforma FoodCourt", "#/admin") : ""}
+      ${u.platformAdmin ? item("shield", "Administração geral", "Gerenciar toda a plataforma FoodCourt", "#/admin") : ""}
       ${u.role === "courier" ? item("bike", "Portal do Entregador", "Corridas, rotas e ganhos", "#/entregador") : u.role === "merchant" || u.role === "admin" ? item("shop", "Portal do Parceiro", "Administrar estabelecimento", "#/parceiro") : `${item("bike", "Quero ser entregador", "Cadastre-se para realizar entregas", "#/quero-ser-entregador")}${item("store", "Venda no FoodCourt", "Tem um estabelecimento? Seja parceiro.", "#/para-estabelecimentos")}`}
       ${item("phone", "Instalar FoodCourt", "Adicionar à tela inicial", "#/instalar")}
       ${item("shield", "Segurança", "Alterar senha", "#/perfil?secao=seguranca")}

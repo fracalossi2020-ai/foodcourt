@@ -17,7 +17,7 @@ Integração com Mercado Pago Preapproval. O parceiro abre **Planos**, aceita o 
 - Autorização não equivale a pagamento. Faturas são consultadas no provedor, e a assinatura só recebe um novo período após pagamento aprovado, em BRL e com o valor esperado.
 - Webhooks usam a verificação de assinatura existente. A rotina de reconciliação também consulta periodicamente os acordos persistidos.
 - Cancelar solicita o cancelamento no Mercado Pago, preservando o período já pago. Cobranças já processadas não são estornadas pelo botão de cancelamento.
-- A conta `fracalossi2020@gmail.com` é vitalícia e não pode contratar recorrência.
+- A conta administradora da plataforma (`PLATFORM_ADMIN_EMAIL`) é vitalícia e não pode contratar recorrência.
 - O projeto usa persistência JSON e bloqueios no processo: execute uma única instância de escrita. Escalar para múltiplas instâncias requer transações e bloqueios compartilhados.
 
 ## Referências

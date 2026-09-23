@@ -326,12 +326,13 @@ function enhanceInternalView(view) {
 function syncHeader() {
   const addr = store.address;
   document.getElementById("locEmoji").innerHTML = icon("pin");
-  document.getElementById("locLabel").textContent = addr.label;
+  // Sem endereço cadastrado, o cabeçalho convida a cadastrar em vez de
+  // mostrar um endereço inexistente.
+  document.getElementById("locLabel").textContent = addr?.label || "Cadastrar endereço";
   if (store.user) document.getElementById("avatarBtn").innerHTML = icon("user");
   const adminPortalButton = document.getElementById("adminPortalBtn");
   if (adminPortalButton)
-    adminPortalButton.hidden =
-      store.user?.email?.toLowerCase() !== "fracalossi2020@gmail.com";
+    adminPortalButton.hidden = !store.user?.platformAdmin;
   const partnerPortalButton = document.getElementById("partnerPortalBtn");
   if (partnerPortalButton)
     partnerPortalButton.hidden = !["merchant", "admin"].includes(
@@ -360,7 +361,7 @@ function renderLocDrawer() {
       ${store.addresses
         .map(
           (a) => `
-        <button class="location-option ${a.id === store.address.id ? "selected" : ""}" data-addr="${a.id}">
+        <button class="location-option ${a.id === store.address?.id ? "selected" : ""}" data-addr="${a.id}">
           <span class="location-option-icon" aria-hidden="true">${esc(a.emoji || "📍")}</span>
           <span class="sc-main">
             <span class="sc-title">${esc(a.label)}</span><span class="sc-sub">${esc(a.street || a.city || "Endereço salvo")}</span>
@@ -383,7 +384,7 @@ function renderLocDrawer() {
       store.setAddress(b.dataset.addr);
       syncHeader();
       hide("locDrawer");
-      toast(`Entrega alterada para ${store.address.label}`, "success", "📍");
+      toast(`Entrega alterada para ${store.address?.label || "novo endereço"}`, "success", "📍");
     }),
   );
   drawer.querySelector("[data-newaddr]")?.addEventListener("click", () => {

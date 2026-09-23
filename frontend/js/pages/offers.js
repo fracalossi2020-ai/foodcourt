@@ -13,20 +13,20 @@ export async function render(view, boot) {
     <header class="destination-heading"><span class="destination-icon">🎟️</span><div><span class="account-kicker">MINHA CONTA</span><h1>Ofertas & Cupons</h1><p>Economize com benefícios selecionados para o seu perfil.</p></div></header>
     <div class="destination-summary"><div><b>${store.coupons.length}</b><span>Na carteira</span></div><div><b>${boot.coupons.length}</b><span>Disponíveis</span></div><a href="#/buscar">Usar agora</a></div>
 
-    <section class="section">
+    ${deals.length ? `<section class="section">
       <div class="section-head">
         <div><h2>⚡ Ofertas relâmpago</h2><div class="sub">Terminam em breve — corra!</div></div>
       </div>
       <div class="hscroll no-scrollbar" id="flashRow">
         ${deals.map(d => flashCard(d)).join('')}
       </div>
-    </section>
+    </section>` : ''}
 
     <section class="section">
       <div class="section-head"><div><h2>🎟️ Cupons disponíveis</h2><div class="sub">Resgate e use no checkout</div></div></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+      ${boot.coupons.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
         ${boot.coupons.map(c => couponCard(c)).join('')}
-      </div>
+      </div>` : `<div class="card" style="padding:18px"><b>Nenhum cupom disponível agora.</b><div class="muted text-sm" style="margin-top:4px">As lojas publicam cupons por tempo limitado. Volte em breve.</div></div>`}
     </section>
 
     <section class="section">
@@ -90,17 +90,36 @@ function flashCard(d) {
   </div>`
 }
 
+// Os cupons vêm das promoções das lojas (code, type, value, min, rules{min},
+// storeId, personal). Título, descrição e regras são derivados aqui.
+function couponTitle(c) {
+  if (c.title) return c.title
+  if (c.type === 'shipping') return 'Frete grátis'
+  if (c.type === 'percent') return `${c.value}% OFF`
+  return `${money(c.value)} OFF`
+}
+function couponRules(c) {
+  if (Array.isArray(c.rules)) return c.rules
+  const rules = []
+  const min = Number(c.rules?.min ?? c.min ?? 0)
+  if (min > 0) rules.push(`Pedido mínimo ${money(min)}`)
+  if (c.storeId) rules.push('Válido em uma loja específica')
+  if (c.personal) rules.push('Cupom pessoal, só para você')
+  if (!rules.length) rules.push('Sem valor mínimo')
+  return rules
+}
 function couponCard(c) {
   const owned = store.coupons.includes(c.code)
+  const tone = c.tone || (c.type === 'shipping' ? 'dark' : 'orange')
   return `
-  <div class="card coupon-card tone-${c.tone}">
+  <div class="card coupon-card tone-${esc(tone)}">
     <div class="pair" style="justify-content:space-between">
-      <b style="font-size:1.05rem">${esc(c.title)}</b>
+      <b style="font-size:1.05rem">${esc(couponTitle(c))}</b>
       <span class="badge badge-brand">${c.type === 'shipping' ? 'FRETE' : c.type === 'percent' ? `${c.value}%` : 'R$ ' + c.value}</span>
     </div>
-    <div class="muted text-sm">${esc(c.description)}</div>
+    <div class="muted text-sm">${esc(c.description || (c.personal ? 'Cupom liberado para a sua conta' : 'Use o código no checkout'))}</div>
     <span class="coupon-code">${esc(c.code)}</span>
-    <ul class="coupon-rules">${c.rules.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
+    <ul class="coupon-rules">${couponRules(c).map(r => `<li>${esc(r)}</li>`).join('')}</ul>
     <button class="btn ${owned ? 'btn-ghost' : 'btn-primary'} btn-sm" data-coupon="${esc(c.code)}" style="margin-top:4px">${owned ? '✓ NA CARTEIRA' : 'RESGATAR'}</button>
   </div>`
 }

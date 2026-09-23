@@ -22,7 +22,7 @@ export async function render(view, boot, params = {}, query = new URLSearchParam
       <div class="home-hero-slides" aria-hidden="true"><i class="home-hero-slide home-hero-pasta active"></i><i class="home-hero-slide home-hero-burger"></i><i class="home-hero-slide home-hero-variety"></i></div>
       <div><span class="home-kicker">SABORES PERTO DE VOCÊ</span><h1>${greeting()}, ${firstName(boot.user.fullName || boot.user.name)} <span aria-hidden="true">👋</span></h1>
       <p>Descubra restaurantes, aproveite ofertas e peça o que você ama.</p>
-      <div class="home-hero-actions"><a class="btn btn-primary" href="#/buscar">Explorar restaurantes</a><button class="intro-location" data-location-short>${icon('pin')} Entregando em <b>${esc(store.address.label)}</b></button></div></div>
+      <div class="home-hero-actions"><a class="btn btn-primary" href="#/buscar">Explorar restaurantes</a><button class="intro-location" data-location-short>${icon('pin')} ${store.address ? `Entregando em <b>${esc(store.address.label)}</b>` : '<b>Cadastrar endereço de entrega</b>'}</button></div></div>
       <div class="home-hero-dots" aria-hidden="true"><i class="active"></i><i></i><i></i></div>
     </header>
 

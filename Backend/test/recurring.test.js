@@ -1,4 +1,5 @@
 const test = require("node:test");
+process.env.PLATFORM_ADMIN_EMAIL = "admin@foodcourt.test";
 const assert = require("node:assert/strict");
 const { install } = require("../src/lib/recurring");
 
@@ -84,7 +85,7 @@ test("recurring authorization, paid invoices, duplicate delivery, ownership and 
         await invoke(
           "",
           { consent: true },
-          { ...user, email: "fracalossi2020@gmail.com" },
+          { ...user, email: process.env.PLATFORM_ADMIN_EMAIL },
         )
       ).status,
       409,
