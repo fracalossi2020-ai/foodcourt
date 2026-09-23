@@ -90,11 +90,13 @@ const iconPaths = {
 const adminIcon = (name) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true">${iconPaths[name]}</svg>`;
 const empty = (text) => `<p class="partner-empty">${text}</p>`;
+const subscriptionLabel = (subscription) =>
+  ({ TRIAL: "período grátis", ACTIVE: "ativa", PENDING: "grátis encerrado, sem pagamento", OVERDUE: subscription.accessAllowed ? "vencida (tolerância)" : "vencida, loja fora do ar", CANCELED: "cancelada", BLOCKED: "bloqueada" })[subscription.status] || subscription.status;
 const storeRows = (data) =>
   data.stores
     .map(
       (store) =>
-        `<div class="admin-row"><span>🏪</span><div><b>${esc(store.name)}</b><small>Dono: ${esc(store.owner?.fullName || "Não vinculado")} · ${esc(store.owner?.email || "sem e-mail")}</small><small>${esc(store.category || "Estabelecimento")} · ${esc(store.address?.city || "Endereço pendente")} · ${store.productCount} produtos · ${store.orderCount} pedidos · ${money(store.revenue)}</small></div><em>${labels[store.status] || esc(store.status)}</em><select class="input admin-action" data-store-status="${store.id}" aria-label="Alterar situação de ${esc(store.name)}"><option value="pending" ${store.status === "pending" ? "selected" : ""}>Pendente</option><option value="active" ${store.status === "active" ? "selected" : ""}>Aprovar</option><option value="suspended" ${store.status === "suspended" ? "selected" : ""}>Suspender</option></select></div>`,
+        `<div class="admin-row"><span>🏪</span><div><b>${esc(store.name)}</b><small>Dono: ${esc(store.owner?.fullName || "Não vinculado")} · ${esc(store.owner?.email || "sem e-mail")}</small><small>${esc(store.category || "Estabelecimento")} · ${esc(store.address?.city || "Endereço pendente")} · ${store.productCount} produtos · ${store.orderCount} pedidos · ${money(store.revenue)}</small><small class="admin-checklist">${store.readiness ? [["Endereço", store.readiness.hasAddress], ["Cardápio", store.readiness.activeProducts > 0], ["Horários", store.readiness.hasHours], ["Contato", store.readiness.hasContact], ["Logo", store.readiness.hasLogo]].map(([label, ok]) => `<i class="${ok ? "ok" : "missing"}">${ok ? "✓" : "✕"} ${label}</i>`).join(" ") : ""}${store.subscription ? ` · Assinatura: ${subscriptionLabel(store.subscription)}` : ""}</small><label class="admin-commission">Comissão <input class="input" type="number" min="0" max="50" step="0.5" value="${Number(store.commissionRate ?? 0)}" data-store-commission="${store.id}" aria-label="Comissão de ${esc(store.name)} em porcentagem">% <button class="btn btn-outline btn-sm" type="button" data-save-commission="${store.id}">Salvar</button></label></div><em>${labels[store.status] || esc(store.status)}</em><select class="input admin-action" data-store-status="${store.id}" aria-label="Alterar situação de ${esc(store.name)}"><option value="pending" ${store.status === "pending" ? "selected" : ""}>Pendente</option><option value="active" ${store.status === "active" ? "selected" : ""}>Aprovar</option><option value="suspended" ${store.status === "suspended" ? "selected" : ""}>Suspender</option></select></div>`,
     )
     .join("") || empty("Nenhum estabelecimento cadastrado.");
 const courierRows = (data) =>
@@ -164,7 +166,7 @@ export async function render(view) {
     const section = tabs.some(([id]) => id === query.get("secao"))
       ? query.get("secao")
       : "visao";
-    const metrics = `<section class="admin-kpis"><article><i>${adminIcon("users")}</i><span>Usuários</span><b>${data.metrics.users}</b><small>${data.metrics.customers} clientes · ${data.metrics.merchants} donos</small></article><article><i>${adminIcon("stores")}</i><span>Estabelecimentos</span><b>${data.metrics.stores}</b><small>${data.metrics.pendingStores} aguardando análise</small></article><article><i>${adminIcon("courier")}</i><span>Entregadores</span><b>${data.metrics.couriers}</b><small>${data.metrics.pendingCourierApplications} cadastros pendentes</small></article><article><i>${adminIcon("orders")}</i><span>Pedidos</span><b>${data.metrics.orders}</b><small>${data.metrics.activeDeliveries} entregas ativas</small></article><article><i>${adminIcon("payments")}</i><span>Volume bruto</span><b>${money(data.metrics.gross)}</b><small>movimentado em pedidos</small></article><article><i>${adminIcon("audit")}</i><span>Receita FoodCourt</span><b>${money(data.metrics.platformRevenue)}</b><small>taxas confirmadas</small></article></section>`;
+    const metrics = `<section class="admin-kpis"><article><i>${adminIcon("users")}</i><span>Usuários</span><b>${data.metrics.users}</b><small>${data.metrics.customers} clientes · ${data.metrics.merchants} donos</small></article><article><i>${adminIcon("stores")}</i><span>Estabelecimentos</span><b>${data.metrics.stores}</b><small>${data.metrics.pendingStores} aguardando análise</small></article><article><i>${adminIcon("courier")}</i><span>Entregadores</span><b>${data.metrics.couriers}</b><small>${data.metrics.pendingCourierApplications} cadastros pendentes</small></article><article><i>${adminIcon("orders")}</i><span>Pedidos</span><b>${data.metrics.orders}</b><small>${data.metrics.activeDeliveries} entregas ativas</small></article><article><i>${adminIcon("payments")}</i><span>Volume bruto</span><b>${money(data.metrics.gross)}</b><small>movimentado em pedidos</small></article><article><i>${adminIcon("audit")}</i><span>Receita FoodCourt</span><b>${money(data.metrics.platformRevenue)}</b><small>${money(data.metrics.commissionRevenue || 0)} comissões · ${money(data.metrics.subscriptionRevenue || 0)} mensalidades</small></article></section>`;
     const audit =
       data.audit
         .map((item) => {
@@ -216,17 +218,33 @@ export async function render(view) {
     mountAdminLists(view);
     view.querySelectorAll("[data-store-status]").forEach((select) =>
       select.addEventListener("change", async () => {
+        const note = select.value === "active" ? "" : prompt("Motivo para informar ao lojista (opcional):") || "";
         select.disabled = true;
         try {
           await api.updateAdminStoreStatus(
             select.dataset.storeStatus,
             select.value,
+            note,
           );
-          toast("Situação do estabelecimento atualizada.", "success");
+          toast("Situação do estabelecimento atualizada. O lojista foi avisado.", "success");
           location.hash = `#/admin?secao=lojas&at=${Date.now()}`;
         } catch (error) {
           toast(error.message, "error");
           select.disabled = false;
+        }
+      }),
+    );
+    view.querySelectorAll("[data-save-commission]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        const input = view.querySelector(`[data-store-commission="${button.dataset.saveCommission}"]`);
+        button.disabled = true;
+        try {
+          await api.updateAdminStoreCommission(button.dataset.saveCommission, Number(input.value));
+          toast("Comissão atualizada.", "success");
+        } catch (error) {
+          toast(error.message, "error");
+        } finally {
+          button.disabled = false;
         }
       }),
     );

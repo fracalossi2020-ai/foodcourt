@@ -651,14 +651,58 @@ function registeredRestaurant(store) {
   };
 }
 
+// O que falta para uma loja poder ser publicada pelo admin.
+function storeReadiness(store) {
+  const address = store.address || {};
+  const hasAddress = Boolean(address.street && address.city);
+  const activeProducts = (store.products || []).filter(
+    (product) => product.active !== false,
+  ).length;
+  const hasHours = Boolean(
+    store.autoSchedule ||
+      (store.hours && Object.keys(store.hours).length),
+  );
+  const hasContact = Boolean(store.phone || store.email);
+  const missing = [];
+  if (!hasAddress) missing.push("endereço da loja incompleto");
+  if (!activeProducts) missing.push("nenhum produto ativo no cardápio");
+  return {
+    ready: hasAddress && activeProducts > 0,
+    hasAddress,
+    activeProducts,
+    hasHours,
+    hasContact,
+    hasLogo: Boolean(store.logo),
+    missing,
+  };
+}
+
+// Situação da assinatura da loja (período grátis, ativa, vencida...). Lojas
+// sem registro de assinatura (cadastros antigos) continuam liberadas.
+function storeSubscription(store) {
+  if (!store) return null;
+  const subscription = db.state.subscriptions.find(
+    (item) => item.storeId === store.id,
+  );
+  if (!subscription) return null;
+  const owner = db.state.users.find((user) => user.id === store.ownerId);
+  return require("./lib/subscriptions").summary(subscription, owner);
+}
+function storeSubscriptionAllows(store) {
+  const billing = storeSubscription(store);
+  return !billing || billing.accessAllowed;
+}
+
 function marketplaceRestaurants() {
   return db.state.stores
-    // Apenas lojas aprovadas pelo admin entram na vitrine; uma loja recém
-    // cadastrada (pending) fica visível só no Portal do Parceiro até a análise.
+    // Apenas lojas aprovadas pelo admin e com assinatura em dia (ou no
+    // período grátis) entram na vitrine; uma loja recém cadastrada (pending)
+    // fica visível só no Portal do Parceiro até a análise.
     .filter(
       (store) =>
         store.status === "active" &&
-        normalize(store.name) !== "meu estabelecimento",
+        normalize(store.name) !== "meu estabelecimento" &&
+        storeSubscriptionAllows(store),
     )
     .map(registeredRestaurant);
 }
@@ -2415,7 +2459,7 @@ Object.assign(api, {
       status: "pending",
       open: false,
       rating: 0,
-      commissionRate: 0,
+      commissionRate: platform.DEFAULT_COMMISSION,
       preparationMinutes: Math.max(
         5,
         Math.min(180, Number(body.preparationMinutes) || 30),
@@ -3742,9 +3786,29 @@ Object.assign(api, {
         pendingCourierApplications: db.state.courierApplications.filter(
           (application) => application.status === "pending",
         ).length,
-        platformRevenue: db.state.courierPayouts
-          .filter((payout) => payout.status === "paid")
-          .reduce((sum, payout) => sum + Number(payout.platformFee || 0), 0),
+        // Receita da plataforma: comissão sobre vendas entregues e pagas,
+        // mensalidades pagas e taxa sobre saques de entregadores.
+        ...(() => {
+          const commissionRevenue = db.state.stores.reduce(
+            (sum, store) => sum + platform.finance(store.id).commission,
+            0,
+          );
+          const subscriptionRevenue = db.state.paymentEvents
+            .filter((payment) => payment.subscriptionId && payment.paidAt)
+            .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+          const courierFeeRevenue = db.state.courierPayouts
+            .filter((payout) => payout.status === "paid")
+            .reduce((sum, payout) => sum + Number(payout.platformFee || 0), 0);
+          return {
+            commissionRevenue,
+            subscriptionRevenue,
+            courierFeeRevenue,
+            platformRevenue:
+              Math.round(
+                (commissionRevenue + subscriptionRevenue + courierFeeRevenue) * 100,
+              ) / 100,
+          };
+        })(),
       },
       stores: db.state.stores.map((store) => {
         const owner = db.state.users.find((user) => user.id === store.ownerId);
@@ -3759,6 +3823,19 @@ Object.assign(api, {
             .filter((order) => order.status === "delivered")
             .reduce((sum, order) => sum + Number(order.total || 0), 0),
           productCount: store.products?.length || 0,
+          commissionRate: platform.commissionFor(store),
+          readiness: storeReadiness(store),
+          subscription: (() => {
+            const billing = storeSubscription(store);
+            return billing
+              ? {
+                  status: billing.status,
+                  accessAllowed: billing.accessAllowed,
+                  trialEndsAt: billing.trialEndsAt,
+                  nextBillingAt: billing.nextBillingAt,
+                }
+              : null;
+          })(),
         };
       }),
       users: db.state.users.map(auth.publicUser),
@@ -3975,12 +4052,69 @@ Object.assign(api, {
         status: 400,
         body: { error: "Estabelecimento ou status inválido." },
       };
+    const note = auth.sanitize(body.note).slice(0, 300);
+    // Checklist de aprovação: a loja só é publicada com o mínimo para
+    // receber pedidos (endereço e ao menos um produto ativo).
+    const readiness = storeReadiness(store);
+    if (status === "active" && !readiness.ready)
+      return {
+        status: 409,
+        body: {
+          code: "STORE_NOT_READY",
+          error: `A loja ainda não pode ser publicada: ${readiness.missing.join("; ")}.`,
+          readiness,
+        },
+      };
+    const previous = store.status;
     store.status = status;
     if (status !== "active") store.open = false;
     store.updatedAt = platform.now();
-    platform.audit(ctx.user, `store.${status}`, "store", store.id, store.name);
+    if (status === "active") store.approvedAt = store.updatedAt;
+    store.reviewNote = note;
+    platform.audit(ctx.user, `store.${status}`, "store", store.id, note || store.name);
+    if (previous !== status) {
+      const messages = {
+        active: [
+          "Loja aprovada e publicada",
+          `${store.name} já aparece para os clientes. Abra a loja no Portal do Parceiro para começar a receber pedidos.`,
+        ],
+        pending: [
+          "Loja em análise",
+          note ||
+            `${store.name} voltou para análise. Revise os dados no Portal do Parceiro.`,
+        ],
+        suspended: [
+          "Loja suspensa",
+          note ||
+            `${store.name} foi suspensa e não aparece para os clientes. Fale com o suporte para mais detalhes.`,
+        ],
+      };
+      pushNotification(store.ownerId, "store", ...messages[status]);
+    }
     db.saveNow();
-    return { store };
+    return { store, readiness };
+  },
+  "POST /api/admin-store-commission": (params, query, body, ctx) => {
+    if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
+    const store = db.state.stores.find((item) => item.id === body.storeId);
+    const rate = Number(body.commissionRate);
+    if (!store || !Number.isFinite(rate) || rate < 0 || rate > 50)
+      return {
+        status: 400,
+        body: { error: "Informe uma comissão entre 0% e 50%." },
+      };
+    const previous = platform.commissionFor(store);
+    store.commissionRate = Math.round(rate * 100) / 100;
+    store.updatedAt = platform.now();
+    platform.audit(
+      ctx.user,
+      "store.commission",
+      "store",
+      store.id,
+      `${previous}% → ${store.commissionRate}%`,
+    );
+    db.saveNow();
+    return { store: { id: store.id, commissionRate: store.commissionRate } };
   },
   "POST /api/admin-courier": (params, query, body, ctx) => {
     if (!isPlatformAdmin(ctx.user)) return forbidden("administradores");
@@ -4172,6 +4306,8 @@ Object.assign(api, {
     try {
       if (partnerStore && (partnerStore.status !== "active" || (!body.scheduledAt && !partnerStore.open)))
         throw new Error("Este estabelecimento está fechado ou indisponível.");
+      if (partnerStore && !storeSubscriptionAllows(partnerStore))
+        throw new Error("Este estabelecimento está temporariamente indisponível.");
       if (catalogRestaurant && !partnerStore && !catalogRestaurant.open)
         throw new Error("Este estabelecimento está fechado.");
       const requestedStock = new Map();
@@ -4801,8 +4937,23 @@ const server = http.createServer(async (req, res) => {
         });
         return;
       }
-      // O pagamento ainda e simulado. Enquanto nao houver confirmacao por
-      // webhook, parceiros cadastrados podem acessar o portal normalmente.
+      // Sem assinatura em dia (período grátis, paga, ou vencida dentro da
+      // tolerância) o portal fica bloqueado. Ficam liberados apenas os
+      // endpoints necessários para consultar o acesso e pagar a mensalidade.
+      const subscriptionExempt =
+        clean === "/api/partner-access" ||
+        clean.startsWith("/api/partner-subscription");
+      if (!subscriptionExempt) {
+        const billing = storeSubscription(ownedStore);
+        if (billing && !billing.accessAllowed) {
+          sendJson(res, 403, {
+            error: billing.blockReason,
+            code: "SUBSCRIPTION_INACTIVE",
+            subscription: billing,
+          });
+          return;
+        }
+      }
     }
 
     const table = isAuthEndpoint

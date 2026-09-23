@@ -72,14 +72,17 @@ export async function render(
 
 function pendingSubscription(error) {
   const subscription = error.payload?.subscription;
-  return `<div class="partner-pending-access"><span>PORTAL DO PARCEIRO</span><h1>Seu cadastro foi recebido.</h1><p>A assinatura <b>${esc(subscription?.planName || "FoodCourt Parceiro")}</b> está pendente. Faça o pagamento para iniciar o processo de ativação.</p><article><div><small>PLANO</small><b>FoodCourt Parceiro</b></div><strong>R$ ${Number(
+  const status = subscription?.status;
+  const title = status === "OVERDUE" ? "Mensalidade vencida." : status === "CANCELED" ? "Assinatura cancelada." : status === "BLOCKED" ? "Assinatura bloqueada." : "Seu período grátis terminou.";
+  const reason = subscription?.blockReason || error.message || "Faça o pagamento para continuar usando o Portal do Parceiro.";
+  return `<div class="partner-pending-access"><span>PORTAL DO PARCEIRO</span><h1>${esc(title)}</h1><p>${esc(reason)} Enquanto isso, sua loja não aparece para os clientes.</p><article><div><small>PLANO</small><b>FoodCourt Parceiro</b></div><strong>R$ ${Number(
     subscription?.price || 119.9,
   )
     .toFixed(2)
     .replace(
       ".",
       ",",
-    )}<small>/mês</small></strong><em>PENDENTE</em></article><button class="btn btn-primary partner-subscription-pay" data-generate-subscription-pix>Pagar R$ 119,90 com Pix</button><section class="partner-subscription-pix" data-subscription-pix hidden></section><h2>Etapas da sua loja</h2><ol><li class="done">Cadastro do responsável</li><li class="done">Estabelecimento vinculado com segurança</li><li>Pagamento e ativação da assinatura</li><li>Identidade, horários e cardápio</li><li>Revisão e publicação</li></ol><div><a class="btn btn-outline" href="#/suporte">Falar com suporte</a><a class="btn btn-outline" href="#/inicio">Voltar ao FoodCourt</a></div></div>`;
+    )}<small>/mês</small></strong><em>${status === "OVERDUE" ? "VENCIDA" : "PENDENTE"}</em></article>${status === "BLOCKED" ? "" : `<button class="btn btn-primary partner-subscription-pay" data-generate-subscription-pix>Pagar R$ ${Number(subscription?.price || 119.9).toFixed(2).replace(".", ",")} com Pix</button>`}<section class="partner-subscription-pix" data-subscription-pix hidden></section><h2>Como voltar a vender</h2><ol><li class="done">Cadastro do responsável</li><li class="done">Estabelecimento vinculado com segurança</li><li>Pagamento da mensalidade</li><li>Loja reaberta automaticamente após a confirmação</li></ol><div><a class="btn btn-outline" href="#/suporte">Falar com suporte</a><a class="btn btn-outline" href="#/inicio">Voltar ao FoodCourt</a></div></div>`;
 }
 
 function bindPendingSubscription(view) {
@@ -278,6 +281,15 @@ function dashboard(data) {
     rating = Number(data.metrics.rating) || 0;
   const urgentStock = lowStock.filter((product) => product.stock <= 5).length;
   const attention = [];
+  const billing = data.subscription;
+  if (billing?.status === "TRIAL")
+    attention.push(
+      `<a href="#/parceiro?secao=plano"><i>🎁</i><div><b>Período grátis: ${billing.trialDaysRemaining} ${billing.trialDaysRemaining === 1 ? "dia restante" : "dias restantes"}</b><small>Depois disso a mensalidade de ${money(billing.price)} passa a ser cobrada para manter a loja no ar.</small></div><span>Ver plano →</span></a>`,
+    );
+  else if (billing?.status === "OVERDUE")
+    attention.push(
+      `<a href="#/parceiro?secao=plano"><i>⚠️</i><div><b>Mensalidade vencida</b><small>Regularize até ${new Date(billing.graceEndsAt).toLocaleDateString("pt-BR")} para a loja não sair do ar.</small></div><span>Pagar agora →</span></a>`,
+    );
   if (active)
     attention.push(
       `<a href="#/parceiro?secao=pedidos"><i>📦</i><div><b>${active} ${active === 1 ? "pedido precisa" : "pedidos precisam"} de atenção</b><small>Acompanhe o preparo e mantenha o cliente informado.</small></div><span>Ver pedidos →</span></a>`,
@@ -308,8 +320,8 @@ function content(section, data) {
   if (section === "plano") {
     const subscription = data.subscription || {};
     const date = value => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Ainda não pago';
-    const status = { ACTIVE: 'Ativo', PENDING: 'Aguardando pagamento', OVERDUE: 'Vencido', CANCELED: 'Cancelado', BLOCKED: 'Bloqueado' }[subscription.status] || 'Sem assinatura';
-    return `${head('ASSINATURA', 'Plano e renovação', 'Acompanhe o pagamento e o período de uso.')}<article class="partner-panel subscription-card"><h2>${subscription.lifetime ? 'Plano vitalício' : 'FoodCourt Parceiro mensal'}</h2><b>${status}</b><dl class="subscription-dates"><div><dt>Último pagamento</dt><dd>${subscription.lifetime ? 'Isento' : date(subscription.paidAt)}</dd></div><div><dt>Dias de uso ${subscription.lifetime ? '' : 'no ciclo'}</dt><dd>${subscription.daysUsed || 0} dias</dd></div><div><dt>Próximo vencimento</dt><dd>${subscription.lifetime ? 'Sem vencimento' : subscription.nextBillingAt ? date(subscription.nextBillingAt) : 'Um mês após o pagamento'}</dd></div><div><dt>Tempo restante</dt><dd>${subscription.lifetime ? 'Ilimitado' : subscription.daysRemaining === null ? 'Aguardando pagamento' : (subscription.daysRemaining ?? 0) + ' dias'}</dd></div></dl>${subscription.lifetime ? '<p>Sua conta possui acesso sem cobrança e sem expiração.</p>' : `<p>${money(subscription.price || 119.9)} por mês. Escolha Pix avulso ou autorize a renovação automática.</p>${(!subscription.recurring || subscription.recurring.status === 'cancelled') && ['PENDING', 'OVERDUE'].includes(subscription.status) ? '<button class="btn btn-primary" data-generate-subscription-pix>Pagar mensalidade com Pix</button><section class="partner-subscription-pix" data-subscription-pix hidden></section>' : ''}`}${recurringControls(subscription)}<button class="btn btn-outline" data-plan-details>Ver permissões</button></article>`;
+    const status = { ACTIVE: 'Ativo', TRIAL: 'Período grátis', PENDING: 'Aguardando pagamento', OVERDUE: subscription.accessAllowed ? 'Vencido (tolerância)' : 'Vencido', CANCELED: 'Cancelado', BLOCKED: 'Bloqueado' }[subscription.status] || 'Sem assinatura';
+    return `${head('ASSINATURA', 'Plano e renovação', 'Acompanhe o pagamento e o período de uso.')}<article class="partner-panel subscription-card"><h2>${subscription.lifetime ? 'Plano vitalício' : 'FoodCourt Parceiro mensal'}</h2><b>${status}</b><dl class="subscription-dates">${subscription.status === 'TRIAL' ? `<div><dt>Período grátis até</dt><dd>${date(subscription.trialEndsAt)} (${subscription.trialDaysRemaining} dias)</dd></div>` : ''}${subscription.status === 'OVERDUE' && subscription.accessAllowed ? `<div><dt>Tolerância até</dt><dd>${date(subscription.graceEndsAt)}</dd></div>` : ''}<div><dt>Último pagamento</dt><dd>${subscription.lifetime ? 'Isento' : date(subscription.paidAt)}</dd></div><div><dt>Dias de uso ${subscription.lifetime ? '' : 'no ciclo'}</dt><dd>${subscription.daysUsed || 0} dias</dd></div><div><dt>Próximo vencimento</dt><dd>${subscription.lifetime ? 'Sem vencimento' : subscription.nextBillingAt ? date(subscription.nextBillingAt) : 'Um mês após o pagamento'}</dd></div><div><dt>Tempo restante</dt><dd>${subscription.lifetime ? 'Ilimitado' : subscription.daysRemaining === null ? 'Aguardando pagamento' : (subscription.daysRemaining ?? 0) + ' dias'}</dd></div></dl>${subscription.lifetime ? '<p>Sua conta possui acesso sem cobrança e sem expiração.</p>' : `<p>${money(subscription.price || 119.9)} por mês. Escolha Pix avulso ou autorize a renovação automática.</p>${(!subscription.recurring || subscription.recurring.status === 'cancelled') && ['PENDING', 'OVERDUE'].includes(subscription.status) ? '<button class="btn btn-primary" data-generate-subscription-pix>Pagar mensalidade com Pix</button><section class="partner-subscription-pix" data-subscription-pix hidden></section>' : ''}`}${recurringControls(subscription)}<button class="btn btn-outline" data-plan-details>Ver permissões</button></article>`;
   }
   if (section === "configuracoes")
     return `${head("PREFERÊNCIAS", "Configurações", "Dados gerais e segurança da operação.")}<div class="partner-panel partner-settings"><article><div><b>Notificações de novos pedidos</b><small>Mostra alertas quando um pedido chegar.</small></div><label class="partner-toggle"><input type="checkbox" data-order-notifications ${data.store.orderNotifications !== false ? "checked" : ""}><i></i><span>${data.store.orderNotifications !== false ? "Ativadas" : "Desativadas"}</span></label></article><article><div><b>Segurança da conta</b><small>Sessão, autorização e vínculo da loja estão protegidos.</small></div><button data-security-details>Ver detalhes</button></article><article><div><b>Voltar ao marketplace</b><small>Acesse o FoodCourt como consumidor.</small></div><a href="#/inicio">Abrir FoodCourt →</a></article></div>`;

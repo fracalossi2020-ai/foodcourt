@@ -42,3 +42,27 @@ test("only the designated owner has lifetime access; others expire", () => {
   assert.equal(owner.nextBillingAt, null);
   assert.equal(owner.price, 0);
 });
+
+test("new stores get a trial, then are blocked until paid; grace applies after due date", () => {
+  const created = "2026-09-01T12:00:00Z";
+  const subscription = { createdAt: created, status: "PENDING", price: 119.9 };
+  const owner = { email: "merchant@example.com" };
+  const day = 86400000;
+  const inTrial = summary(subscription, owner, Date.parse(created) + 10 * day);
+  assert.equal(inTrial.status, "TRIAL");
+  assert.equal(inTrial.accessAllowed, true);
+  assert.equal(inTrial.trialDaysRemaining, 20);
+  const expired = summary(subscription, owner, Date.parse(created) + 31 * day);
+  assert.equal(expired.status, "PENDING");
+  assert.equal(expired.accessAllowed, false);
+  assert.match(expired.blockReason, /período grátis terminou/);
+  const paid = { ...subscription, paidAt: "2026-10-01T12:00:00Z" };
+  assert.equal(summary(paid, owner, Date.parse("2026-10-20T12:00:00Z")).status, "ACTIVE");
+  const overdueInGrace = summary(paid, owner, Date.parse("2026-11-03T12:00:00Z"));
+  assert.equal(overdueInGrace.status, "OVERDUE");
+  assert.equal(overdueInGrace.accessAllowed, true);
+  const overdueBlocked = summary(paid, owner, Date.parse("2026-11-10T12:00:00Z"));
+  assert.equal(overdueBlocked.status, "OVERDUE");
+  assert.equal(overdueBlocked.accessAllowed, false);
+  assert.equal(summary({ ...subscription, interval: "unlimited" }, owner).status, "ACTIVE");
+});

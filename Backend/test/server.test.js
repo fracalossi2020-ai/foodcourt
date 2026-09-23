@@ -851,7 +851,31 @@ test("admin manages store approval and courier access", async () => {
   assert.equal(payPayout.status, 200);
   assert.equal((await payPayout.json()).payout.status, "paid");
 
+  // Publicar exige o mínimo para vender: endereço e um produto ativo.
+  const emptyStore = {
+    id: "store_empty_test",
+    ownerId: "owner_empty_test",
+    name: "Loja Vazia",
+    status: "pending",
+    address: {},
+    products: [],
+  };
+  db.state.stores.push(emptyStore);
+  const notReady = await fetch(`${baseUrl}/api/admin-store-status`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ storeId: emptyStore.id, status: "active" }),
+  });
+  assert.equal(notReady.status, 409);
+  assert.equal((await notReady.json()).code, "STORE_NOT_READY");
+  assert.equal(emptyStore.status, "pending");
+  db.state.stores = db.state.stores.filter((item) => item.id !== emptyStore.id);
+
   const targetStore = db.state.stores[0];
+  targetStore.address = { ...(targetStore.address || {}), street: "Rua Teste", city: "Belo Horizonte" };
+  if (!targetStore.products?.length)
+    targetStore.products = [{ id: "product_ready_test", name: "Prato", price: 10, stock: 5, active: true }];
+  targetStore.status = "pending";
   const storeStatus = await fetch(`${baseUrl}/api/admin-store-status`, {
     method: "POST",
     headers: { Cookie: cookie, "Content-Type": "application/json" },
@@ -859,6 +883,20 @@ test("admin manages store approval and courier access", async () => {
   });
   assert.equal(storeStatus.status, 200);
   assert.equal(targetStore.status, "active");
+  assert.ok(
+    db.state.userNotifications.some(
+      (item) => item.userId === targetStore.ownerId && item.title === "Loja aprovada e publicada",
+    ),
+  );
+
+  const commission = await fetch(`${baseUrl}/api/admin-store-commission`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ storeId: targetStore.id, commissionRate: 15 }),
+  });
+  assert.equal(commission.status, 200);
+  assert.equal(targetStore.commissionRate, 15);
+  assert.equal(typeof adminData.metrics.commissionRevenue, "number");
 
   const courier = await fetch(`${baseUrl}/api/admin-courier`, {
     method: "POST",

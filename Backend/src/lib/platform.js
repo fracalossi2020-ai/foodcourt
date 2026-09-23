@@ -3,6 +3,8 @@ const db = require('./db')
 
 const now = () => new Date().toISOString()
 const uid = prefix => db.uid(prefix)
+// Comissão padrão da plataforma (%) para lojas sem taxa própria definida pelo admin.
+const DEFAULT_COMMISSION = (() => { const value = Number(process.env.PLATFORM_DEFAULT_COMMISSION); return Number.isFinite(value) && value >= 0 && value <= 50 ? value : 12 })()
 
 function seed() {
   const state = db.state
@@ -61,6 +63,7 @@ function dashboard(storeId) {
   return { metrics:{ pending:orders.filter(o=>['pending','accepted','preparing','ready'].includes(o.status)).length, todayOrders:todayOrders.length, revenue:delivered.reduce((sum,o)=>sum+o.total,0), averageTicket:delivered.length?delivered.reduce((sum,o)=>sum+o.total,0)/delivered.length:0, rating:storeForId(storeId)?.rating||0 }, analytics:{daily,status}, recentOrders:orders.slice(0,8), lowStock:(storeForId(storeId)?.products||[]).filter(p=>p.stock<=10) }
 }
 function storeForId(id){return applyStoreSchedule(db.state.stores.find(store=>store.id===id))}
-function finance(storeId){return require('./finance-summary')(db.state.platformOrders,storeId,storeForId(storeId)?.commissionRate??12)}
+function commissionFor(store){ const rate = Number(store?.commissionRate); return Number.isFinite(rate) && rate >= 0 ? rate : DEFAULT_COMMISSION }
+function finance(storeId){return require('./finance-summary')(db.state.platformOrders,storeId,commissionFor(storeForId(storeId)))}
 
-module.exports={ partnerRole, seed, storeForUser, storeForId, dashboard, finance, audit, now, applyStoreSchedule }
+module.exports={ partnerRole, seed, storeForUser, storeForId, dashboard, finance, audit, now, applyStoreSchedule, commissionFor, DEFAULT_COMMISSION }

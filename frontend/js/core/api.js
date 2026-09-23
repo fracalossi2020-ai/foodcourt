@@ -105,8 +105,10 @@ export const api = {
   savePartnerSupport: (ticket) => post("/api/partner-support-ticket", ticket),
   createPartnerSubscriptionPix: () => post("/api/partner-subscription-pix"),
   adminDashboard: () => get("/api/admin-dashboard"),
-  updateAdminStoreStatus: (storeId, status) =>
-    post("/api/admin-store-status", { storeId, status }),
+  updateAdminStoreStatus: (storeId, status, note = "") =>
+    post("/api/admin-store-status", { storeId, status, note }),
+  updateAdminStoreCommission: (storeId, commissionRate) =>
+    post("/api/admin-store-commission", { storeId, commissionRate }),
   updateAdminUserStatus: (userId, status) =>
     post("/api/admin-user-status", { userId, status }),
   updateAdminCourier: (payload) => post("/api/admin-courier", payload),
