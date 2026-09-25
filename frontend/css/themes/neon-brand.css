@@ -28,6 +28,23 @@ html[data-theme="dark"] body.app-mode .header .header-inner .desktop-links a.act
   color:#11230d!important; background:#39ff14!important;
 }
 .nav-glider,html[data-theme="dark"] .nav-glider { background:#39ff14; border-color:#8aff66; box-shadow:0 0 20px #39ff1438; }
+/* Keep the moving highlight below link text, including hover and keyboard focus. */
+body.app-mode .header .header-inner .desktop-links > .nav-glider {
+  z-index:-1;
+  pointer-events:none;
+}
+body.app-mode .header .header-inner .desktop-links > a:is(:hover,:focus-visible),
+html[data-theme="dark"] body.app-mode .header .header-inner .desktop-links > a:is(:hover,:focus-visible) {
+  color:#11230d!important;
+  background:#39ff14!important;
+}
+body.app-mode .header .header-inner .desktop-links > a:is(:hover,:focus-visible,.active) .header-nav-icon {
+  color:inherit!important;
+}
+body.app-mode .header .header-inner .desktop-links > a:focus-visible {
+  outline:2px solid #11230d;
+  outline-offset:-3px;
+}
 body .desktop-links a.active svg,body .bottomnav a.active svg,
 body .modern-category.active svg,body .account-subnav a.active svg {
   fill:#39ff14; stroke:#15340b;
