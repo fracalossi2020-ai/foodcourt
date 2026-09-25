@@ -81,7 +81,7 @@ body.admin-mode .admin-overview-grid .admin-audit-item { padding: 12px 0; }
 /* Checklist de publicação e comissão por loja */
 .admin-checklist { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .admin-checklist i { font-style: normal; font-weight: 600; }
-.admin-checklist i.ok { color: #07883f; }
+.admin-checklist i.ok { color:#172116; }
 .admin-checklist i.missing { color: #b42318; }
 .admin-commission { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: .78rem; font-weight: 600; }
 .admin-commission input { width: 72px; padding: 6px 8px; font-size: .8rem; }

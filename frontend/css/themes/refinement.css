@@ -1,6 +1,6 @@
 /* FoodCourt refinement layer — presentation only, loaded last. */
 :root{
-  --fc-green:#07883f;--fc-green-dark:#05652f;--fc-green-deep:#033d22;--fc-green-soft:#eaf7ef;
+  --fc-green:#39ff14;--fc-green-dark:#39ff14;--fc-green-deep:#39ff14;--fc-green-soft:#eaf7ef;
   --fc-orange:#ff6b00;--fc-orange-soft:#fff1e7;--fc-bg:#f7f9f8;--fc-surface:#fff;
   --fc-text:#171717;--fc-muted:#667085;--fc-line:#e3e9e5;--fc-line-strong:#cbd8d0;
   --fc-r-sm:10px;--fc-r-md:14px;--fc-r-lg:18px;--fc-r-xl:24px;

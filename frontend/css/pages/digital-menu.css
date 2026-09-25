@@ -1,8 +1,8 @@
 .menu-experience {
   --menu-bg: #f4f8f5;
-  --menu-accent: #07883f;
+  --menu-accent: #39ff14;
   --menu-page-bg: var(--menu-bg);
-  --menu-ink: var(--menu-accent-light, #07883f);
+  --menu-ink: var(--menu-accent-light, #39ff14);
   --menu-on-accent: #fff;
   max-width: 1280px !important;
   padding-bottom: 80px;
@@ -576,7 +576,7 @@
 
 .menu-theme-editor {
   --preview-bg: #f4f8f5;
-  --preview-accent: #07883f;
+  --preview-accent: #39ff14;
   display: grid;
   grid-template-columns:
     minmax(250px, 1.4fr) repeat(2, minmax(145px, 0.65fr))
@@ -591,7 +591,7 @@
   box-shadow: 0 10px 30px rgba(18, 42, 27, 0.07);
 }
 .menu-theme-editor > div:first-child > span {
-  color: #07883f;
+  color:#172116;
   font-size: 0.62rem;
   font-weight: 900;
   letter-spacing: 0.12em;

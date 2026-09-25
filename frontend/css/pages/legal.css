@@ -1,5 +1,5 @@
 body:has(.legal-page),body:has(.legal-page) .main{background:var(--bg,#fff)}
-.legal-page{--brand:#07883f;max-width:860px;margin:24px auto 80px;padding:0 20px;color:var(--text,#111827);line-height:1.65}
+.legal-page{--brand:#39ff14;max-width:860px;margin:24px auto 80px;padding:0 20px;color:var(--text,#111827);line-height:1.65}
 html[data-theme="dark"] .legal-page{--brand:#42d98a}
 .legal-back{display:inline-flex;align-items:center;gap:8px;margin-bottom:24px;padding:0;border:0;background:none;cursor:pointer;color:var(--text-2,#667085);font-size:.85rem;font-weight:600;font-family:inherit}
 .legal-kicker{display:block;color:var(--brand);font-size:.7rem;letter-spacing:.15em;font-weight:800;margin-bottom:12px}

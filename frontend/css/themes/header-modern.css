@@ -4,28 +4,28 @@ body.app-mode .header { background:color-mix(in srgb,var(--surface,#fff) 94%,tra
 body.app-mode .header .desktop-links { gap:5px; }
 body.app-mode .header .desktop-links a { display:inline-flex; align-items:center; gap:7px; padding:11px 12px; border:1px solid transparent; border-radius:13px; font-size:.77rem; font-weight:650; letter-spacing:-.015em; white-space:nowrap; transition:background 180ms,color 180ms,transform 180ms; }
 body.app-mode .header .desktop-links a::after { display:none; }
-body.app-mode .header .desktop-links a.active { background:color-mix(in srgb,#149358 10%,var(--surface)); border-color:color-mix(in srgb,#149358 20%,transparent); color:var(--brand,#087c3b); }
+body.app-mode .header .desktop-links a.active { background:color-mix(in srgb,#39ff14 10%,var(--surface)); border-color:color-mix(in srgb,#39ff14 20%,transparent); color:var(--brand,#39ff14); }
 .header-nav-icon { display:inline-flex; }
 .header-nav-icon .fc-icon { width:16px; height:16px; stroke-width:1.7; }
 body.app-mode .header .header-loc { gap:9px; padding:9px 12px; min-width:0; margin:0; border:1px solid var(--border); border-radius:15px; background:var(--surface); }
-body.app-mode .header .loc-emoji { display:grid; place-items:center; width:32px; height:32px; flex-shrink:0; border-radius:11px; background:#e5f6eb; color:#12804c; }
+body.app-mode .header .loc-emoji { display:grid; place-items:center; width:32px; height:32px; flex-shrink:0; border-radius:11px; background:#e5f6eb; color:#172116; }
 body.app-mode .header .loc-full { min-width:0; }
 body.app-mode .header .loc-full .text-xs { display:block; font-size:.6rem; letter-spacing:.055em; line-height:1.5; }
 body.app-mode .header #locLabel { max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.75rem; line-height:1.5; font-weight:750; }
-body.app-mode .header .search-trigger { min-width:0; gap:10px; border-radius:15px; border:1px solid var(--border); background:color-mix(in srgb,#278655 4%,var(--surface)); color:var(--text-2); text-align:left; font-size:.78rem; font-weight:500; transition:box-shadow 220ms,border-color 220ms; }
-body.app-mode .header .search-trigger>svg { flex-shrink:0; width:19px; height:19px; color:#28845b; }
+body.app-mode .header .search-trigger { min-width:0; gap:10px; border-radius:15px; border:1px solid var(--border); background:color-mix(in srgb,#39ff14 4%,var(--surface)); color:var(--text-2); text-align:left; font-size:.78rem; font-weight:500; transition:box-shadow 220ms,border-color 220ms; }
+body.app-mode .header .search-trigger>svg { flex-shrink:0; width:19px; height:19px; color:#172116; }
 .header-search-copy { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-body.app-mode .header .partner-header-link { gap:9px; padding:12px 15px; border-radius:14px; color:#fff; background:linear-gradient(125deg,#075637,#159657); border:1px solid #15864f; box-shadow:0 5px 16px #08783b24,inset 0 1px 0 #ffffff26; transition:transform 200ms,box-shadow 200ms; }
+body.app-mode .header .partner-header-link { gap:9px; padding:12px 15px; border-radius:14px; color:#fff; background:linear-gradient(125deg,#39ff14,#39ff14); border:1px solid #39ff14; box-shadow:0 5px 16px #08783b24,inset 0 1px 0 #ffffff26; transition:transform 200ms,box-shadow 200ms; }
 body.app-mode .header .partner-header-link b { font-size:.73rem; letter-spacing:-.015em; font-weight:750; }
 body.app-mode .header .partner-header-link>span { display:grid; place-items:center; width:25px; height:25px; border-radius:8px; background:#ffffff18; }
 body.app-mode .header .partner-header-link svg { width:18px; height:18px; stroke-width:1.6; }
 body.app-mode .header-actions .icon-btn,body.app-mode .header-actions .avatar-btn { border-radius:14px; border:1px solid var(--border); background:var(--surface); color:var(--text); box-shadow:0 2px 5px #102d1505; transition:transform 200ms,background 200ms,border-color 200ms; }
 body.app-mode .header-actions .icon-btn svg,body.app-mode .header-actions .avatar-btn svg { width:21px; height:21px; stroke-width:1.65; transition:transform 240ms; }
-body.app-mode .header #avatarBtn { color:#08754a; background:#e7f6ed; border-color:#b9dfca; border-radius:50%; }
+body.app-mode .header #avatarBtn { color:#172116; background:#e7f6ed; border-color:#b9dfca; border-radius:50%; }
 body.app-mode .header #themeBtn svg[hidden] { display:none!important; }
-body.app-mode .header :is(a,button):focus-visible { outline:3px solid #54b88a; outline-offset:3px; }
+body.app-mode .header :is(a,button):focus-visible { outline:3px solid #39ff14; outline-offset:3px; }
 @media(hover:hover) {
-  body.app-mode .header .desktop-links a:hover { background:color-mix(in srgb,#149358 8%,var(--surface)); transform:translateY(-1px); }
+  body.app-mode .header .desktop-links a:hover { background:color-mix(in srgb,#39ff14 8%,var(--surface)); transform:translateY(-1px); }
   body.app-mode .header :is(.icon-btn,.avatar-btn):hover { transform:translateY(-3px); border-color:#65ac87; }
   body.app-mode .header #themeBtn:hover svg { transform:rotate(30deg); }
   body.app-mode .header #notifBtn:hover svg { animation:header-ring 450ms ease; }
@@ -33,7 +33,7 @@ body.app-mode .header :is(a,button):focus-visible { outline:3px solid #54b88a; o
   body.app-mode .header :is(.search-trigger,.header-loc):hover { border-color:#70b391; box-shadow:0 0 0 3px #1999570a; }
 }
 @keyframes header-ring { 25% { transform:rotate(12deg); } 65% { transform:rotate(-10deg); } 100% { transform:rotate(0); } }
-html[data-theme="dark"] body.app-mode .header .loc-emoji,html[data-theme="dark"] body.app-mode .header #avatarBtn { color:#9de3bb; background:#143b2c; border-color:#285842; }
+html[data-theme="dark"] body.app-mode .header .loc-emoji,html[data-theme="dark"] body.app-mode .header #avatarBtn { color:#9de3bb; background:#39ff14; border-color:#39ff14; }
 html[data-theme="dark"] body.app-mode .header .desktop-links a.active { color:#9de3bb; }
 @media(min-width:901px) and (max-width:1250px) { body.app-mode .header .desktop-links a { padding:10px 8px; font-size:.7rem; } body.app-mode .header .header-nav-icon { display:none; } body.app-mode .header #locLabel { max-width:105px; } }
 @media(max-width:900px) { body.app-mode .header .header-search-copy { display:none; } body.app-mode .header .desktop-links a { gap:5px; } .header-nav-icon .fc-icon { width:14px; height:14px; } }

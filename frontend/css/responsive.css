@@ -172,7 +172,7 @@ body.app-mode .steps{display:flex!important;grid-template-columns:none!important
   }
   body.app-mode .desktop-links a.active {
     background: #eaf8ef;
-    color: #087c3b !important;
+    color:#172116 !important;
   }
   body.app-mode .desktop-links a.active::after {
     left: 12px;

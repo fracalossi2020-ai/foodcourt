@@ -2,7 +2,7 @@
 body.app-mode{
   --bg:#f6f8f7;--bg-elev:#fff;--surface:#fff;--surface-2:#f1f5f3;--surface-3:#e7eeea;
   --border:#dfe8e3;--border-strong:#bfcec5;--text:#142019;--text-2:#647168;--text-3:#8b9890;
-  --brand:#07883f;--brand-bright:#07883f;--brand-deep:#05652f;--brand-soft:#eaf7ef;
+  --brand:#39ff14;--brand-bright:#39ff14;--brand-deep:#39ff14;--brand-soft:#eaf7ef;
   --brand-border:rgba(7,136,63,.4);--brand-glow:rgba(7,136,63,.14);
   --shadow-1:0 2px 8px rgba(16,42,27,.05);--shadow-2:0 14px 36px rgba(16,42,27,.12);
   line-height:1.6;letter-spacing:0;
@@ -10,7 +10,7 @@ body.app-mode{
 html[data-theme="dark"] body.app-mode{
   --bg:#0d1210;--bg-elev:#151b18;--surface:#151b18;--surface-2:#1b231f;--surface-3:#222d28;
   --border:#29332e;--border-strong:#3c4a43;--text:#f7f9f8;--text-2:#aab5af;--text-3:#7f8c85;
-  --brand:#21b866;--brand-bright:#29c970;--brand-deep:#159653;--brand-soft:rgba(33,184,102,.12);
+  --brand:#39ff14;--brand-bright:#29c970;--brand-deep:#39ff14;--brand-soft:rgba(33,184,102,.12);
   --brand-border:rgba(33,184,102,.45);--brand-glow:rgba(33,184,102,.12);
   --consumer-bg:#0d1210;--consumer-card:#151b18;--consumer-text:#f7f9f8;--consumer-muted:#aab5af;--consumer-soft:#7f8c85;--consumer-border:#29332e;--consumer-divider:#29332e;
   background:#0d1210;
@@ -48,8 +48,8 @@ body.app-mode :where(.card.clickable,.rcard,.pcard,.offer-card,.modern-category,
 body.app-mode :where(button,a,.card.clickable,.rcard,.pcard,.offer-card,.modern-category,.nearby-list article,.chip,.tab):active{transform:translateY(-1px) scale(.98)!important;transition-duration:.11s}
 body.app-mode :where(button,a,[role="link"],input,select,textarea):focus-visible{outline:2px solid var(--brand);outline-offset:3px}
 body.app-mode :where(.btn,.icon-btn,.add-btn,.fav-btn,.chip,.tab){min-height:44px;transition:transform .18s ease,background-color .18s,border-color .18s,box-shadow .18s,color .18s}
-body.app-mode .btn-primary{background:#07883f;color:#fff;box-shadow:0 8px 22px rgba(7,136,63,.2)}
-body.app-mode .btn-primary:hover{background:#066e37;transform:translateY(-2px);box-shadow:0 12px 28px rgba(7,136,63,.24)}
+body.app-mode .btn-primary{background:#39ff14;color:#fff;box-shadow:0 8px 22px rgba(7,136,63,.2)}
+body.app-mode .btn-primary:hover{background:#39ff14;transform:translateY(-2px);box-shadow:0 12px 28px rgba(7,136,63,.24)}
 body.app-mode .btn-outline{color:var(--brand);border-color:var(--brand-border)}
 body.app-mode .btn-outline:hover{background:var(--brand-soft);transform:translateY(-2px)}
 body.app-mode .icon-btn:hover{transform:translateY(-2px);border-color:var(--brand-border);box-shadow:0 8px 20px var(--brand-glow)}

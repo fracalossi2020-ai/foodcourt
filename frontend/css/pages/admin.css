@@ -21,7 +21,7 @@ body.admin-mode .app {
   border: 1px solid #a9dbc0;
   border-radius: 13px;
   background: #e9f8ef;
-  color: #06783a;
+  color:#172116;
   font-size: 0.68rem;
   font-weight: 850;
 }
@@ -29,8 +29,8 @@ body.admin-mode .app {
   display: none !important;
 }
 .admin-header-link:hover {
-  border-color: #078c43;
-  background: #078c43;
+  border-color: #39ff14;
+  background: #39ff14;
   color: #fff;
 }
 .admin-shell {
@@ -63,7 +63,7 @@ body.admin-mode .app {
   display: grid;
   place-items: center;
   border-radius: 13px;
-  background: linear-gradient(145deg, #18c966, #079145);
+  background: linear-gradient(145deg, #18c966, #39ff14);
   box-shadow: 0 10px 24px rgba(18, 202, 101, 0.22);
   font-weight: 900;
 }
@@ -95,7 +95,7 @@ body.admin-mode .app {
 }
 .admin-sidebar nav a:hover,
 .admin-sidebar nav a.active {
-  background: #123a27;
+  background: #39ff14;
   color: #fff;
 }
 .admin-sidebar nav a.active {
@@ -150,7 +150,7 @@ body.admin-mode .app {
   box-shadow: none;
 }
 .admin-head > div > span {
-  color: #078c43;
+  color:#172116;
   font-size: 0.6rem;
   font-weight: 900;
   letter-spacing: 0.15em;
@@ -169,7 +169,7 @@ body.admin-mode .app {
   border: 1px solid #bee5cf;
   border-radius: 30px;
   background: #e9f8ef;
-  color: #087b3d;
+  color:#172116;
   font-size: 0.64rem;
   font-weight: 800;
 }
@@ -179,7 +179,7 @@ body.admin-mode .app {
   display: inline-block;
   margin-right: 7px;
   border-radius: 50%;
-  background: #10b95a;
+  background: #39ff14;
   box-shadow: 0 0 0 5px rgba(16, 185, 90, 0.12);
 }
 .admin-kpis {
@@ -210,7 +210,7 @@ body.admin-mode .app {
   place-items: center;
   border-radius: 11px;
   background: #eaf8f0;
-  color: #078943;
+  color:#172116;
 }
 .admin-kpis article > i svg {
   width: 19px;
@@ -276,10 +276,10 @@ body.admin-mode .app {
 }
 .admin-action-strip > a:hover {
   background: #fff;
-  color: #078943;
+  color:#172116;
 }
 .admin-action-strip strong {
-  color: #078943;
+  color:#172116;
   font-size: 1.15rem;
 }
 .admin-overview-grid {
@@ -300,7 +300,7 @@ body.admin-mode .app {
 .admin-page .partner-panel > header small {
   display: block;
   margin-bottom: 3px;
-  color: #079047;
+  color:#172116;
   font-size: 0.56rem;
   font-weight: 850;
   letter-spacing: 0.12em;
@@ -349,7 +349,7 @@ body.admin-mode .app {
   border: 1px solid #cce7d7;
   border-radius: 11px;
   background: #edf9f2;
-  color: #078943;
+  color:#172116;
   font-size: 0.62rem;
   font-weight: 900;
 }
@@ -369,7 +369,7 @@ body.admin-mode .app {
   white-space: nowrap;
 }
 .admin-audit-item p strong {
-  color: #078943;
+  color:#172116;
   font-weight: 800;
 }
 .admin-audit-item small {
@@ -402,7 +402,7 @@ body.admin-mode .app {
 }
 .courier-review-row summary {
   cursor: pointer;
-  color: #087f40;
+  color:#172116;
   font-weight: 800;
 }
 .courier-review-row details p {
@@ -422,7 +422,7 @@ body.admin-mode .app {
   font-size: 0.72rem;
 }
 .admin-check em {
-  color: #087f40;
+  color:#172116;
   font-style: normal;
   font-weight: 800;
 }

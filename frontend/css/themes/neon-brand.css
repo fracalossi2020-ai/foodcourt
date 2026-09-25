@@ -1,0 +1,49 @@
+/* Fluorescent FoodCourt identity; dark text keeps bright surfaces readable. */
+:root,html[data-theme="dark"],body.app-mode,.fc-landing-v2 {
+  --brand:#39ff14; --brand-bright:#70ff45; --brand-deep:#39ff14;
+  --brand-soft:#39ff141a; --brand-border:#39ff1466; --brand-glow:#39ff1438;
+  --fc-green:#39ff14; --fc-green-dark:#39ff14; --fc-green-deep:#39ff14;
+  --fc-green-soft:#39ff141a; --tech-lime:#39ff14; --tech-mint:#dbffd3;
+  --g:#39ff14; --gd:#70ff45;
+}
+/* Keep the original logo silhouette and black lettering. */
+img.brand-logo-image,img.foodcourt-brand-logo,img.install-app-icon {
+  filter:brightness(1.8) saturate(3) hue-rotate(-12deg);
+}
+body .btn-primary,body .btn-primary:hover,body .chip.active,
+body .fcv2-submit,body .fcv2-create,body .signup-nav-cta,
+body .landing-create,body .partner-login-submit,
+body .partner-sidebar nav a.active,body .admin-sidebar nav a.active {
+  background:#39ff14!important; color:#11230d!important; border-color:#39ff14!important;
+  box-shadow:0 5px 22px #39ff142b;
+}
+body.app-mode .header .header-inner .partner-header-link,
+body.app-mode .header .header-inner #avatarBtn {
+  background:linear-gradient(120deg,#39ff14,#8aff66)!important;
+  color:#11230d!important; border-color:#39ff14!important;
+}
+body.app-mode .header .header-inner .partner-header-link>span { color:#11230d; background:#ffffff40; }
+body.app-mode .header .header-inner .desktop-links a.active,
+html[data-theme="dark"] body.app-mode .header .header-inner .desktop-links a.active {
+  color:#11230d!important; background:#39ff14!important;
+}
+.nav-glider,html[data-theme="dark"] .nav-glider { background:#39ff14; border-color:#8aff66; box-shadow:0 0 20px #39ff1438; }
+body .desktop-links a.active svg,body .bottomnav a.active svg,
+body .modern-category.active svg,body .account-subnav a.active svg {
+  fill:#39ff14; stroke:#15340b;
+}
+body .modern-category.active i,body .modern-category:hover i,
+html[data-theme="dark"] body .modern-category.active i,
+body .account-subnav a.active {
+  background:#39ff14!important; color:#11230d!important; border-color:#39ff14!important;
+}
+body .modern-category.active svg,body .modern-category:hover svg { color:#11230d!important; }
+body.app-mode .profile-page .profile-head {
+  background:radial-gradient(ellipse at top right,#b7ff91,transparent 65%),linear-gradient(120deg,#39ff14,#70ff45)!important;
+  color:#11230d;
+}
+body.app-mode .profile-page .profile-head h2,body.app-mode .profile-page .profile-contact { color:#11230d; }
+body.app-mode .profile-page .profile-badges .badge { background:#ffffff55; color:#183313; border-color:#18331322; }
+body.app-mode .profile-page .profile-avatar { color:#11230d; background:#e9ffe2; }
+body .profile-toggle input:checked+i { background:#39ff14; }
+body :is(input[type="checkbox"],input[type="radio"]) { accent-color:#39ff14; }

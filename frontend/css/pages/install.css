@@ -1,7 +1,7 @@
 body:has(.install-page),body:has(.install-page) .main{background:var(--bg)}
-.install-page{--brand:#07883f;--brand-soft:#07883f18;max-width:940px;margin:24px auto 60px;color:var(--text)}
+.install-page{--brand:#39ff14;--brand-soft:#07883f18;max-width:940px;margin:24px auto 60px;color:var(--text)}
 html[data-theme="dark"] .install-page{--brand:#42d98a;--brand-soft:#42d98a18}
-.install-page [data-install]{background:#07883f;color:#fff}
+.install-page [data-install]{background:#39ff14;color:#fff}
 .install-back{display:inline-flex;align-items:center;gap:8px;margin-bottom:24px;color:var(--text-2);font-size:.85rem;font-weight:600}
 .install-hero{display:grid;grid-template-columns:1.3fr 1fr;gap:28px;padding:40px;border:1px solid var(--border);border-radius:28px;background:var(--surface);overflow:hidden}
 .install-eyebrow{display:block;color:var(--brand);font-size:.7rem;letter-spacing:.15em;font-weight:800;margin-bottom:18px}
