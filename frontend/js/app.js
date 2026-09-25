@@ -324,6 +324,15 @@ function enhanceInternalView(view) {
 }
 
 function syncHeader() {
+  const navIcons = { '/inicio': 'bag', '/buscar': 'store', '/categorias': 'star', '/ofertas': 'tag' };
+  document.querySelectorAll('.desktop-links [data-nav]').forEach(link => {
+    if (link.querySelector('.header-nav-icon')) return;
+    const mark = document.createElement('span');
+    mark.className = 'header-nav-icon';
+    mark.setAttribute('aria-hidden', 'true');
+    mark.innerHTML = icon(navIcons[link.dataset.nav] || 'bag');
+    link.prepend(mark);
+  });
   const addr = store.address;
   document.getElementById("locEmoji").innerHTML = icon("pin");
   // Sem endereço cadastrado, o cabeçalho convida a cadastrar em vez de
