@@ -1,3 +1,4 @@
+@import url('./header-dock.css');
 /* Modern navigation, scoped to the authenticated application. */
 body.app-mode .header { background:color-mix(in srgb,var(--surface,#fff) 94%,transparent); backdrop-filter:blur(18px); border-bottom:1px solid var(--border); box-shadow:0 6px 28px #143f2510; }
 body.app-mode .header .desktop-links { gap:5px; }

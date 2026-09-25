@@ -1,4 +1,5 @@
 import './core/app-install.js';
+import { mountHeaderMotion } from './core/header-motion.js';
 import { api } from "./core/api.js";
 import { store, hydrateBootstrap, setAuthUser } from "./core/store.js";
 import { esc, toast } from "./core/ui.js";
@@ -324,6 +325,7 @@ function enhanceInternalView(view) {
 }
 
 function syncHeader() {
+  mountHeaderMotion();
   const navIcons = { '/inicio': 'bag', '/buscar': 'store', '/categorias': 'star', '/ofertas': 'tag' };
   document.querySelectorAll('.desktop-links [data-nav]').forEach(link => {
     if (link.querySelector('.header-nav-icon')) return;
