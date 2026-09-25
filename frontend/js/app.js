@@ -261,6 +261,18 @@ function getBoot() {
 }
 
 function updateNav(path, query = new URLSearchParams()) {
+  const headerRoutes = {
+    avatarBtn: "/perfil",
+    partnerPortalBtn: "/parceiro",
+    notifBtn: "/notificacoes",
+  };
+  Object.entries(headerRoutes).forEach(([id, route]) => {
+    const control = document.getElementById(id);
+    if (!control) return;
+    if (path === route || path.startsWith(`${route}/`))
+      control.setAttribute("aria-current", "page");
+    else control.removeAttribute("aria-current");
+  });
   document
     .querySelectorAll(".bottomnav a, .desktop-links a[data-nav]")
     .forEach((a) => {

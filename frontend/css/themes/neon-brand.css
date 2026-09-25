@@ -17,12 +17,21 @@ body .partner-sidebar nav a.active,body .admin-sidebar nav a.active {
   background:#39ff14!important; color:#11230d!important; border-color:#39ff14!important;
   box-shadow:0 5px 22px #39ff142b;
 }
-body.app-mode .header .header-inner .partner-header-link,
-body.app-mode .header .header-inner #avatarBtn {
-  background:linear-gradient(120deg,#39ff14,#8aff66)!important;
-  color:#11230d!important; border-color:#39ff14!important;
+html body.app-mode .header .header-inner :is(#partnerPortalBtn,#avatarBtn,#themeBtn,#notifBtn,#cartBtn) {
+  background:var(--surface,#fff)!important;
+  color:var(--text,#25332b)!important;
+  border:1px solid #b9cfc1!important;
+  box-shadow:none!important;
+  transition:background-color 180ms,color 180ms,border-color 180ms;
 }
-body.app-mode .header .header-inner .partner-header-link>span { color:#11230d; background:#ffffff40; }
+html body.app-mode .header .header-inner #partnerPortalBtn::after { display:none; }
+html body.app-mode .header .header-inner #partnerPortalBtn>span { color:inherit; background:transparent; }
+html body.app-mode .header .header-inner :is(#partnerPortalBtn,#avatarBtn,#themeBtn,#notifBtn,#cartBtn):is(:hover,:focus-visible,:active,[aria-current="page"]),
+html body.app-mode:has(#cartDrawer.open) .header .header-inner #cartBtn {
+  background:#39ff14!important;
+  color:#11230d!important;
+  border-color:#39ff14!important;
+}
 body.app-mode .header .header-inner .desktop-links a.active,
 html[data-theme="dark"] body.app-mode .header .header-inner .desktop-links a.active {
   color:#11230d!important; background:#39ff14!important;
