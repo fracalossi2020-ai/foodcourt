@@ -61,11 +61,12 @@ function renderOverview(view) {
   const u = store.user;
   const orderCount = store.orders.length;
   const couponCount = store.coupons.length;
+  const initials = u.fullName.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('');
 
   view.innerHTML = `<div class="page profile-page">
     <header class="account-page-heading"><div><span class="account-kicker"><i></i>CENTRAL DO CLIENTE</span><h1>Olá, <strong>${esc(u.fullName.split(" ")[0])}</strong></h1><p>Gerencie sua conta e deixe o FoodCourt com a sua cara.</p></div><span class="account-security">${icon("shield")}<b>Conta protegida</b></span></header>
     <div class="profile-head">
-      <div class="profile-avatar">${icon("user")}</div>
+      <div class="profile-avatar" aria-label="Seu perfil">${esc(initials)}</div>
       <div class="profile-user-copy"><h2>${esc(u.fullName)}</h2><div class="profile-contact">${icon("message")}<span>${esc(u.email)}</span></div>${u.phone ? `<div class="profile-contact">${icon("phone")}<span>${esc(u.phone)}</span></div>` : ""}<div class="pair profile-badges"><span class="badge badge-brand">${icon("star")} Nível ${esc(u.level)}</span><span class="badge badge-dark">${icon("calendar")} Membro desde ${esc(u.memberSince)}</span></div></div>
     </div>
     <div class="profile-stats"><div class="stat-box"><i>${icon("receipt")}</i><div><b>${orderCount}</b><span>PEDIDOS</span></div></div><div class="stat-box"><i>${icon("star")}</i><div><b>${u.points}</b><span>PONTOS FOODCOURT</span></div></div><div class="stat-box"><i>${icon("tag")}</i><div><b>${couponCount}</b><span>CUPONS</span></div></div></div>
@@ -86,10 +87,13 @@ function renderOverview(view) {
       ${item("lock", "Privacidade", "Exportar dados ou excluir conta", "#/perfil?secao=privacidade")}
       ${item("settings", "Configurações", "Aparência e preferências", "#/perfil?secao=configuracoes")}
     </div></div></section>
-    <button class="btn btn-dark btn-block" id="logoutBtn">Sair da conta</button>
+    <footer class="profile-signoff"><span>Seu próximo favorito está a um pedido de distância.</span><button class="btn btn-dark" id="logoutBtn">Sair da conta</button></footer>
   </div>`;
 
   view.querySelector("#logoutBtn")?.addEventListener("click", logout);
+  view.querySelectorAll('.plist-item').forEach((card, index) => {
+    card.style.setProperty('--entry-delay', `${Math.min(index, 8) * 35}ms`);
+  });
 }
 
 function renderSection(view, boot, sectionId) {
