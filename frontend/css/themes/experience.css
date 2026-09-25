@@ -1,0 +1,52 @@
+/* Shared, responsive interaction rhythm. Keep business layouts intact. */
+body { -webkit-text-size-adjust:100%; }
+.page { min-width:0; }
+.page :is(h1,h2,h3) { font-family:var(--font-display); text-wrap:balance; }
+.page :is(p,.sub,.field-hint) { line-height:1.6; }
+.page .fc-icon { flex-shrink:0; vertical-align:middle; }
+:is(a,button,input,select,textarea):focus-visible { outline:2px solid var(--text); outline-offset:3px; }
+:is(button,.btn,a.plist-item) { touch-action:manipulation; }
+.page :is(.btn,.input,select) { min-height:44px; }
+.page :is(.section-head,.account-page-heading) { gap:16px; }
+.page :is(.section-head,.account-page-heading)>div { min-width:0; }
+.profile-menu-search { display:flex; align-items:center; gap:12px; padding:14px 18px; border:1px solid var(--border-strong); border-radius:16px; background:var(--surface); max-width:540px; }
+.profile-menu-search:focus-within { border-color:#39ff14; box-shadow:0 0 0 3px #39ff1420; }
+.profile-menu-search input { width:100%; min-width:0; border:0; background:transparent; color:var(--text); font:inherit; outline:none; }
+.profile-menu-search svg { width:20px; color:var(--text-2); }
+.profile-search-status { font-size:.85rem; color:var(--text-2); margin:12px 0; }
+.profile-search-status:empty { display:none; }
+.profile-menu-group { margin-top:30px; }
+.profile-menu-group>header { margin-bottom:14px; }
+.profile-menu-group h3 { font-size:1.08rem; font-weight:750; letter-spacing:-.025em; margin:0; }
+.profile-menu-group>header p { font-size:.85rem; color:var(--text-2); margin:5px 0 0; }
+body.app-mode .profile-page .profile-menu-card .plist { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+body.app-mode .profile-page .profile-menu-card .plist-item { display:grid; grid-template-columns:48px minmax(0,1fr) 24px; align-items:center; flex-wrap:nowrap; gap:16px; min-height:110px; padding:20px; border:1px solid var(--border); border-radius:18px; background:var(--surface); }
+body.app-mode .profile-page .profile-menu-card .plist-emoji { width:48px; height:48px; margin:0; color:var(--text); background:var(--surface-2); border:1px solid var(--border); box-shadow:none; }
+body.app-mode .profile-page .profile-menu-card .pl-label { font-size:.95rem; line-height:1.4; min-width:0; letter-spacing:-.02em; }
+body.app-mode .profile-page .profile-menu-card .pl-sub { font-size:.81rem; line-height:1.5; color:var(--text-2); margin-top:5px; }
+body.app-mode .profile-page .profile-menu-card .chev { position:static; width:24px; height:24px; transition:transform 180ms; }
+body.app-mode .profile-page .profile-menu-card .plist-item:is(:hover,:focus-visible) { border-color:#39ff14; box-shadow:0 8px 24px #00000009; transform:translateY(-2px); }
+body.app-mode .profile-page .profile-menu-card .plist-item:is(:hover,:focus-visible) .plist-emoji { background:#39ff14; color:#11230d; border-color:#39ff14; }
+body.app-mode .profile-page .profile-menu-card .plist-item:is(:hover,:focus-visible) .chev { transform:translateX(3px); }
+body.app-mode .profile-page .profile-menu-card [hidden] { display:none!important; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+@media(max-width:600px) {
+  .page { padding-inline:16px; }
+  .page :is(h1,.page-title) { font-size:clamp(1.5rem,7vw,2rem); overflow-wrap:anywhere; }
+  .page :is(.section-head,.account-page-heading) { flex-wrap:wrap; }
+  .page :is(input,select,textarea) { font-size:16px; max-width:100%; }
+  .page :is(.profile-form,.form-grid) { grid-template-columns:minmax(0,1fr); }
+  .page .account-subnav { max-width:100%; overflow-x:auto; flex-wrap:nowrap; padding-bottom:12px; }
+  .page .account-subnav a { flex-shrink:0; min-height:44px; display:inline-flex; align-items:center; }
+  body.app-mode .profile-page .profile-menu-card .plist { grid-template-columns:minmax(0,1fr); gap:10px; }
+  body.app-mode .profile-page .profile-menu-card .plist-item { min-height:94px; padding:16px; gap:12px; grid-template-columns:44px minmax(0,1fr) 20px; border-radius:16px; }
+  body.app-mode .profile-page .profile-menu-card .plist-emoji { width:44px; height:44px; border-radius:14px; }
+  body.app-mode .profile-page .profile-stats .stat-box { padding:12px; gap:10px; }
+  .profile-page .stat-box span { font-size:.62rem; letter-spacing:.02em; }
+  .profile-menu-group { margin-top:24px; }
+  .profile-menu-search { padding:14px; }
+  .profile-page .account-kicker { color:var(--text-2); }
+}
+@media(prefers-reduced-motion:reduce) {
+  .profile-menu-card *, .page .btn { transition:none!important; animation:none!important; }
+}

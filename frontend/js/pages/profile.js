@@ -71,9 +71,9 @@ function renderOverview(view) {
     </div>
     <div class="profile-stats"><div class="stat-box"><i>${icon("receipt")}</i><div><b>${orderCount}</b><span>PEDIDOS</span></div></div><div class="stat-box"><i>${icon("star")}</i><div><b>${u.points}</b><span>PONTOS FOODCOURT</span></div></div><div class="stat-box"><i>${icon("tag")}</i><div><b>${couponCount}</b><span>CUPONS</span></div></div></div>
     <section class="section account-menu-section"><div class="section-head"><div><h2>Sua conta</h2><div class="sub">Acesse rapidamente tudo que você precisa</div></div></div><div class="profile-menu-card"><div class="plist">
-      ${item("user", "Minha conta", "Nome, e-mail e telefone", "#/perfil?secao=conta")}
-      ${item("package", "Meus pedidos", "Em andamento e anteriores", "#/pedidos")}
-      ${item("heart", "Favoritos", "Restaurantes e produtos", "#/favoritos")}
+      ${item("user", "Minha conta", "Consulte seu e-mail e atualize nome e telefone.", "#/perfil?secao=conta")}
+      ${item("package", "Meus pedidos", "Acompanhe entregas e consulte pedidos anteriores.", "#/pedidos")}
+      ${item("heart", "Favoritos", "Encontre as lojas e os produtos que você salvou.", "#/favoritos")}
       ${item("pin", "Endereços", `${store.addresses.length} salvos`, "#/perfil?secao=enderecos")}
       ${item("wallet", "Pagamentos", "Pix, cartões e Apple Pay", "#/perfil?secao=pagamentos")}
       ${item("tag", "Cupons", `${couponCount} na carteira`, "#/ofertas")}
@@ -83,7 +83,7 @@ function renderOverview(view) {
       ${u.platformAdmin ? item("shield", "Administração geral", "Gerenciar toda a plataforma FoodCourt", "#/admin") : ""}
       ${u.role === "courier" ? item("bike", "Portal do Entregador", "Corridas, rotas e ganhos", "#/entregador") : u.role === "merchant" || u.role === "admin" ? item("shop", "Portal do Parceiro", "Administrar estabelecimento", "#/parceiro") : `${item("bike", "Quero ser entregador", "Cadastre-se para realizar entregas", "#/quero-ser-entregador")}${item("store", "Venda no FoodCourt", "Tem um estabelecimento? Seja parceiro.", "#/para-estabelecimentos")}`}
       ${item("phone", "Instalar FoodCourt", "Adicionar à tela inicial", "#/instalar")}
-      ${item("shield", "Segurança", "Alterar senha", "#/perfil?secao=seguranca")}
+      ${item("shield", "Segurança", "Atualize sua senha e proteja o acesso à conta.", "#/perfil?secao=seguranca")}
       ${item("lock", "Privacidade", "Exportar dados ou excluir conta", "#/perfil?secao=privacidade")}
       ${item("settings", "Configurações", "Aparência e preferências", "#/perfil?secao=configuracoes")}
     </div></div></section>
@@ -91,8 +91,53 @@ function renderOverview(view) {
   </div>`;
 
   view.querySelector("#logoutBtn")?.addEventListener("click", logout);
+  organizeProfileMenu(view);
   view.querySelectorAll('.plist-item').forEach((card, index) => {
     card.style.setProperty('--entry-delay', `${Math.min(index, 8) * 35}ms`);
+  });
+}
+
+function organizeProfileMenu(view) {
+  const container = view.querySelector('.profile-menu-card');
+  const cards = [...container.querySelectorAll('.plist-item')];
+  const groups = [
+    ['Seu dia a dia', 'Pedidos, favoritos e vantagens em um só lugar.', ['/pedidos', '/favoritos', '/ofertas', '/fidelidade']],
+    ['Sua conta e preferências', 'Atualize seus dados e prepare seu próximo pedido.', ['conta', 'enderecos', 'pagamentos', 'configuracoes', '/instalar']],
+    ['Proteção e atendimento', 'Controle seus dados e encontre ajuda quando precisar.', ['seguranca', 'privacidade', '/notificacoes', '/suporte']],
+    ['Área profissional', 'Acesse as ferramentas disponíveis para o seu perfil.', []],
+  ];
+  container.innerHTML = `<label class="profile-menu-search">${icon('search')}<span class="sr-only">Buscar opção no perfil</span><input type="search" placeholder="O que você precisa encontrar?" autocomplete="off"></label><p class="profile-search-status" role="status" aria-live="polite"></p>`;
+  const remaining = new Set(cards);
+  groups.forEach(([title, description, routes], index) => {
+    const selected = [...remaining].filter(card => !routes.length || routes.some(route => {
+      const href = card.getAttribute('href') || '';
+      return href === `#${route}` || href === `#/perfil?secao=${route}`;
+    }));
+    if (!selected.length) return;
+    const section = document.createElement('section');
+    section.className = 'profile-menu-group';
+    section.setAttribute('aria-labelledby', `profile-group-${index}`);
+    section.innerHTML = `<header><h3 id="profile-group-${index}">${title}</h3><p>${description}</p></header><div class="plist"></div>`;
+    selected.forEach(card => {
+      section.querySelector('.plist').append(card);
+      remaining.delete(card);
+    });
+    container.append(section);
+  });
+  const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  container.querySelector('input').addEventListener('input', event => {
+    const term = normalize(event.target.value.trim());
+    let count = 0;
+    cards.forEach(card => {
+      card.hidden = !normalize(card.textContent).includes(term);
+      if (!card.hidden) count++;
+    });
+    container.querySelectorAll('.profile-menu-group').forEach(group => {
+      group.hidden = !group.querySelector('.plist-item:not([hidden])');
+    });
+    container.querySelector('.profile-search-status').textContent = term
+      ? count ? count === 1 ? '1 opção encontrada.' : `${count} opções encontradas.` : 'Nenhuma opção encontrada. Tente buscar por pedidos, senha ou ajuda.'
+      : '';
   });
 }
 
