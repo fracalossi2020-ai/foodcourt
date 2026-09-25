@@ -330,9 +330,6 @@ function syncHeader() {
   // mostrar um endereço inexistente.
   document.getElementById("locLabel").textContent = addr?.label || "Cadastrar endereço";
   if (store.user) document.getElementById("avatarBtn").innerHTML = icon("user");
-  const adminPortalButton = document.getElementById("adminPortalBtn");
-  if (adminPortalButton)
-    adminPortalButton.hidden = !store.user?.platformAdmin;
   const partnerPortalButton = document.getElementById("partnerPortalBtn");
   if (partnerPortalButton)
     partnerPortalButton.hidden = !["merchant", "admin"].includes(

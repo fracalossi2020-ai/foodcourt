@@ -5023,6 +5023,10 @@ const server = http.createServer(async (req, res) => {
     res.end();
     return;
   }
+  if (pathname === "/admin" || pathname === "/admin/") {
+    redirect(res, "/#/admin");
+    return;
+  }
   serveStatic(req, res, pathname);
 });
 
