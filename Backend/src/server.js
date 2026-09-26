@@ -4815,7 +4815,34 @@ function serveStatic(req, res, pathname) {
       return;
     }
     const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.mp4' && req.headers.range) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
+      const size = fileData.length;
+      let start = 0;
+      let end = size - 1;
+      if (match) {
+        if (match[1]) {
+          start = Number(match[1]);
+          if (match[2]) end = Math.min(Number(match[2]), end);
+        } else if (match[2]) start = Math.max(0, size - Number(match[2]));
+      }
+      if (!match || (!match[1] && !match[2]) || start > end || start >= size) {
+        res.writeHead(416, { 'Content-Range': `bytes */${size}` });
+        res.end();
+        return;
+      }
+      res.writeHead(206, {
+        'Content-Type': 'video/mp4',
+        'Accept-Ranges': 'bytes',
+        'Content-Range': `bytes ${start}-${end}/${size}`,
+        'Content-Length': end - start + 1,
+        'Cache-Control': 'no-store',
+      });
+      res.end(fileData.subarray(start, end + 1));
+      return;
+    }
     res.writeHead(200, {
+      ...(ext === '.mp4' ? { 'Accept-Ranges': 'bytes', 'Content-Length': fileData.length } : {}),
       "Content-Type": MIME[ext] || "application/octet-stream",
       "Cache-Control": "no-store, no-cache, must-revalidate",
     });
