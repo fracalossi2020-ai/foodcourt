@@ -6,12 +6,15 @@ export function markPortalWelcome() {
 export function clearPortalWelcome() {
   try { sessionStorage.removeItem(pendingKey) } catch { /* Optional presentation state. */ }
 }
-export function showLoginPortal() { return showFilm(false) }
-export function showPortalWelcome() {
+export async function showPortalWelcome() {
   let timestamp
   try { timestamp = Number(sessionStorage.getItem(pendingKey)) } catch { return }
   clearPortalWelcome()
-  if (timestamp && Date.now() - timestamp < 15 * 60 * 1000) void showFilm(true)
+  if (timestamp && Date.now() - timestamp < 15 * 60 * 1000) {
+    const route = location.hash
+    await showFilm(false)
+    if (location.hash === route) await showFilm(true)
+  }
 }
 function showFilm(welcome) {
   if (active) return active
@@ -22,6 +25,13 @@ function showFilm(welcome) {
     dialog.setAttribute('aria-label', welcome ? 'Boas-vindas ao FoodCourt' : 'Entrando no FoodCourt')
     dialog.innerHTML = `<div class="portal-ring" aria-hidden="true"></div><div class="portal-content"><p>${welcome ? 'Que bom ter você aqui!' : 'Seu próximo favorito está te esperando'}</p><video playsinline preload="auto" ${welcome ? '' : 'muted'} aria-label="${welcome ? 'Mensagem de boas-vindas' : 'Personagem convidando você a entrar'}"><source src="/assets/videos/${welcome ? 'portal-welcome' : 'portal-invite'}.mp4${welcome ? '#t=1' : ''}" type="video/mp4"></video><button class="portal-sound" type="button" hidden>Ativar som</button></div><button class="portal-skip" type="button">${welcome ? 'Continuar no início' : 'Pular animação'}</button>`
     const video = dialog.querySelector('video')
+    const tunnel = dialog.querySelector('.portal-ring')
+    for (let i = 0; i < 7; i++) {
+      const ring = document.createElement('i')
+      ring.style.setProperty('--step', i)
+      tunnel.append(ring)
+    }
+    video.style.visibility = 'hidden'
     const sound = dialog.querySelector('.portal-sound')
     let done = false
     const close = () => {
@@ -37,6 +47,17 @@ function showFilm(welcome) {
       resolve()
     }
     const timeout = setTimeout(close, 20000)
+    let frameId = 0
+    const checkEnd = () => {
+      if (done) return
+      if (!welcome && video.currentTime >= 4) { close(); return }
+      frameId = requestAnimationFrame(checkEnd)
+    }
+    video.addEventListener('play', () => {
+      cancelAnimationFrame(frameId)
+      checkEnd()
+    })
+    dialog.addEventListener('close', () => cancelAnimationFrame(frameId), { once:true })
     dialog.querySelector('.portal-skip').onclick = close
     dialog.addEventListener('cancel', event => { event.preventDefault(); close() })
     video.addEventListener('ended', close)
@@ -57,12 +78,13 @@ function showFilm(welcome) {
         video.play().catch(() => {})
       } else close()
     })
-    if (welcome) {
-      video.addEventListener('loadedmetadata', () => {
-        video.addEventListener('seeked', begin, { once:true })
-        video.currentTime = 1
+    video.addEventListener('loadedmetadata', () => {
+      video.addEventListener('seeked', () => {
+        video.style.visibility = 'visible'
+        begin()
       }, { once:true })
-    } else begin()
+      video.currentTime = 1
+    }, { once:true })
   })
   return active
 }

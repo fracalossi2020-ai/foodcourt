@@ -1,5 +1,5 @@
 import { api } from '../core/api.js'
-import { showLoginPortal, markPortalWelcome, clearPortalWelcome } from '../core/login-portal.js'
+import { markPortalWelcome, clearPortalWelcome } from '../core/login-portal.js'
 import { mountWelcomeCutout } from '../core/welcome-cutout.js'
 import { animate } from '../vendor/anime.esm.min.js'
 
@@ -434,7 +434,6 @@ function bind(view,partnerLogin=false,query=new URLSearchParams(),turnstileConfi
   if(oauthError&&loginError){loginError.textContent=oauthError;loginError.hidden=false}
   view.querySelectorAll('[data-social]').forEach(b=>b.addEventListener('click',async()=>{
     b.disabled = true
-    await showLoginPortal()
     markPortalWelcome()
     const target=partnerLogin?'/parceiro':query.get('redirect')||'/inicio'
     window.location.assign(`/api/auth/oauth/${b.dataset.social}?redirect=${encodeURIComponent(target)}`)
@@ -446,7 +445,6 @@ function bind(view,partnerLogin=false,query=new URLSearchParams(),turnstileConfi
     if(!email||!password){error.textContent='Informe seu e-mail e sua senha.';error.hidden=false;return}
     if(turnstileConfig.enabled&&!turnstileToken){error.textContent='Confirme que você não é um robô para continuar.';error.hidden=false;return}
     submit.disabled=true;submit.textContent='Entrando...'
-    await showLoginPortal()
     markPortalWelcome()
     try{const res=await api.login({email,password,turnstileToken});if(partnerLogin&&res.user.role!=='merchant'){await api.logout();throw new Error('Esta conta não pertence a um estabelecimento. Entre com a conta do vendedor.')}window.dispatchEvent(new CustomEvent('fc:auth',{detail:res.user}));location.hash=res.user.role==='merchant'?'#/parceiro':res.user.role==='admin'?'#/admin':res.user.role==='courier'?'#/entregador':'#/inicio'}catch(err){clearPortalWelcome();error.textContent=err.message;error.hidden=false;submit.disabled=false;submit.textContent=partnerLogin?'Entrar no Portal':'Entrar';if(turnstileConfig.enabled&&window.turnstile&&turnstileWidgetId!==null){turnstileToken='';window.turnstile.reset(turnstileWidgetId)}}
   })
