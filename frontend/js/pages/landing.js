@@ -1,4 +1,5 @@
 import { api } from '../core/api.js'
+import { mountWelcomeCutout } from '../core/welcome-cutout.js'
 import { animate } from '../vendor/anime.esm.min.js'
 
 export function cleanup() {
@@ -116,6 +117,7 @@ function mountWelcomeVideo(view) {
   if (!video) return
   video.muted = true
   video.loop = true
+  const cleanupCutout = mountWelcomeCutout(video)
   let inView = false
   const autoPlay = !matchMedia('(prefers-reduced-motion: reduce)').matches && !navigator.connection?.saveData
   const play = () => { video.play().catch(() => {}) }
@@ -131,6 +133,7 @@ function mountWelcomeVideo(view) {
   }
   document.addEventListener('visibilitychange', visibility)
   window.__fcWelcomeCleanup = () => {
+    cleanupCutout()
     video.pause()
     observer.disconnect()
     document.removeEventListener('visibilitychange', visibility)
