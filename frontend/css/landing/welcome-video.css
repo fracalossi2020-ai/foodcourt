@@ -1,0 +1,22 @@
+/* Inline media, never a floating layer over the copy or login. */
+.fc-landing-v2 .welcome-intro { display:grid; grid-template-columns:minmax(0,1fr) 120px; align-items:center; gap:20px; margin:22px 0; }
+.fc-landing-v2 .welcome-intro h1 { margin:0; font-size:clamp(2rem,3.4vw,3.4rem); line-height:1.12; }
+.welcome-character { min-width:0; align-self:center; }
+.welcome-character video { display:block; width:100%; height:auto; aspect-ratio:9/16; object-fit:contain; background:transparent; border:0; box-shadow:none; }
+.welcome-video-toggle { display:block; margin:4px auto 0; min-height:44px; padding:8px; font-size:.72rem; color:#42534a; text-decoration:underline; text-underline-offset:3px; }
+.welcome-video-toggle:focus-visible { outline:2px solid #172116; outline-offset:2px; }
+.fc-landing-v2 .fcv2-hero .hero-float-layer { display:none; }
+@media(min-width:901px) {
+  .fc-landing-v2 .fcv2-hero .fcv2-copy { width:calc(100% - 410px); max-width:680px; }
+  .fc-landing-v2 .fcv2-copy .fcv2-proof { width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding:20px; margin-top:28px; }
+  .fc-landing-v2 .fcv2-copy .fcv2-proof article { border:0; padding:0; }
+}
+@media(max-width:1100px) and (min-width:901px) {
+  .fc-landing-v2 .welcome-intro { grid-template-columns:minmax(0,1fr) 86px; gap:12px; }
+  .fc-landing-v2 .welcome-intro h1 { font-size:2rem; }
+}
+@media(max-width:600px) {
+  .fc-landing-v2 .welcome-intro { grid-template-columns:minmax(0,1fr) 84px; gap:12px; margin:20px 0 12px; }
+  .fc-landing-v2 .welcome-intro h1 { font-size:clamp(1.65rem,6.4vw,2.5rem); }
+  .welcome-video-toggle { font-size:.65rem; padding-inline:2px; }
+}

@@ -2,6 +2,7 @@ import { api } from '../core/api.js'
 import { animate } from '../vendor/anime.esm.min.js'
 
 export function cleanup() {
+  window.__fcWelcomeCleanup?.()
   window.__fcLandingScrollCleanup?.()
   window.__fcOrderDemoCleanup?.()
 }
@@ -57,7 +58,15 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
       </div>
       <div class="fcv2-copy">
         <span class="fcv2-pill">${uiIcon('leaf')} Sua próxima refeição está aqui!</span>
-        <h1>Seu pedido favorito,<br><em>do seu jeito.</em></h1>
+        <div class="welcome-intro">
+          <h1>Seu pedido favorito,<br><em>do seu jeito.</em></h1>
+          <div class="welcome-character">
+            <video id="welcomeVideo" muted playsinline preload="metadata" width="1080" height="1920" aria-label="Personagem FoodCourt dando boas-vindas">
+              <source src="/assets/videos/welcome-character.mp4" type="video/mp4">
+            </video>
+            <button type="button" class="welcome-video-toggle" aria-controls="welcomeVideo">Reproduzir</button>
+          </div>
+        </div>
         <p>Encontre restaurantes incríveis, peça com poucos cliques e receba onde estiver. Rápido, fácil e feito para você.</p>
         <div class="fcv2-actions"><a href="#/cadastro">Criar conta grátis</a><button data-scroll="como">${uiIcon('play')} Saiba mais</button></div>
         <section class="fcv2-proof" aria-label="Diferenciais FoodCourt">
@@ -90,6 +99,7 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
     ${introduction()}${howItWorks()}${variety()}${whyFoodCourt()}${promotion()}${mobileExperience()}${trust()}${testimonials()}${partnerSection()}${faq()}${finalCta()}${landingFooter()}${helpWidget()}
   </div>`
   bind(view,partnerLogin,query,turnstileConfig)
+  mountWelcomeVideo(view)
   fillCompanyBlock(view)
   if(turnstileConfig.enabled)renderTurnstile(view,turnstileConfig)
   if (location.hash.replace(/^#/, '').split('?')[0] === '/login') {
@@ -98,6 +108,38 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
       login?.scrollIntoView({ behavior:'smooth', block:'center' })
       setTimeout(() => login?.querySelector('input[name="email"]')?.focus(), 250)
     })
+  }
+}
+
+function mountWelcomeVideo(view) {
+  window.__fcWelcomeCleanup?.()
+  const video = view.querySelector('#welcomeVideo')
+  const button = view.querySelector('.welcome-video-toggle')
+  if (!video || !button) return
+  video.muted = true
+  const update = () => { button.textContent = video.ended ? 'Ver novamente' : video.paused ? 'Reproduzir' : 'Pausar' }
+  const toggle = () => {
+    if (!video.paused) video.pause()
+    else {
+      if (video.ended) video.currentTime = 0
+      video.play().catch(update)
+    }
+  }
+  button.addEventListener('click', toggle)
+  ;['play', 'pause', 'ended'].forEach(event => video.addEventListener(event, update))
+  const observer = new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting) video.pause()
+  })
+  observer.observe(video)
+  const visibility = () => { if (document.hidden) video.pause() }
+  document.addEventListener('visibilitychange', visibility)
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !navigator.connection?.saveData)
+    video.play().catch(update)
+  window.__fcWelcomeCleanup = () => {
+    video.pause()
+    observer.disconnect()
+    document.removeEventListener('visibilitychange', visibility)
+    window.__fcWelcomeCleanup = null
   }
 }
 

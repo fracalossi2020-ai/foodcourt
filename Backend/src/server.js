@@ -296,6 +296,7 @@ if (joaoDemo) {
 }
 
 const MIME = {
+  ".mp4": "video/mp4",
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
