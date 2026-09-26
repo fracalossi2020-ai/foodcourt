@@ -117,9 +117,20 @@ function mountWelcomeVideo(view) {
   video.muted = true
   // Skip the opening still on first playback and every subsequent repetition.
   const startTime = 1
+  const endTime = 7
+  let transitioning = false
+  let blend = null
+  let blendAnimation = null
   video.loop = false
   const reveal = () => {
     if (video.currentTime >= startTime) video.style.visibility = 'visible'
+    if (transitioning && !video.seeking && video.currentTime < endTime) {
+      transitioning = false
+      if (blend) {
+        blendAnimation = blend.animate([{ opacity:1 }, { opacity:0 }], { duration:240, fill:'forwards' })
+        blendAnimation.onfinish = () => { blend?.remove(); blend = null }
+      }
+    }
   }
   video.addEventListener('seeked', reveal)
   video.addEventListener('timeupdate', reveal)
@@ -136,9 +147,34 @@ function mountWelcomeVideo(view) {
     video.play().catch(() => {})
   }
   const repeat = () => {
-    seekStart()
+    if (transitioning) return
+    transitioning = true
+    // Hold the last decoded frame over the seek, then dissolve into the new loop.
+    blendAnimation?.cancel()
+    blend?.remove()
+    blend = document.createElement('canvas')
+    blend.width = 360
+    blend.height = 640
+    blend.setAttribute('aria-hidden', 'true')
+    const context = blend.getContext('2d')
+    if (context && video.readyState >= 2) {
+      context.drawImage(video, 0, 0, 360, 640)
+      const style = getComputedStyle(video)
+      Object.assign(blend.style, {
+        position:'absolute', left:`${video.offsetLeft}px`, top:`${video.offsetTop}px`,
+        width:`${video.offsetWidth}px`, height:`${video.offsetHeight}px`,
+        transform:style.transform, transformOrigin:style.transformOrigin,
+        borderRadius:style.borderRadius, pointerEvents:'none', zIndex:'2',
+      })
+      video.parentElement.append(blend)
+    }
+    video.currentTime = startTime
     if (inView && autoPlay && !document.hidden) play()
   }
+  const trimTail = () => {
+    if (video.currentTime >= endTime && !video.seeking) repeat()
+  }
+  video.addEventListener('timeupdate', trimTail)
   video.addEventListener('ended', repeat)
   const observer = new IntersectionObserver(entries => {
     inView = entries[0].isIntersecting
@@ -153,11 +189,14 @@ function mountWelcomeVideo(view) {
   document.addEventListener('visibilitychange', visibility)
   window.__fcWelcomeCleanup = () => {
     video.pause()
+    blendAnimation?.cancel()
+    blend?.remove()
     observer.disconnect()
     video.removeEventListener('ended', repeat)
     video.removeEventListener('loadedmetadata', seekStart)
     video.removeEventListener('seeked', reveal)
     video.removeEventListener('timeupdate', reveal)
+    video.removeEventListener('timeupdate', trimTail)
     document.removeEventListener('visibilitychange', visibility)
     window.__fcWelcomeCleanup = null
   }
