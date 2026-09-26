@@ -61,8 +61,8 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
         <div class="welcome-intro">
           <h1>Seu pedido favorito,<br><em>do seu jeito.</em></h1>
           <div class="welcome-character">
-            <video id="welcomeVideo" loop muted playsinline preload="metadata" width="1080" height="1920" aria-label="Personagem FoodCourt animado em repetição">
-              <source src="/assets/videos/welcome-character.mp4" type="video/mp4">
+            <video id="welcomeVideo" muted playsinline preload="metadata" width="1080" height="1920" aria-label="Personagem FoodCourt animado em repetição">
+              <source src="/assets/videos/welcome-character.mp4#t=1" type="video/mp4">
             </video>
           </div>
         </div>
@@ -115,10 +115,20 @@ function mountWelcomeVideo(view) {
   const video = view.querySelector('#welcomeVideo')
   if (!video) return
   video.muted = true
-  video.loop = true
+  // Skip the opening still on first playback and every subsequent repetition.
+  const startTime = 1
+  video.loop = false
+  const seekStart = () => { video.currentTime = startTime }
+  video.addEventListener('loadedmetadata', seekStart, { once:true })
+  if (video.readyState >= 1) seekStart()
   let inView = false
   const autoPlay = !matchMedia('(prefers-reduced-motion: reduce)').matches && !navigator.connection?.saveData
   const play = () => { video.play().catch(() => {}) }
+  const repeat = () => {
+    seekStart()
+    if (inView && autoPlay && !document.hidden) play()
+  }
+  video.addEventListener('ended', repeat)
   const observer = new IntersectionObserver(entries => {
     inView = entries[0].isIntersecting
     if (!inView) video.pause()
@@ -133,6 +143,8 @@ function mountWelcomeVideo(view) {
   window.__fcWelcomeCleanup = () => {
     video.pause()
     observer.disconnect()
+    video.removeEventListener('ended', repeat)
+    video.removeEventListener('loadedmetadata', seekStart)
     document.removeEventListener('visibilitychange', visibility)
     window.__fcWelcomeCleanup = null
   }
