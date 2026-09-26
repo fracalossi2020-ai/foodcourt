@@ -17,3 +17,19 @@ dialog.login-portal > .portal-skip { position:absolute!important; top:max(16px,e
 @keyframes portal-enter { from { transform:translate(-50%,-50%) scale(.25) rotateX(45deg); opacity:0; } to { transform:translate(-50%,-50%) scale(1.5); opacity:.55; } }
 @media(max-width:600px) { .login-portal { padding:76px 12px 20px; } .portal-content video { height:auto; width:auto; max-width:100%; max-height:68dvh; } .portal-content p { font-size:1rem; } }
 @media(prefers-reduced-motion:reduce) { .portal-ring i { animation:none; transform:translate(-50%,-50%); opacity:.15; } }
+/* Full-screen scene instead of a portrait card. */
+dialog.login-portal { padding:0; }
+.login-portal .portal-content { width:100%; height:100%; gap:0; }
+.login-portal .portal-content p { position:absolute; z-index:3; top:max(76px,10dvh); left:20px; right:20px; pointer-events:none; }
+.login-portal .portal-content video,
+.login-portal .portal-content .welcome-cutout { position:absolute; bottom:-6dvh; width:auto; height:106dvh; max-width:none; max-height:none; border-radius:0; box-shadow:none; transform:none; object-fit:contain; }
+.login-portal:not(.is-welcome) .portal-content video { mask-image:none; visibility:hidden!important; }
+.login-portal .portal-content video.has-cutout { opacity:0; pointer-events:none; }
+.login-portal .portal-content .welcome-cutout { filter:drop-shadow(0 12px 28px #0005); }
+.login-portal .portal-content video:not(.has-cutout) + .welcome-cutout { display:none; }
+.login-portal.is-welcome .portal-content video { height:112dvh; bottom:-8dvh; mask-image:radial-gradient(ellipse 64% 65% at 50% 48%,#000 48%,transparent 83%); }
+@media(max-width:600px) {
+  .login-portal .portal-content video,.login-portal .portal-content .welcome-cutout { height:96dvh; bottom:-2dvh; }
+  .login-portal.is-welcome .portal-content video { height:100dvh; bottom:-4dvh; }
+  .login-portal .portal-content p { top:80px; font-size:.95rem; }
+}

@@ -1,3 +1,4 @@
+import { mountWelcomeCutout } from './welcome-cutout.js'
 const pendingKey = 'fc:portal-welcome'
 let active = null
 export function markPortalWelcome() {
@@ -32,13 +33,21 @@ function showFilm(welcome) {
       tunnel.append(ring)
     }
     video.style.visibility = 'hidden'
-    const sound = dialog.querySelector('.portal-sound')
+    dialog.querySelector('.portal-sound')?.remove()
+    let cleanupCutout = () => {}
+    const resumeAudio = event => {
+      if (!welcome || event.target.closest('.portal-skip')) return
+      video.muted = false
+      video.volume = 1
+      video.play().catch(() => {})
+    }
     let done = false
     const close = () => {
       if (done) return
       done = true
       clearTimeout(timeout)
       video.pause()
+      cleanupCutout()
       dialog.close()
       dialog.remove()
       window.removeEventListener('hashchange', close)
@@ -64,17 +73,16 @@ function showFilm(welcome) {
     video.addEventListener('error', close)
     video.querySelector('source').addEventListener('error', close)
     video.muted = !welcome
-    sound.onclick = () => {
-      video.muted = false
-      video.play().then(() => { sound.hidden = true }).catch(() => { sound.hidden = false })
-    }
+    video.volume = 1
+    dialog.addEventListener('pointerdown', resumeAudio)
+    dialog.addEventListener('keydown', resumeAudio)
     document.body.append(dialog)
     dialog.showModal()
+    if (!welcome) cleanupCutout = mountWelcomeCutout(video)
     window.addEventListener('hashchange', close)
     const begin = () => video.play().catch(() => {
       if (welcome) {
         video.muted = true
-        sound.hidden = false
         video.play().catch(() => {})
       } else close()
     })
