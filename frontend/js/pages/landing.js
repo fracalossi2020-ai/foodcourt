@@ -64,7 +64,6 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
             <video id="welcomeVideo" loop muted playsinline preload="metadata" width="1080" height="1920" aria-label="Personagem FoodCourt animado em repetição">
               <source src="/assets/videos/welcome-character.mp4" type="video/mp4">
             </video>
-            <button type="button" class="welcome-video-toggle" aria-controls="welcomeVideo">Reproduzir</button>
           </div>
         </div>
         <p>Encontre restaurantes incríveis, peça com poucos cliques e receba onde estiver. Rápido, fácil e feito para você.</p>
@@ -114,32 +113,21 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
 function mountWelcomeVideo(view) {
   window.__fcWelcomeCleanup?.()
   const video = view.querySelector('#welcomeVideo')
-  const button = view.querySelector('.welcome-video-toggle')
-  if (!video || !button) return
+  if (!video) return
   video.muted = true
-  let userPaused = false
+  video.loop = true
   let inView = false
   const autoPlay = !matchMedia('(prefers-reduced-motion: reduce)').matches && !navigator.connection?.saveData
-  const update = () => { button.textContent = video.ended ? 'Ver novamente' : video.paused ? 'Reproduzir' : 'Pausar' }
-  const toggle = () => {
-    userPaused = !video.paused
-    if (!video.paused) video.pause()
-    else {
-      if (video.ended) video.currentTime = 0
-      video.play().catch(update)
-    }
-  }
-  button.addEventListener('click', toggle)
-  ;['play', 'pause', 'ended'].forEach(event => video.addEventListener(event, update))
+  const play = () => { video.play().catch(() => {}) }
   const observer = new IntersectionObserver(entries => {
     inView = entries[0].isIntersecting
     if (!inView) video.pause()
-    else if (autoPlay && !userPaused && !document.hidden) video.play().catch(update)
+    else if (autoPlay && !document.hidden) play()
   })
   observer.observe(video)
   const visibility = () => {
     if (document.hidden) video.pause()
-    else if (inView && autoPlay && !userPaused) video.play().catch(update)
+    else if (inView && autoPlay) play()
   }
   document.addEventListener('visibilitychange', visibility)
   window.__fcWelcomeCleanup = () => {
