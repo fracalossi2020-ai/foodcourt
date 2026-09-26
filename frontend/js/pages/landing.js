@@ -61,7 +61,7 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
         <div class="welcome-intro">
           <h1>Seu pedido favorito,<br><em>do seu jeito.</em></h1>
           <div class="welcome-character">
-            <video id="welcomeVideo" muted playsinline preload="metadata" width="1080" height="1920" aria-label="Personagem FoodCourt dando boas-vindas">
+            <video id="welcomeVideo" loop muted playsinline preload="metadata" width="1080" height="1920" aria-label="Personagem FoodCourt animado em repetição">
               <source src="/assets/videos/welcome-character.mp4" type="video/mp4">
             </video>
             <button type="button" class="welcome-video-toggle" aria-controls="welcomeVideo">Reproduzir</button>
@@ -117,8 +117,12 @@ function mountWelcomeVideo(view) {
   const button = view.querySelector('.welcome-video-toggle')
   if (!video || !button) return
   video.muted = true
+  let userPaused = false
+  let inView = false
+  const autoPlay = !matchMedia('(prefers-reduced-motion: reduce)').matches && !navigator.connection?.saveData
   const update = () => { button.textContent = video.ended ? 'Ver novamente' : video.paused ? 'Reproduzir' : 'Pausar' }
   const toggle = () => {
+    userPaused = !video.paused
     if (!video.paused) video.pause()
     else {
       if (video.ended) video.currentTime = 0
@@ -128,13 +132,16 @@ function mountWelcomeVideo(view) {
   button.addEventListener('click', toggle)
   ;['play', 'pause', 'ended'].forEach(event => video.addEventListener(event, update))
   const observer = new IntersectionObserver(entries => {
-    if (!entries[0].isIntersecting) video.pause()
+    inView = entries[0].isIntersecting
+    if (!inView) video.pause()
+    else if (autoPlay && !userPaused && !document.hidden) video.play().catch(update)
   })
   observer.observe(video)
-  const visibility = () => { if (document.hidden) video.pause() }
+  const visibility = () => {
+    if (document.hidden) video.pause()
+    else if (inView && autoPlay && !userPaused) video.play().catch(update)
+  }
   document.addEventListener('visibilitychange', visibility)
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !navigator.connection?.saveData)
-    video.play().catch(update)
   window.__fcWelcomeCleanup = () => {
     video.pause()
     observer.disconnect()
