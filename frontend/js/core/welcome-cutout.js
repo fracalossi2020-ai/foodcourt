@@ -1,14 +1,20 @@
 // Remove only neutral background connected to the frame edges, not eyes or logos.
 export function mountWelcomeCutout(video) {
   const canvas = document.createElement('canvas')
-  canvas.width = 288
-  canvas.height = 512
+  canvas.width = 540
+  canvas.height = 960
   canvas.className = 'welcome-cutout'
   canvas.setAttribute('aria-hidden', 'true')
-  const ctx = canvas.getContext('2d', { willReadFrequently:true })
-  if (!ctx) return () => {}
+  const ctx = canvas.getContext('2d')
+  // Read pixels only on the small segmentation surface. Preserve the decoded
+  // video's detail on the display surface and apply just the alpha mask.
+  const mask = document.createElement('canvas')
+  mask.width = 288
+  mask.height = 512
+  const maskCtx = mask.getContext('2d', { willReadFrequently:true })
+  if (!ctx || !maskCtx) return () => {}
   video.after(canvas)
-  const width = canvas.width, height = canvas.height, count = width * height
+  const width = mask.width, height = mask.height, count = width * height
   const seen = new Uint8Array(count)
   const queue = new Int32Array(count)
   let frame = 0, lastTime = -1, stopped = false, visible = true
@@ -24,8 +30,8 @@ export function mountWelcomeCutout(video) {
     const time = metadata?.mediaTime ?? video.currentTime
     if (document.hidden || !visible || video.readyState < 2 || time === lastTime) return
     lastTime = time
-    ctx.drawImage(video, 0, 0, width, height)
-    const image = ctx.getImageData(0, 0, width, height)
+    maskCtx.drawImage(video, 0, 0, width, height)
+    const image = maskCtx.getImageData(0, 0, width, height)
     const pixels = image.data
     seen.fill(0)
     let head = 0, tail = 0
@@ -47,7 +53,13 @@ export function mountWelcomeCutout(video) {
       if (index >= width) visit(index - width)
       if (index < count - width) visit(index + width)
     }
-    ctx.putImageData(image, 0, 0)
+    maskCtx.putImageData(image, 0, 0)
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    ctx.globalCompositeOperation = 'destination-in'
+    ctx.drawImage(mask, 0, 0, canvas.width, canvas.height)
+    ctx.globalCompositeOperation = 'source-over'
     video.classList.add('has-cutout')
   }
   schedule()
