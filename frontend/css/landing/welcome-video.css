@@ -8,12 +8,12 @@
 .welcome-character { position:relative; perspective:900px; isolation:isolate; padding:0 12px; }
 .welcome-character::before,.welcome-character::after { display:none; }
 .welcome-character video,.welcome-cutout { border-radius:0; transform:none; box-shadow:none; }
-.welcome-cutout { display:block; width:100%; height:auto; aspect-ratio:9/16; pointer-events:none; transform-origin:50% 80%; filter:drop-shadow(12px 18px 14px #12231930) drop-shadow(2px 4px 3px #12231918); transform:rotateY(-5deg) rotateX(2deg); transition:transform 450ms ease,filter 450ms ease; }
+.welcome-cutout { display:block; width:100%; height:auto; aspect-ratio:9/16; pointer-events:none; transform-origin:50% 80%; filter:drop-shadow(10px 14px 8px #12231930); transform:rotateY(-5deg) rotateX(2deg); transition:transform 450ms ease; }
 .welcome-character video.has-cutout { position:absolute; width:calc(100% - 24px); opacity:0; pointer-events:none; }
 .welcome-character video:not(.has-cutout) { visibility:hidden; }
 .welcome-character video:not(.has-cutout) + .welcome-cutout { display:none; }
 .welcome-video-toggle { position:relative; margin-top:18px; }
-@media(hover:hover) and (pointer:fine) { .welcome-character:hover .welcome-cutout { transform:rotateY(3deg) rotateX(-2deg) translateY(-8px) scale(1.025); filter:drop-shadow(18px 26px 18px #12231935) drop-shadow(2px 4px 3px #12231918); } }
+@media(hover:hover) and (pointer:fine) { .welcome-character:hover .welcome-cutout { transform:rotateY(3deg) rotateX(-2deg) translateY(-8px) scale(1.025); } }
 .fc-landing-v2 .fcv2-hero .hero-float-layer { display:none; }
 @media(min-width:901px) {
   .fc-landing-v2 .fcv2-hero .fcv2-copy { width:calc(100% - 410px); max-width:820px; }

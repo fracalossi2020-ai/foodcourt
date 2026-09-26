@@ -1,0 +1,13 @@
+.login-portal { position:fixed; inset:0; width:100vw; height:100dvh; max-width:none; max-height:none; margin:0; padding:24px; border:0; color:#fff; background:radial-gradient(ellipse at center,#183823,#080e0b 72%); overflow:hidden; }
+.login-portal::backdrop { background:#080e0b; }
+.portal-content { position:relative; z-index:1; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+.portal-content p { font-family:var(--font-display); font-size:clamp(1rem,2.4vw,1.7rem); text-align:center; margin:0; }
+.portal-content video { display:block; width:auto; max-width:90vw; height:min(76dvh,850px); object-fit:contain; border-radius:24px; }
+.portal-ring { position:absolute; width:min(78vw,750px); aspect-ratio:1; left:50%; top:50%; border:2px solid #39ff14; border-radius:50%; box-shadow:0 0 60px #39ff1466,inset 0 0 50px #39ff1433; animation:portal-enter 2s ease-out both; }
+.portal-skip,.portal-sound { position:relative; z-index:2; background:#fff; color:#142319; border:1px solid #c5dec9; min-height:44px; border-radius:99px; padding:12px 20px; font-weight:700; }
+dialog.login-portal > .portal-skip { position:absolute!important; top:max(16px,env(safe-area-inset-top))!important; right:16px!important; bottom:auto!important; left:auto!important; }
+.portal-sound[hidden] { display:none; }
+.login-portal.is-welcome { background:radial-gradient(ellipse at center,#254832,#0b1610 75%); }
+@keyframes portal-enter { from { transform:translate(-50%,-50%) scale(.25) rotateX(45deg); opacity:0; } to { transform:translate(-50%,-50%) scale(1.5); opacity:.55; } }
+@media(max-width:600px) { .login-portal { padding:76px 12px 20px; } .portal-content video { height:auto; width:auto; max-width:100%; max-height:68dvh; } .portal-content p { font-size:1rem; } }
+@media(prefers-reduced-motion:reduce) { .portal-ring { animation:none; transform:translate(-50%,-50%); } }

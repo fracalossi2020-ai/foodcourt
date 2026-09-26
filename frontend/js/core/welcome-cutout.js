@@ -1,8 +1,8 @@
 // Remove only neutral background connected to the frame edges, not eyes or logos.
 export function mountWelcomeCutout(video) {
   const canvas = document.createElement('canvas')
-  canvas.width = 360
-  canvas.height = 640
+  canvas.width = 288
+  canvas.height = 512
   canvas.className = 'welcome-cutout'
   canvas.setAttribute('aria-hidden', 'true')
   const ctx = canvas.getContext('2d', { willReadFrequently:true })
@@ -11,14 +11,19 @@ export function mountWelcomeCutout(video) {
   const width = canvas.width, height = canvas.height, count = width * height
   const seen = new Uint8Array(count)
   const queue = new Int32Array(count)
-  let frame = 0, lastTime = -1, lastPaint = 0, stopped = false
-  const draw = now => {
+  let frame = 0, lastTime = -1, stopped = false, visible = true
+  const decodedFrames = typeof video.requestVideoFrameCallback === 'function'
+  const schedule = () => {
+    frame = decodedFrames ? video.requestVideoFrameCallback(draw) : requestAnimationFrame(draw)
+  }
+  const observer = new IntersectionObserver(entries => { visible = entries[0].isIntersecting })
+  observer.observe(video)
+  const draw = (_now, metadata) => {
     if (stopped) return
-    frame = requestAnimationFrame(draw)
-    const rect = canvas.getBoundingClientRect()
-    if (document.hidden || rect.bottom < 0 || rect.top > innerHeight || video.readyState < 2 || video.currentTime === lastTime || now - lastPaint < 50) return
-    lastPaint = now
-    lastTime = video.currentTime
+    schedule()
+    const time = metadata?.mediaTime ?? video.currentTime
+    if (document.hidden || !visible || video.readyState < 2 || time === lastTime) return
+    lastTime = time
     ctx.drawImage(video, 0, 0, width, height)
     const image = ctx.getImageData(0, 0, width, height)
     const pixels = image.data
@@ -45,10 +50,12 @@ export function mountWelcomeCutout(video) {
     ctx.putImageData(image, 0, 0)
     video.classList.add('has-cutout')
   }
-  frame = requestAnimationFrame(draw)
+  schedule()
   return () => {
     stopped = true
-    cancelAnimationFrame(frame)
+    if (decodedFrames) video.cancelVideoFrameCallback(frame)
+    else cancelAnimationFrame(frame)
+    observer.disconnect()
     canvas.remove()
     video.classList.remove('has-cutout')
   }
