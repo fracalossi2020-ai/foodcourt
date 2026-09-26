@@ -62,7 +62,7 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
           <h1>Seu pedido favorito,<br><em>do seu jeito.</em></h1>
           <div class="welcome-character">
             <video id="welcomeVideo" style="visibility:hidden" muted playsinline preload="auto" width="1080" height="1920" aria-label="Personagem FoodCourt animado em repetição">
-              <source src="/assets/videos/welcome-character.mp4#t=1" type="video/mp4">
+              <source src="/assets/videos/welcome-character.mp4?v=2#t=1" type="video/mp4">
             </video>
           </div>
         </div>

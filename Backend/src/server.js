@@ -4815,6 +4815,10 @@ function serveStatic(req, res, pathname) {
       return;
     }
     const ext = path.extname(filePath).toLowerCase();
+    // Public welcome media can be reused on reload; private/API responses stay uncached.
+    const staticCache = pathname === '/assets/videos/welcome-character.mp4'
+      ? 'public, max-age=86400'
+      : 'no-store, no-cache, must-revalidate';
     if (ext === '.mp4' && req.headers.range) {
       const match = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
       const size = fileData.length;
@@ -4836,7 +4840,7 @@ function serveStatic(req, res, pathname) {
         'Accept-Ranges': 'bytes',
         'Content-Range': `bytes ${start}-${end}/${size}`,
         'Content-Length': end - start + 1,
-        'Cache-Control': 'no-store',
+        'Cache-Control': staticCache,
       });
       res.end(fileData.subarray(start, end + 1));
       return;
@@ -4844,7 +4848,7 @@ function serveStatic(req, res, pathname) {
     res.writeHead(200, {
       ...(ext === '.mp4' ? { 'Accept-Ranges': 'bytes', 'Content-Length': fileData.length } : {}),
       "Content-Type": MIME[ext] || "application/octet-stream",
-      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Cache-Control": staticCache,
     });
     res.end(fileData);
   });

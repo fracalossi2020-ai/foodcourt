@@ -6,8 +6,7 @@
 .welcome-video-toggle { display:block; margin:4px auto 0; min-height:44px; padding:8px; font-size:.72rem; color:#42534a; text-decoration:underline; text-underline-offset:3px; }
 .welcome-video-toggle:focus-visible { outline:2px solid #172116; outline-offset:2px; }
 .welcome-character { position:relative; perspective:900px; isolation:isolate; padding:0 12px; }
-.welcome-character::before { content:''; position:absolute; z-index:-1; inset:22% 0 48px; border:2px solid #39ff1470; border-radius:32px; background:linear-gradient(140deg,#e4ffdb,#fff); transform:rotateY(-14deg) rotateX(7deg); box-shadow:18px 22px 45px #12331c20; }
-.welcome-character::after { content:''; position:absolute; z-index:-1; bottom:42px; left:5%; width:90%; height:28px; border-radius:50%; background:#172b2240; filter:blur(14px); }
+.welcome-character::before,.welcome-character::after { display:none; }
 .welcome-character video { border-radius:34% 34% 18px 18px; transform:rotateY(-7deg) rotateX(2deg) translateZ(35px); transform-origin:center bottom; box-shadow:14px 12px 28px #13271b26; transition:transform 500ms ease; }
 .welcome-video-toggle { position:relative; margin-top:18px; }
 @media(hover:hover) { .welcome-character:hover video { transform:rotateY(0deg) translateZ(52px) translateY(-6px); } }
@@ -18,14 +17,14 @@
   .fc-landing-v2 .fcv2-copy .fcv2-proof article { border:0; padding:0; }
 }
 /* Larger stage, stacked on narrower screens to protect reading space. */
-.fc-landing-v2 .welcome-intro { grid-template-columns:minmax(0,1fr) minmax(220px,280px); gap:28px; margin:36px 0 24px; }
+.fc-landing-v2 .welcome-intro { grid-template-columns:minmax(0,1fr) minmax(220px,310px); gap:28px; margin:36px 0 24px; }
 @media(max-width:1200px) and (min-width:901px) {
   .fc-landing-v2 .welcome-intro { grid-template-columns:minmax(0,1fr); }
-  .welcome-character { width:250px; justify-self:center; }
+  .welcome-character { width:280px; justify-self:center; }
 }
 @media(max-width:600px) {
   .fc-landing-v2 .welcome-intro { grid-template-columns:minmax(0,1fr); gap:26px; }
   .fc-landing-v2 .welcome-intro h1 { font-size:clamp(2rem,9vw,2.8rem); }
-  .welcome-character { width:min(76%,270px); justify-self:center; }
+  .welcome-character { width:min(84%,300px); justify-self:center; }
 }
 @media(prefers-reduced-motion:reduce) { .welcome-character video,.welcome-character:hover video { transition:none; transform:none; } }
