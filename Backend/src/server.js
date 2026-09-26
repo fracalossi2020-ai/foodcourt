@@ -4816,7 +4816,7 @@ function serveStatic(req, res, pathname) {
     }
     const ext = path.extname(filePath).toLowerCase();
     // Public welcome media can be reused on reload; private/API responses stay uncached.
-    const staticCache = pathname === '/assets/videos/welcome-character.mp4'
+    const staticCache = ['/assets/videos/welcome-character.mp4', '/assets/videos/welcome-loop-v3.mp4'].includes(pathname)
       ? 'public, max-age=86400'
       : 'no-store, no-cache, must-revalidate';
     if (ext === '.mp4' && req.headers.range) {

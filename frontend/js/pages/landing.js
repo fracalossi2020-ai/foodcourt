@@ -61,8 +61,8 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
         <div class="welcome-intro">
           <h1>Seu pedido favorito,<br><em>do seu jeito.</em></h1>
           <div class="welcome-character">
-            <video id="welcomeVideo" style="visibility:hidden" muted playsinline preload="auto" width="1080" height="1920" aria-label="Personagem FoodCourt animado em repetição">
-              <source src="/assets/videos/welcome-character.mp4?v=2#t=1" type="video/mp4">
+            <video id="welcomeVideo" loop muted playsinline preload="auto" width="540" height="960" aria-label="Personagem FoodCourt animado em repetição">
+              <source src="/assets/videos/welcome-loop-v3.mp4" type="video/mp4">
             </video>
           </div>
         </div>
@@ -115,67 +115,10 @@ function mountWelcomeVideo(view) {
   const video = view.querySelector('#welcomeVideo')
   if (!video) return
   video.muted = true
-  // Skip the opening still on first playback and every subsequent repetition.
-  const startTime = 1
-  const endTime = 7
-  let transitioning = false
-  let blend = null
-  let blendAnimation = null
-  video.loop = false
-  const reveal = () => {
-    if (video.currentTime >= startTime) video.style.visibility = 'visible'
-    if (transitioning && !video.seeking && video.currentTime < endTime) {
-      transitioning = false
-      if (blend) {
-        blendAnimation = blend.animate([{ opacity:1 }, { opacity:0 }], { duration:240, fill:'forwards' })
-        blendAnimation.onfinish = () => { blend?.remove(); blend = null }
-      }
-    }
-  }
-  video.addEventListener('seeked', reveal)
-  video.addEventListener('timeupdate', reveal)
-  const seekStart = () => {
-    video.style.visibility = 'hidden'
-    video.currentTime = startTime
-  }
-  video.addEventListener('loadedmetadata', seekStart, { once:true })
-  if (video.readyState >= 1) seekStart()
+  video.loop = true
   let inView = false
   const autoPlay = !matchMedia('(prefers-reduced-motion: reduce)').matches && !navigator.connection?.saveData
-  const play = () => {
-    if (video.readyState >= 1 && video.currentTime < startTime) seekStart()
-    video.play().catch(() => {})
-  }
-  const repeat = () => {
-    if (transitioning) return
-    transitioning = true
-    // Hold the last decoded frame over the seek, then dissolve into the new loop.
-    blendAnimation?.cancel()
-    blend?.remove()
-    blend = document.createElement('canvas')
-    blend.width = 360
-    blend.height = 640
-    blend.setAttribute('aria-hidden', 'true')
-    const context = blend.getContext('2d')
-    if (context && video.readyState >= 2) {
-      context.drawImage(video, 0, 0, 360, 640)
-      const style = getComputedStyle(video)
-      Object.assign(blend.style, {
-        position:'absolute', left:`${video.offsetLeft}px`, top:`${video.offsetTop}px`,
-        width:`${video.offsetWidth}px`, height:`${video.offsetHeight}px`,
-        transform:style.transform, transformOrigin:style.transformOrigin,
-        borderRadius:style.borderRadius, pointerEvents:'none', zIndex:'2',
-      })
-      video.parentElement.append(blend)
-    }
-    video.currentTime = startTime
-    if (inView && autoPlay && !document.hidden) play()
-  }
-  const trimTail = () => {
-    if (video.currentTime >= endTime && !video.seeking) repeat()
-  }
-  video.addEventListener('timeupdate', trimTail)
-  video.addEventListener('ended', repeat)
+  const play = () => { video.play().catch(() => {}) }
   const observer = new IntersectionObserver(entries => {
     inView = entries[0].isIntersecting
     if (!inView) video.pause()
@@ -189,14 +132,7 @@ function mountWelcomeVideo(view) {
   document.addEventListener('visibilitychange', visibility)
   window.__fcWelcomeCleanup = () => {
     video.pause()
-    blendAnimation?.cancel()
-    blend?.remove()
     observer.disconnect()
-    video.removeEventListener('ended', repeat)
-    video.removeEventListener('loadedmetadata', seekStart)
-    video.removeEventListener('seeked', reveal)
-    video.removeEventListener('timeupdate', reveal)
-    video.removeEventListener('timeupdate', trimTail)
     document.removeEventListener('visibilitychange', visibility)
     window.__fcWelcomeCleanup = null
   }
