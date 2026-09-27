@@ -27,6 +27,7 @@ export function mountMascot(host) {
   const sphere = new THREE.SphereGeometry(1, 24, 18)
   const box = new THREE.BoxGeometry(1, 1, 1)
   const body = new THREE.Group()
+  const customGeometries = []
   scene.add(body)
   const ellipsoid = (parent, material, position, scale) => {
     const mesh = new THREE.Mesh(sphere, materials[material])
@@ -51,10 +52,38 @@ export function mountMascot(host) {
   }
   ellipsoid(body, 'black', [0, 1.95, 0], [.67, .94, .39])
   ellipsoid(body, 'black', [0, 1.7, .29], [.54, .7, .16])
-  block(body, 'green', [0, 1.48, .4], [1.03, .11, .065])
-  for (const x of [-.4, .4]) {
-    block(body, 'green', [x, 2.28, .38], [.095, .72, .055], x * -.24)
-    ellipsoid(body, 'green', [x, 2.04, .46], [.065, .065, .025])
+  const shellZ = (x, y, rx, ry, rz, cy, cz = 0) =>
+    cz + rz * Math.sqrt(Math.max(0, 1 - (x / rx) ** 2 - ((y - cy) / ry) ** 2))
+  const shirtZ = (x, y) => shellZ(x, y, .67, .94, .39, 1.95)
+  const apronZ = (x, y) => Math.max(shirtZ(x, y),
+    (x / .54) ** 2 + ((y - 1.7) / .7) ** 2 <= 1 ? shellZ(x, y, .54, .7, .16, 1.7, .29) : 0)
+  // Ribbons are sampled onto the garment instead of floating planar boxes.
+  const ribbon = (centerX, y0, y1, ribbonWidth, surface) => {
+    const positions = [], indices = []
+    const segments = 28
+    for (let i = 0; i <= segments; i++) {
+      const y = y0 + (y1 - y0) * i / segments
+      for (const side of [-1, 1]) {
+        const x = centerX + side * ribbonWidth / 2
+        positions.push(x, y, surface(x, y) + .009)
+      }
+      if (i < segments) { const k = i * 2; indices.push(k, k + 1, k + 2, k + 1, k + 3, k + 2) }
+    }
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setIndex(indices)
+    geometry.computeVertexNormals()
+    customGeometries.push(geometry)
+    body.add(new THREE.Mesh(geometry, materials.green))
+  }
+  for (const x of [-.37, .37]) {
+    ribbon(x, 2.03, 2.7, .095, apronZ)
+    ellipsoid(body, 'green', [x, 2.05, apronZ(x, 2.05) + .016], [.057, .057, .02])
+  }
+  // Belt follows the apron across its curved front.
+  for (let i = 0; i < 22; i++) {
+    const x = -.48 + i * .96 / 21
+    ribbon(x, 1.44, 1.54, .048, apronZ)
   }
   // Simple house badge, built from geometry rather than a flat character image.
   const badge = (parent, x, y, z, size) => {
@@ -68,6 +97,20 @@ export function mountMascot(host) {
     block(parent, 'white', [x + size * .16, y - size * .2, z + .02], [size * .04, size * .22, .025])
   }
   badge(body, 0, 1.98, .46, .54)
+  // Seat all badge vertices on the apron, including the sides seen in profile.
+  body.children.slice(-8).forEach(mesh => {
+    mesh.updateMatrix()
+    const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrix)
+    const vertices = geometry.attributes.position
+    for (let i = 0; i < vertices.count; i++) {
+      const x = vertices.getX(i), y = vertices.getY(i)
+      vertices.setZ(i, apronZ(x, y) + .01 + Math.max(0, vertices.getZ(i) - .445))
+    }
+    geometry.computeVertexNormals()
+    customGeometries.push(geometry)
+    mesh.geometry = geometry
+    mesh.position.set(0, 0, 0); mesh.scale.set(1, 1, 1); mesh.rotation.set(0, 0, 0)
+  })
   const arms = []
   for (const side of [-1, 1]) {
     const arm = new THREE.Group()
@@ -91,31 +134,44 @@ export function mountMascot(host) {
   const eyelids = []
   for (const x of [-.29, .29]) {
     const eye = new THREE.Group()
-    eye.position.set(x, .13, .553)
+    eye.position.set(x, .13, .558)
     head.add(eye)
-    ellipsoid(eye, 'white', [0, 0, 0], [.205, .245, .11])
-    ellipsoid(eye, 'iris', [0, -.005, .087], [.117, .15, .047])
-    ellipsoid(eye, 'pupil', [0, -.005, .125], [.063, .093, .018])
-    ellipsoid(eye, 'white', [-.031, .057, .14], [.029, .038, .009])
+    ellipsoid(eye, 'white', [0, 0, 0], [.205, .21, .065])
+    ellipsoid(eye, 'iris', [0, -.005, .051], [.117, .139, .022])
+    ellipsoid(eye, 'pupil', [0, -.005, .07], [.065, .09, .012])
+    ellipsoid(eye, 'white', [-.031, .057, .08], [.026, .032, .008])
     eyelids.push(eye)
     const brow = ellipsoid(head, 'hair', [x, .44, .55], [.23, .056, .055])
     brow.rotation.z = x * -.32
   }
-  ellipsoid(head, 'skin', [0, -.1, .66], [.145, .16, .17])
+  ellipsoid(head, 'skin', [0, -.1, .62], [.13, .14, .13])
   const smileCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-.3, -.34, .57), new THREE.Vector3(0, -.46, .62), new THREE.Vector3(.3, -.34, .57),
+    new THREE.Vector3(-.3, -.30, .544), new THREE.Vector3(0, -.4, .572), new THREE.Vector3(.3, -.30, .544),
   ])
   const smileGeometry = new THREE.TubeGeometry(smileCurve, 20, .025, 6, false)
   head.add(new THREE.Mesh(smileGeometry, materials.mouth))
   for (let i = 0; i < 9; i++) {
     const x = (i - 4) * .155
-    const lock = ellipsoid(head, 'hair', [x, .58 - Math.abs(x) * .2, .42], [.22, .22, .23])
-    lock.rotation.z = -.5
+    const lock = ellipsoid(head, 'hair', [x, .52 - Math.abs(x) * .18 + Math.sin(i) * .04, .42], [.24, .13, .21])
+    lock.rotation.z = -.38 + i * .035
   }
   ellipsoid(head, 'black', [0, .66, -.04], [.81, .43, .65])
   ellipsoid(head, 'green', [0, .55, .56], [.82, .075, .56])
   ellipsoid(head, 'black', [0, .58, .56], [.82, .06, .56])
   badge(head, 0, .8, .55, .38)
+  head.children.slice(-8).forEach(mesh => {
+    mesh.updateMatrix()
+    const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrix)
+    const vertices = geometry.attributes.position
+    for (let i = 0; i < vertices.count; i++) {
+      const x = vertices.getX(i), y = vertices.getY(i)
+      vertices.setZ(i, shellZ(x, y, .81, .43, .65, .66, -.04) + .008 + Math.max(0, vertices.getZ(i) - .535))
+    }
+    geometry.computeVertexNormals()
+    customGeometries.push(geometry)
+    mesh.geometry = geometry
+    mesh.position.set(0, 0, 0); mesh.scale.set(1, 1, 1); mesh.rotation.set(0, 0, 0)
+  })
 
   let visible = true, disposed = false, dragging = false, lastX = 0, yaw = -.12
   let wavingUntil = 0, lastFrame = 0, frame = 0
@@ -163,6 +219,7 @@ export function mountMascot(host) {
       observer.disconnect()
       resizer.disconnect()
       sphere.dispose(); box.dispose(); smileGeometry.dispose()
+      customGeometries.forEach(geometry => geometry.dispose())
       Object.values(materials).forEach(material => material.dispose())
       renderer.dispose()
       renderer.domElement.remove()
