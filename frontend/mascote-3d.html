@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FoodCourt · Estúdio do mascote 3D</title>
+  <link rel="stylesheet" href="/css/pages/mascot-studio.css">
+</head>
+<body>
+  <main>
+    <section class="studio-copy">
+      <a href="/">← Voltar ao FoodCourt</a>
+      <p class="eyebrow">FOODCOURT / ESTÚDIO 3D</p>
+      <h1>Um novo jeito<br>de dar <em>boas-vindas.</em></h1>
+      <p>Personagem 3D de verdade: arraste para ver de todos os lados e experimente o aceno.</p>
+      <div class="actions"><button id="wave" type="button">Acenar</button><button id="reset" type="button">Vista frontal</button></div>
+      <p class="note">Protótipo estilizado construído com Three.js. Ainda não é uma reprodução fiel do personagem original. A landing não foi alterada.</p>
+      <p id="status" role="status">Preparando o personagem…</p>
+    </section>
+    <section class="studio-stage" aria-label="Visualização interativa do personagem"><div id="mascot"></div><span>ARRASTE PARA GIRAR · 3D EM TEMPO REAL</span></section>
+  </main>
+  <script type="module" src="/js/mascot-studio.js"></script>
+</body>
+</html>
