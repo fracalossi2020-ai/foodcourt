@@ -1,98 +1,66 @@
-import { mountWelcomeCutout } from './welcome-cutout.js'
 const pendingKey = 'fc:portal-welcome'
-let active = null
+let active = false
 export function markPortalWelcome() {
-  try { sessionStorage.setItem(pendingKey, String(Date.now())) } catch { /* Storage may be disabled. */ }
+  try { sessionStorage.setItem(pendingKey, String(Date.now())) } catch { /* Optional presentation. */ }
 }
 export function clearPortalWelcome() {
-  try { sessionStorage.removeItem(pendingKey) } catch { /* Optional presentation state. */ }
+  try { sessionStorage.removeItem(pendingKey) } catch { /* Optional presentation. */ }
 }
-export async function showPortalWelcome() {
+export function showPortalWelcome() {
   let timestamp
   try { timestamp = Number(sessionStorage.getItem(pendingKey)) } catch { return }
   clearPortalWelcome()
-  if (timestamp && Date.now() - timestamp < 15 * 60 * 1000) {
-    const route = location.hash
-    await showFilm(false)
-    if (location.hash === route) await showFilm(true)
+  if (active || !timestamp || Date.now() - timestamp > 15 * 60 * 1000) return
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.connection?.saveData) return
+  active = true
+  const previous = document.activeElement
+  const dialog = document.createElement('dialog')
+  dialog.className = 'login-portal'
+  dialog.setAttribute('aria-label', 'Bem-vindo ao FoodCourt')
+  dialog.innerHTML = '<div class="portal-stage"><div class="portal-door" aria-hidden="true"></div><video class="portal-traveler" muted playsinline preload="auto" aria-label="Personagem convidando você a entrar"><source src="/assets/videos/portal-entry-light.mp4" type="video/mp4"></video></div><p class="portal-caption">Bem-vindo ao FoodCourt</p><button class="portal-skip" type="button">Ir para o início</button>'
+  const video = dialog.querySelector('video')
+  video.muted = true
+  let done = false, started = false, timer = 0
+  let frame = 0
+  const close = () => {
+    if (done) return
+    done = true
+    clearTimeout(timer)
+    clearTimeout(loadTimeout)
+    cancelAnimationFrame(frame)
+    video.pause()
+    video.removeAttribute('src')
+    video.querySelector('source')?.remove()
+    video.load()
+    dialog.close()
+    dialog.remove()
+    window.removeEventListener('hashchange', close)
+    previous?.focus?.()
+    active = false
   }
-}
-function showFilm(welcome) {
-  if (active) return active
-  active = new Promise(resolve => {
-    const previous = document.activeElement
-    const dialog = document.createElement('dialog')
-    dialog.className = `login-portal ${welcome ? 'is-welcome' : ''}`
-    dialog.setAttribute('aria-label', welcome ? 'Boas-vindas ao FoodCourt' : 'Entrando no FoodCourt')
-    dialog.innerHTML = `<div class="portal-ring" aria-hidden="true"></div><div class="portal-content"><p>${welcome ? 'Que bom ter você aqui!' : 'Seu próximo favorito está te esperando'}</p><video playsinline preload="auto" ${welcome ? '' : 'muted'} aria-label="${welcome ? 'Mensagem de boas-vindas' : 'Personagem convidando você a entrar'}"><source src="/assets/videos/${welcome ? 'portal-welcome' : 'portal-invite'}.mp4${welcome ? '#t=1' : ''}" type="video/mp4"></video><button class="portal-sound" type="button" hidden>Ativar som</button></div><button class="portal-skip" type="button">${welcome ? 'Continuar no início' : 'Pular animação'}</button>`
-    const video = dialog.querySelector('video')
-    const tunnel = dialog.querySelector('.portal-ring')
-    for (let i = 0; i < 7; i++) {
-      const ring = document.createElement('i')
-      ring.style.setProperty('--step', i)
-      tunnel.append(ring)
-    }
-    video.style.visibility = 'hidden'
-    dialog.querySelector('.portal-sound')?.remove()
-    let cleanupCutout = () => {}
-    const resumeAudio = event => {
-      if (!welcome || event.target.closest('.portal-skip')) return
-      video.muted = false
-      video.volume = 1
-      video.play().catch(() => {})
-    }
-    let done = false
-    const close = () => {
-      if (done) return
-      done = true
-      clearTimeout(timeout)
-      video.pause()
-      cleanupCutout()
-      dialog.close()
-      dialog.remove()
-      window.removeEventListener('hashchange', close)
-      previous?.focus?.()
-      active = null
-      resolve()
-    }
-    const timeout = setTimeout(close, 20000)
-    let frameId = 0
-    const checkEnd = () => {
-      if (done) return
-      if (!welcome && video.currentTime >= 4) { close(); return }
-      frameId = requestAnimationFrame(checkEnd)
-    }
-    video.addEventListener('play', () => {
-      cancelAnimationFrame(frameId)
-      checkEnd()
-    })
-    dialog.addEventListener('close', () => cancelAnimationFrame(frameId), { once:true })
-    dialog.querySelector('.portal-skip').onclick = close
-    dialog.addEventListener('cancel', event => { event.preventDefault(); close() })
-    video.addEventListener('ended', close)
-    video.addEventListener('error', close)
-    video.querySelector('source').addEventListener('error', close)
-    video.muted = !welcome
-    video.volume = 1
-    dialog.addEventListener('pointerdown', resumeAudio)
-    dialog.addEventListener('keydown', resumeAudio)
-    document.body.append(dialog)
-    dialog.showModal()
-    if (!welcome) cleanupCutout = mountWelcomeCutout(video)
-    window.addEventListener('hashchange', close)
-    const begin = () => video.play().catch(() => {
-      if (welcome) {
-        video.muted = true
-        video.play().catch(() => {})
-      } else close()
-    })
-    video.addEventListener('loadedmetadata', () => {
-      video.addEventListener('seeked', () => {
-        video.style.visibility = 'visible'
-        begin()
-      }, { once:true })
-      video.currentTime = 1
-    }, { once:true })
+  const watch = () => {
+    if (done) return
+    if (video.currentTime >= 3) { close(); return }
+    frame = requestAnimationFrame(watch)
+  }
+  video.addEventListener('playing', () => {
+    if (started || done) return
+    started = true
+    clearTimeout(loadTimeout)
+    dialog.classList.add('is-traveling')
+    timer = setTimeout(close, 3000)
+    watch()
   })
-  return active
+  video.addEventListener('loadeddata', () => {
+    if (!done) video.play().catch(close)
+  }, { once:true })
+  video.addEventListener('ended', close)
+  video.addEventListener('error', close)
+  video.querySelector('source').addEventListener('error', close)
+  dialog.querySelector('button').onclick = close
+  dialog.addEventListener('cancel', event => { event.preventDefault(); close() })
+  const loadTimeout = setTimeout(close, 3500)
+  document.body.append(dialog)
+  dialog.showModal()
+  window.addEventListener('hashchange', close)
 }
