@@ -1,4 +1,5 @@
 import './core/app-install.js';
+import { playLoginEntrance } from './core/login-entrance.js';
 import { mountHeaderMotion } from './core/header-motion.js';
 import { api } from "./core/api.js";
 import { store, hydrateBootstrap, setAuthUser } from "./core/store.js";
@@ -60,6 +61,7 @@ let currentPage = null;
 let currentRoutePage = null;
 let currentRoutePath = null;
 let authUser = null;
+let entrancePending = false;
 let handlingUnauthorized = false;
 let realtimeSource = null;
 let realtimeRefreshTimer = null;
@@ -192,6 +194,17 @@ async function navigate() {
       if (!(await ensureAuth())) {
         location.hash = `#/login?redirect=${encodeURIComponent(target)}`;
         return;
+      }
+      let oauthEntrance = false;
+      try {
+        const started = Number(sessionStorage.getItem('fc:login-entrance'));
+        sessionStorage.removeItem('fc:login-entrance');
+        oauthEntrance = started > 0 && Date.now() - started < 15 * 60 * 1000;
+      } catch { /* Storage can be unavailable in private browsing. */ }
+      if (entrancePending || oauthEntrance) {
+        entrancePending = false;
+        await playLoginEntrance();
+        if (location.hash.replace(/^#/, '') !== raw) return;
       }
     }
 
@@ -608,6 +621,7 @@ function wireVisualFeedback() {
 
 function wireAuthEvents() {
   window.addEventListener("fc:auth", (e) => {
+    entrancePending = Boolean(e.detail);
     authUser = e.detail;
     handlingUnauthorized = false;
     setAuthUser(e.detail);

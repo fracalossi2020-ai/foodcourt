@@ -471,6 +471,7 @@ function bind(view, query) {
 
   view.querySelectorAll('[data-social]').forEach(button => button.addEventListener('click', () => {
     const redirect = encodeURIComponent(redirectAfter || '/inicio')
+    try { sessionStorage.setItem('fc:login-entrance', String(Date.now())) } catch { /* Optional animation marker. */ }
     window.location.assign(`/api/auth/oauth/${button.dataset.social}?redirect=${redirect}`)
   }))
 
