@@ -1,5 +1,4 @@
 import './core/app-install.js';
-import { showPortalWelcome } from './core/login-portal.js';
 import { mountHeaderMotion } from './core/header-motion.js';
 import { api } from "./core/api.js";
 import { store, hydrateBootstrap, setAuthUser } from "./core/store.js";
@@ -213,7 +212,6 @@ async function navigate() {
       const boot = await getBoot();
       await mod.render(view, boot, params ? { id: params[1] } : {}, query);
       enhanceInternalView(view);
-      if (path === '/inicio') showPortalWelcome();
     }
     updateNav(path, query);
     playPageMotion(view);
