@@ -62,5 +62,6 @@ export function showPortalWelcome() {
   const loadTimeout = setTimeout(close, 3500)
   document.body.append(dialog)
   dialog.showModal()
+  video.play().catch(close)
   window.addEventListener('hashchange', close)
 }
