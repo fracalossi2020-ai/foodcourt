@@ -151,6 +151,7 @@ async function navigate() {
     return;
   }
   navigating = true;
+  let entranceReady;
   const view = document.getElementById("view");
   if (!view.innerHTML.trim()) {
     view.innerHTML = `<div class="page route-loading" role="status"><i></i><b>Carregando FoodCourt</b><span>Preparando sua experiência...</span></div>`;
@@ -174,6 +175,19 @@ async function navigate() {
       return;
     }
     const params = path.match(route.pattern);
+    let oauthEntrance = false;
+    if (!route.public) {
+      try {
+        const started = Number(sessionStorage.getItem('fc:login-entrance'));
+        sessionStorage.removeItem('fc:login-entrance');
+        oauthEntrance = started > 0 && Date.now() - started < 15 * 60 * 1000;
+      } catch { /* Optional animation marker. */ }
+      if (entrancePending || oauthEntrance) {
+        entrancePending = false;
+        const ready = new Promise(resolve => { entranceReady = resolve; });
+        void playLoginEntrance({ ready });
+      }
+    }
 
     if (route.landing) {
       document.body.classList.add("landing-mode");
@@ -195,17 +209,6 @@ async function navigate() {
         location.hash = `#/login?redirect=${encodeURIComponent(target)}`;
         return;
       }
-      let oauthEntrance = false;
-      try {
-        const started = Number(sessionStorage.getItem('fc:login-entrance'));
-        sessionStorage.removeItem('fc:login-entrance');
-        oauthEntrance = started > 0 && Date.now() - started < 15 * 60 * 1000;
-      } catch { /* Storage can be unavailable in private browsing. */ }
-      if (entrancePending || oauthEntrance) {
-        entrancePending = false;
-        await playLoginEntrance();
-        if (location.hash.replace(/^#/, '') !== raw) return;
-      }
     }
 
     const isSamePage =
@@ -222,8 +225,11 @@ async function navigate() {
     if (route.public) {
       await mod.render(view, null, { mode: route.mode }, query);
     } else {
-      const boot = await getBoot();
-      await mod.render(view, boot, params ? { id: params[1] } : {}, query);
+      // Fetch independent dashboard resources together, not in series.
+      const [boot, homeData] = await Promise.all([
+        getBoot(), route.page === 'home' ? api.home() : Promise.resolve(null),
+      ]);
+      await mod.render(view, boot, { ...(params ? { id: params[1] } : {}), homeData }, query);
       enhanceInternalView(view);
     }
     updateNav(path, query);
@@ -244,6 +250,7 @@ async function navigate() {
         ?.addEventListener("click", () => navigate());
     }
   } finally {
+    entranceReady?.();
     navigating = false;
     if (navigationQueued) {
       navigationQueued = false;

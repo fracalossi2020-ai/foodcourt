@@ -176,7 +176,8 @@ export function mountMascot(host) {
     feet.forEach(foot => { foot.rotation.x = 0 })
     arms.forEach(arm => { arm.rotation.x = 0 })
     Object.values(materials).forEach(material => { material.clippingPlanes = null })
-    camera.position.z = 10
+    camera.position.set(0, 2.6, 10)
+    camera.lookAt(0, 2.3, 0)
   }
   let visible = true, disposed = false, dragging = false, lastX = 0, yaw = -.12
   let wavingUntil = 0, lastFrame = 0, frame = 0
@@ -211,12 +212,15 @@ export function mountMascot(host) {
     body.rotation.y = yaw
     body.position.y = reduced.matches ? 0 : Math.sin(t * 1.5) * .025
     if (portalStart >= 0) {
-      portalElapsed += delta
+      portalElapsed += delta * 1.5
       const elapsed = portalElapsed
       const progress = smooth((elapsed - 1.3) / 3.3)
       portal.visible = true
-      camera.position.z = 10 + 2 * smooth(elapsed / 1.2)
-      portal.scale.setScalar(Math.max(.001, smooth(elapsed / .85) * (1 - smooth((elapsed - 4.9) / .9))))
+      const flyThrough = smooth((elapsed - 4.35) / 1.45)
+      camera.position.set(1.35 * flyThrough, 2.6 - .3 * flyThrough, 10 - 9.4 * flyThrough)
+      camera.lookAt(1.35 * flyThrough, 2.3, -1.25)
+      // Grow the aperture and move into it; never close it behind the character.
+      portal.scale.setScalar(Math.max(.001, smooth(elapsed / .85)) * (1 + flyThrough * Math.max(3, camera.aspect * 2)))
       // Approach the center first, then cross straight through. A diagonal
       // continuation used to leave the head/arm outside the oval after clipping.
       const align = smooth(progress / .42)
@@ -253,7 +257,6 @@ export function mountMascot(host) {
         body.visible = false
       }
       if (elapsed > 5.8) {
-        portal.visible = false
         portalStart = -1
         host.dispatchEvent(new CustomEvent('mascot:portal-complete'))
       }
@@ -294,6 +297,7 @@ export function mountMascot(host) {
     },
     reset() { resetPortal(); yaw = -.12; demoStart = -1; wavingUntil = 0 },
     dispose() {
+      if (disposed) return
       disposed = true
       cancelAnimationFrame(frame)
       observer.disconnect()

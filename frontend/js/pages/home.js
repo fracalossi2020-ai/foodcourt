@@ -10,9 +10,9 @@ let homeSliderTimer=null
 export function cleanup(){homeEffectsCleanup?.();homeEffectsCleanup=null;clearInterval(homeSliderTimer);homeSliderTimer=null}
 
 export async function render(view, boot, params = {}, query = new URLSearchParams()) {
-  view.innerHTML = `<div class="page consumer-page"><div class="home-intro skeleton-intro"><div class="skel" style="width:280px;height:30px"></div><div class="skel" style="width:190px;height:15px;margin-top:10px"></div></div>${skeletonCards(4)}</div>`
+  if (!params.homeData) view.innerHTML = `<div class="page consumer-page"><div class="home-intro skeleton-intro"><div class="skel" style="width:280px;height:30px"></div><div class="skel" style="width:190px;height:15px;margin-top:10px"></div></div>${skeletonCards(4)}</div>`
   let data
-  try { data = await api.home() } catch { view.innerHTML = `<div class="page">${errorState(() => render(view, boot, params, query))}</div>`; return }
+  try { data = params.homeData || await api.home() } catch { view.innerHTML = `<div class="page">${errorState(() => render(view, boot, params, query))}</div>`; return }
 
   const selectedCategory = validCategory(query.get('category') || 'all', boot.categories)
 

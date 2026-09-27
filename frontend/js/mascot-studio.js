@@ -1,16 +1,19 @@
 import { mountMascot } from './core/mascot-three.js'
+import { playLoginEntrance } from './core/login-entrance.js'
 try {
   const mascot = mountMascot(document.querySelector('#mascot'))
   let entering = false
   document.querySelector('#wave').onclick = () => mascot.wave()
   document.querySelector('#demo').onclick = () => mascot.demo()
-  document.querySelector('#portal').onclick = () => {
+  document.querySelector('#portal').onclick = async () => {
     if (entering) return
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) { openDashboard(); return }
     entering = true
     document.querySelectorAll('button').forEach(button => { button.disabled = true })
     document.querySelector('#status').textContent = 'Abrindo o portal…'
-    mascot.portal()
+    mascot.dispose()
+    await playLoginEntrance()
+    openDashboard()
   }
   document.querySelector('#mascot').addEventListener('mascot:portal-complete', () => {
     if (!entering) return
