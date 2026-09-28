@@ -50,13 +50,13 @@ body.landing-mode .fc-landing-v2 { width:100%; max-width:none; margin:0; border-
 .fc-landing-v2 .fcv2-copy > p { max-width:48ch; }
 @media(min-width:1201px) {
   .fc-landing-v2 .fcv2-hero .fcv2-copy {
-    display:grid; grid-template-columns:minmax(290px,1.15fr) minmax(200px,.85fr);
+    display:grid; grid-template-columns:minmax(290px,580px) minmax(200px,300px);
     gap:24px 24px; align-items:center;
   }
   .fc-landing-v2 .fcv2-copy .welcome-intro { display:contents; }
   .fc-landing-v2 .fcv2-copy .fcv2-pill { grid-column:1; justify-self:start; font-size:.75rem; }
   .fc-landing-v2 .welcome-intro h1 { grid-column:1; font-size:clamp(2.6rem,3.3vw,3.9rem); margin:0; }
-  .fc-landing-v2 .welcome-character { grid-column:2; grid-row:1 / 5; padding:0; width:100%; max-width:280px; justify-self:end; margin-right:12px; }
+  .fc-landing-v2 .welcome-character { grid-column:2; grid-row:1 / 5; padding:0; width:100%; max-width:300px; justify-self:start; margin:0; }
   .fc-landing-v2 .fcv2-copy > p { grid-column:1; margin:0; font-size:1rem; line-height:1.7; }
   .fc-landing-v2 .fcv2-actions { grid-column:1; margin:0; gap:12px; flex-wrap:wrap; }
   .fc-landing-v2 .fcv2-actions a,.fc-landing-v2 .fcv2-actions button { padding:0 18px; height:52px; }

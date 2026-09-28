@@ -105,8 +105,9 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
   if (location.hash.replace(/^#/, '').split('?')[0] === '/login') {
     requestAnimationFrame(() => {
       const login = view.querySelector('.fcv2-login')
-      login?.scrollIntoView({ behavior:'smooth', block:'center' })
-      setTimeout(() => login?.querySelector('input[name="email"]')?.focus(), 250)
+      if (matchMedia('(min-width:901px)').matches) window.scrollTo({ top:0, behavior:'instant' })
+      else login?.scrollIntoView({ behavior:'smooth', block:'start' })
+      setTimeout(() => login?.querySelector('input[name="email"]')?.focus({ preventScroll:true }), 250)
     })
   }
 }
