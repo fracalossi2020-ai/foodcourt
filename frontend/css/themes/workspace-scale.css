@@ -1,0 +1,25 @@
+/* Use wide displays for app workspaces; preserve mobile and focused forms. */
+@media(min-width:1001px) {
+  body.app-mode .main { width:100%; max-width:1920px; padding-inline:clamp(24px,3vw,64px)!important; }
+  body.app-mode .header .header-inner { width:100%; max-width:1920px; padding-inline:clamp(24px,3vw,64px)!important; }
+  body.app-mode :is(.partner-shell,.admin-page,.admin-shell,.profile-page,.consumer-page) { width:100%; max-width:none; min-width:0; }
+  body.app-mode .partner-shell { grid-template-columns:300px minmax(0,1fr); gap:28px!important; }
+  body.app-mode .partner-main { min-width:0; width:100%; max-width:none; }
+  body.app-mode .partner-sidebar nav a > b { font-size:15px; line-height:1.35; }
+  body.app-mode .partner-sidebar nav a > b small { font-size:12px; line-height:1.4; }
+  body.app-mode .partner-sidebar nav a { min-height:66px; }
+  body.app-mode .partner-user b { font-size:15px; }
+  body.app-mode .partner-user small { font-size:12px; }
+  body.app-mode .partner-main :is(.partner-head p,.partner-panel p,.partner-empty p,.partner-mobile-context span) { font-size:15px; line-height:1.6; }
+  body.app-mode .partner-main :is(.partner-tabs a,.partner-tabs button,.partner-filters button,.btn) { font-size:14px; min-height:44px; }
+  body.app-mode .partner-main :is(th,td) { font-size:14px; line-height:1.5; }
+  body.app-mode .partner-main :is(input,select,textarea) { font-size:15px; }
+  body.app-mode .partner-main :is(.state-box h3,.partner-empty h3) { font-size:20px; }
+  body.app-mode .partner-main .state-box p { font-size:15px; line-height:1.6; }
+  body.app-mode .partner-order-flow { padding:18px 24px; gap:16px; }
+  body.app-mode .partner-order-flow span { font-size:13px; }
+  body.app-mode .partner-order-flow i { width:30px; height:30px; font-size:12px; }
+}
+@media(min-width:1600px) {
+  body.app-mode .partner-shell { grid-template-columns:320px minmax(0,1fr); gap:32px!important; }
+}
