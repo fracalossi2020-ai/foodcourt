@@ -56,7 +56,7 @@ body.app-mode .header-loc .chev .fc-icon {
 }
 
 html[data-theme="dark"] body.app-mode .header-loc .loc-emoji {
-  border-color: #39ff14;
+  border-color: #087a3e;
   background: #183024;
   color: #4ad17f;
 }
@@ -98,12 +98,12 @@ html[data-theme="dark"]
   place-items: center;
   overflow: visible;
   border: 1px solid
-    color-mix(in srgb, var(--consumer-green, #39ff14) 18%, #dfe6e2) !important;
+    color-mix(in srgb, var(--consumer-green, #087a3e) 18%, #dfe6e2) !important;
   border-radius: 14px !important;
   background: color-mix(
     in srgb,
     #fff 94%,
-    var(--consumer-green, #39ff14)
+    var(--consumer-green, #087a3e)
   ) !important;
   color: #26382e !important;
   box-shadow: 0 5px 16px rgba(11, 48, 28, 0.055) !important;
@@ -122,7 +122,7 @@ html[data-theme="dark"]
   border-radius: 9px;
   background: color-mix(
     in srgb,
-    var(--consumer-green, #39ff14) 8%,
+    var(--consumer-green, #087a3e) 8%,
     transparent
   );
   opacity: 0;
@@ -134,10 +134,10 @@ html[data-theme="dark"]
   transform: translateY(-2px) !important;
   border-color: color-mix(
     in srgb,
-    var(--consumer-green, #39ff14) 48%,
+    var(--consumer-green, #087a3e) 48%,
     #dfe6e2
   ) !important;
-  color: var(--consumer-green, #39ff14) !important;
+  color: var(--consumer-green, #087a3e) !important;
   box-shadow: 0 10px 25px rgba(7, 136, 63, 0.13) !important;
 }
 .header-actions .icon-btn:hover:before,
@@ -189,7 +189,7 @@ html[data-theme="dark"]
   padding: 0 14px;
   border: 1px solid rgba(7, 136, 63, 0.22);
   border-radius: 14px;
-  background: linear-gradient(135deg, #39ff14, #39ff14);
+  background: linear-gradient(135deg, #087a3e, #087a3e);
   color: #fff;
   font-size: 0.68rem;
   font-weight: 800;
@@ -222,8 +222,8 @@ html[data-theme="dark"]
 }
 
 html[data-theme="dark"] .partner-header-link {
-  border-color: #39ff14;
-  background: linear-gradient(135deg, #39ff14, #39ff14);
+  border-color: #087a3e;
+  background: linear-gradient(135deg, #087a3e, #087a3e);
 }
 .badge-dot {
   z-index: 3;
@@ -234,7 +234,7 @@ html[data-theme="dark"] .partner-header-link {
   padding: 0 4px !important;
   border: 2px solid #fff !important;
   border-radius: 99px !important;
-  background: #39ff14 !important;
+  background: #087a3e !important;
   color: #fff !important;
   font-size: 0.57rem !important;
   font-weight: 900 !important;

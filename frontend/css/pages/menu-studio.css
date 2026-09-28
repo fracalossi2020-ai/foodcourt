@@ -1,6 +1,6 @@
 .menu-live-studio {
   --studio-bg: #f4f8f5;
-  --studio-accent: #39ff14;
+  --studio-accent: #087a3e;
   margin: 0 0 26px;
   padding: 24px;
   border: 1px solid #dce7e0;
@@ -50,7 +50,7 @@
   font-weight: 750;
 }
 .menu-live-studio > header nav button.active {
-  border-color: #39ff14;
+  border-color: #087a3e;
   background: #eaf7ef;
   color:#172116;
 }
@@ -107,7 +107,7 @@
   background: #edbb4c;
 }
 .menu-studio-browserbar > i:nth-child(3) {
-  background: #39ff14;
+  background: #087a3e;
 }
 .menu-studio-browserbar > span {
   min-width: 0;
@@ -131,7 +131,7 @@
 .studio-hero {
   min-height: 190px;
   padding: 42px 36px 28px;
-  background: linear-gradient(120deg, #07150e, #39ff14);
+  background: linear-gradient(120deg, #07150e, #087a3e);
   background-size: cover;
   background-position: center;
   color: #fff;
@@ -353,7 +353,7 @@ html[data-theme="dark"] .menu-live-studio > header nav a {
   color: #c4cec8;
 }
 html[data-theme="dark"] .menu-live-studio > header nav button.active {
-  border-color: #39ff14;
+  border-color: #087a3e;
   background: #183524;
   color: #51d789;
 }

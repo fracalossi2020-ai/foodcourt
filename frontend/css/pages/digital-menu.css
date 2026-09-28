@@ -1,8 +1,8 @@
 .menu-experience {
   --menu-bg: #f4f8f5;
-  --menu-accent: #39ff14;
+  --menu-accent: #087a3e;
   --menu-page-bg: var(--menu-bg);
-  --menu-ink: var(--menu-accent-light, #39ff14);
+  --menu-ink: var(--menu-accent-light, #087a3e);
   --menu-on-accent: #fff;
   max-width: 1280px !important;
   padding-bottom: 80px;
@@ -576,7 +576,7 @@
 
 .menu-theme-editor {
   --preview-bg: #f4f8f5;
-  --preview-accent: #39ff14;
+  --preview-accent: #087a3e;
   display: grid;
   grid-template-columns:
     minmax(250px, 1.4fr) repeat(2, minmax(145px, 0.65fr))

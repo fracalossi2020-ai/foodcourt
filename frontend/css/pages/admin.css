@@ -29,8 +29,8 @@ body.admin-mode .app {
   display: none !important;
 }
 .admin-header-link:hover {
-  border-color: #39ff14;
-  background: #39ff14;
+  border-color: #087a3e;
+  background: #087a3e;
   color: #fff;
 }
 .admin-shell {
@@ -63,7 +63,7 @@ body.admin-mode .app {
   display: grid;
   place-items: center;
   border-radius: 13px;
-  background: linear-gradient(145deg, #18c966, #39ff14);
+  background: linear-gradient(145deg, #18c966, #087a3e);
   box-shadow: 0 10px 24px rgba(18, 202, 101, 0.22);
   font-weight: 900;
 }
@@ -95,7 +95,7 @@ body.admin-mode .app {
 }
 .admin-sidebar nav a:hover,
 .admin-sidebar nav a.active {
-  background: #39ff14;
+  background: #087a3e;
   color: #fff;
 }
 .admin-sidebar nav a.active {
@@ -179,7 +179,7 @@ body.admin-mode .app {
   display: inline-block;
   margin-right: 7px;
   border-radius: 50%;
-  background: #39ff14;
+  background: #087a3e;
   box-shadow: 0 0 0 5px rgba(16, 185, 90, 0.12);
 }
 .admin-kpis {

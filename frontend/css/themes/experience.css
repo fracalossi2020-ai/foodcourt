@@ -10,7 +10,7 @@ body { -webkit-text-size-adjust:100%; }
 .page :is(.section-head,.account-page-heading) { gap:16px; }
 .page :is(.section-head,.account-page-heading)>div { min-width:0; }
 .profile-menu-search { display:flex; align-items:center; gap:12px; padding:14px 18px; border:1px solid var(--border-strong); border-radius:16px; background:var(--surface); max-width:540px; }
-.profile-menu-search:focus-within { border-color:#39ff14; box-shadow:0 0 0 3px #39ff1420; }
+.profile-menu-search:focus-within { border-color:#087a3e; box-shadow:0 0 0 3px #087a3e20; }
 .profile-menu-search input { width:100%; min-width:0; border:0; background:transparent; color:var(--text); font:inherit; outline:none; }
 .profile-menu-search svg { width:20px; color:var(--text-2); }
 .profile-search-status { font-size:.85rem; color:var(--text-2); margin:12px 0; }
@@ -25,8 +25,8 @@ body.app-mode .profile-page .profile-menu-card .plist-emoji { width:48px; height
 body.app-mode .profile-page .profile-menu-card .pl-label { font-size:.95rem; line-height:1.4; min-width:0; letter-spacing:-.02em; }
 body.app-mode .profile-page .profile-menu-card .pl-sub { font-size:.81rem; line-height:1.5; color:var(--text-2); margin-top:5px; }
 body.app-mode .profile-page .profile-menu-card .chev { position:static; width:24px; height:24px; transition:transform 180ms; }
-body.app-mode .profile-page .profile-menu-card .plist-item:is(:hover,:focus-visible) { border-color:#39ff14; box-shadow:0 8px 24px #00000009; transform:translateY(-2px); }
-body.app-mode .profile-page .profile-menu-card .plist-item:is(:hover,:focus-visible) .plist-emoji { background:#39ff14; color:#11230d; border-color:#39ff14; }
+body.app-mode .profile-page .profile-menu-card .plist-item:is(:hover,:focus-visible) { border-color:#087a3e; box-shadow:0 8px 24px #00000009; transform:translateY(-2px); }
+body.app-mode .profile-page .profile-menu-card .plist-item:is(:hover,:focus-visible) .plist-emoji { background:#087a3e; color:#11230d; border-color:#087a3e; }
 body.app-mode .profile-page .profile-menu-card .plist-item:is(:hover,:focus-visible) .chev { transform:translateX(3px); }
 body.app-mode .profile-page .profile-menu-card [hidden] { display:none!important; }
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
