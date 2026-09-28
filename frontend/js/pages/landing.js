@@ -40,7 +40,9 @@ const FAQ_ITEMS=[['O que é o FoodCourt?','Uma plataforma para descobrir estabel
 
 export async function render(view,boot,_params={},query=new URLSearchParams()) {
   const partnerLogin=query.get('portal')==='parceiro'
-  const turnstileConfig=await api.turnstileConfig().catch(()=>({enabled:false,siteKey:''}))
+  // Paint the landing immediately; security configuration must not delay it.
+  const configRequest=api.turnstileConfig()
+  const turnstileConfig={enabled:true,siteKey:''}
   turnstileToken='';turnstileWidgetId=null
   view.innerHTML = `<div class="fc-landing-v2">
     <div class="landing-scroll-progress" aria-hidden="true"><i></i></div>
@@ -98,9 +100,25 @@ export async function render(view,boot,_params={},query=new URLSearchParams()) {
     </section>
     ${introduction()}${howItWorks()}${variety()}${whyFoodCourt()}${promotion()}${mobileExperience()}${trust()}${testimonials()}${partnerSection()}${faq()}${finalCta()}${landingFooter()}${helpWidget()}
   </div>`
-  bind(view,partnerLogin,query,turnstileConfig)
   mountWelcomeVideo(view)
   fillCompanyBlock(view)
+  const loginForm=view.querySelector('#landingLogin')
+  const submit=loginForm.querySelector('[type="submit"]')
+  submit.disabled=true
+  loginForm.onsubmit=event=>event.preventDefault()
+  try {
+    Object.assign(turnstileConfig,await configRequest)
+  } catch {
+    const error=view.querySelector('.fcv2-error')
+    error.textContent='Não foi possível preparar o acesso. Atualize a página para tentar novamente.'
+    error.hidden=false
+    return
+  }
+  if(view.querySelector('#landingLogin')!==loginForm)return
+  if(!turnstileConfig.enabled)view.querySelector('#landingTurnstile')?.remove()
+  loginForm.onsubmit=null
+  bind(view,partnerLogin,query,turnstileConfig)
+  submit.disabled=false
   if(turnstileConfig.enabled)renderTurnstile(view,turnstileConfig)
   if (location.hash.replace(/^#/, '').split('?')[0] === '/login') {
     requestAnimationFrame(() => {

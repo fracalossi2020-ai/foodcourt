@@ -153,9 +153,7 @@ async function navigate() {
   navigating = true;
   let entranceReady;
   const view = document.getElementById("view");
-  if (!view.innerHTML.trim()) {
-    view.innerHTML = `<div class="page route-loading" role="status"><i></i><b>Carregando FoodCourt</b><span>Preparando sua experiência...</span></div>`;
-  }
+  view.setAttribute('aria-busy', 'true');
   try {
     const raw = location.hash.replace(/^#/, "") || "/";
     const [path, qs] = raw.split("?");
@@ -250,6 +248,7 @@ async function navigate() {
         ?.addEventListener("click", () => navigate());
     }
   } finally {
+    view.setAttribute('aria-busy', 'false');
     entranceReady?.();
     navigating = false;
     if (navigationQueued) {
@@ -678,6 +677,6 @@ navigate();
 // de rede interrompa o primeiro carregamento.
 setTimeout(() => {
   const view = document.getElementById("view");
-  if (!view || !view.querySelector(".route-loading")) return;
+  if (!view || view.innerHTML.trim()) return;
   view.innerHTML = `<div class="page route-error"><span>↻</span><h1>Vamos carregar novamente</h1><p>A página inicial não terminou de abrir.</p><div><button class="btn btn-primary" onclick="location.hash='#/inicio';location.reload()">Abrir página inicial</button><a class="btn btn-ghost" href="#/login">Entrar novamente</a></div></div>`;
-}, 6000);
+}, 15000);
