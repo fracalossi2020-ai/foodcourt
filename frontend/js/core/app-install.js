@@ -1,4 +1,8 @@
 let promptEvent = null;
+// Device detection, not viewport width: a narrow desktop window is not a phone.
+const phoneDevice = navigator.userAgentData?.mobile ??
+  /iPhone|iPod|Android.*Mobile|Windows Phone/i.test(navigator.userAgent);
+document.documentElement.classList.toggle('phone-device', phoneDevice);
 export const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 window.addEventListener('beforeinstallprompt', event => {
   event.preventDefault(); promptEvent = event;
