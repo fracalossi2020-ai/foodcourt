@@ -33,6 +33,18 @@ const statusLabel = {
   delivered: "Entregue",
   cancelled: "Cancelado",
 };
+const navDescriptions = {
+  dashboard: 'Resumo da operação', pedidos: 'Receba e acompanhe',
+  cardapio: 'Produtos e complementos', promocoes: 'Ofertas que vendem',
+  financeiro: 'Vendas e recebimentos', avaliacoes: 'O que seus clientes dizem',
+  minhaloja: 'Sua marca e seus dados', horarios: 'Quando sua loja abre',
+  plano: 'Assinatura e benefícios', configuracoes: 'Preferências da operação',
+  equipe: 'Pessoas e permissões', suporte: 'Conte com a gente',
+};
+function partnerNavItem([id, label, iconName], section, index) {
+  const active = section === id;
+  return `<a class="${active ? 'active' : ''}" style="--nav-index:${index}" href="#/parceiro?secao=${id}" ${active ? 'aria-current="page"' : ''} title="${label}: ${navDescriptions[id]}"><span class="partner-nav-symbol" aria-hidden="true">${icon(iconName)}</span><b>${label}<small>${navDescriptions[id]}</small></b><em class="partner-nav-arrow" aria-hidden="true">${icon('chevron')}</em></a>`;
+}
 let subscriptionPixTimer = null;
 
 export async function render(
@@ -55,7 +67,7 @@ export async function render(
     }
     const payload = await load(section);
     payload.access = access;
-    view.innerHTML = `<div class="partner-shell"><aside class="partner-sidebar"><a class="partner-brand" href="#/parceiro"><i class="foodcourt-brand-mark"><img class="foodcourt-brand-logo" src="/assets/images/foodcourt-logo.png" alt="FoodCourt"></i><span>Central do<br><b>Parceiro</b></span></a><p class="partner-nav-label">GERENCIAR</p><nav>${allowedNav.map(([id, label, iconName], index) => `<a class="${section === id ? "active" : ""}" style="--nav-index:${index}" href="#/parceiro?secao=${id}" title="Abrir ${label}"><span>${icon(iconName)}</span><b>${label}</b>${section === id ? "<i>Você está aqui</i>" : ""}</a>`).join("")}</nav><div class="partner-user"><span>${boot.user.avatarEmoji}</span><div><b>${esc(boot.user.fullName)}</b><small>${esc(roleLabel(access.role))}</small></div></div></aside><main class="partner-main"><div class="partner-mobile-context"><b>${nav.find((item) => item[0] === section)?.[1]}</b><span>Gerencie sua operação com dados reais.</span></div>${content(section, payload)}</main></div>`;
+    view.innerHTML = `<div class="partner-shell"><aside class="partner-sidebar"><a class="partner-brand" href="#/parceiro"><i class="foodcourt-brand-mark"><img class="foodcourt-brand-logo" src="/assets/images/foodcourt-logo.png" alt="FoodCourt"></i><span>Central do<br><b>Parceiro</b></span></a><p class="partner-nav-label">GERENCIAR</p><nav>${allowedNav.map((item, index) => partnerNavItem(item, section, index)).join("")}</nav><div class="partner-user"><span>${boot.user.avatarEmoji}</span><div><b>${esc(boot.user.fullName)}</b><small>${esc(roleLabel(access.role))}</small></div></div></aside><main class="partner-main"><div class="partner-mobile-context"><b>${nav.find((item) => item[0] === section)?.[1]}</b><span>Gerencie sua operação com dados reais.</span></div>${content(section, payload)}</main></div>`;
     bind(view, section, payload);
     if (access.role === 'kitchen') {
       view.querySelectorAll('[data-order][data-status]').forEach(button => { if (!['preparing','ready'].includes(button.dataset.status)) button.remove(); });
