@@ -37,6 +37,7 @@ const results = [];
   const base = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ executablePath: chromiumPath });
   try {
+    console.log('Realtime/GPS regressions:', await require('./audit-live.cjs')(browser, base));
     for (const width of [1440, 390]) {
       for (const [email, routes] of [
         [null, ['/', '/login', '/cadastro', '/esqueci-senha', '/redefinir-senha', '/instalar', '/termos', '/privacidade', '/cancelamento', '/para-estabelecimentos', '/cadastro-parceiro', '/login-parceiro']],

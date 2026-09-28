@@ -5,7 +5,11 @@ import { store } from '../core/store.js'
 import { esc, money, emptyState, toast } from '../core/ui.js'
 
 const deliveryStages=[['pending','Pedido recebido','A loja recebeu seu pedido.'],['accepted','Pedido aceito','A cozinha confirmou o pedido.'],['preparing','Em preparação','Seu pedido está sendo preparado.'],['ready','Pedido pronto','Aguardando a coleta do entregador.'],['out_for_delivery','Saiu para entrega','Seu pedido está a caminho.'],['delivered','Entregue','Bom apetite!']]
+let refreshCurrent = null
+let renderRevision = 0
+export async function refreshRealtime() { if (!refreshCurrent) return false; await refreshCurrent(); return true }
 export async function render(view,boot,params){
+  const revision = ++renderRevision
   let order
   let messages=[]
   try{order=(await api.order(params.id)).order}catch{order=store.getOrder(params.id)}
@@ -18,12 +22,22 @@ export async function render(view,boot,params){
   view.innerHTML='<div class="page" style="max-width:720px;margin:0 auto"><div id="trackRoot"></div></div>'
   const root=view.querySelector('#trackRoot')
   function draw(){
+    if (revision !== renderRevision || !root.isConnected) return
+    const draftInput = root.querySelector('[data-order-chat] input')
+    const draft = draftInput?.value || ''
+    const focused = document.activeElement === draftInput
+    const selection = [draftInput?.selectionStart, draftInput?.selectionEnd]
     const retainedMap = root.querySelector("[data-delivery-map]");
     const current=Math.max(0,stages.findIndex(stage=>stage[0]===order.status));const finished=['delivered','cancelled'].includes(order.status)
     root.innerHTML=`<a class="profile-back" href="#/pedidos">← Voltar aos pedidos</a><section class="tracking-status"><div class="pair" style="justify-content:space-between"><span class="badge ${order.status==='cancelled'?'badge-red':finished?'badge-green':'badge-brand'}">${order.status==='cancelled'?'CANCELADO':finished?(order.fulfillment==='pickup'?'RETIRADO':'ENTREGUE'):'ACOMPANHAMENTO AO VIVO'}</span><span class="badge badge-dark">#${esc(order.id)}</span></div><h1>${order.status==='cancelled'?'Pedido cancelado':stages[current][1]}</h1><p>${order.status==='cancelled'?esc(order.cancelReason||'Cancelado pelo cliente.'):stages[current][2]}</p><small>Atualizado em ${new Date(order.updatedAt||createdAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</small></section><section class="card" style="padding:22px;margin-top:16px"><div class="order-head"><div class="order-logo">🍔</div><div class="oh-main"><b>${esc(order.restaurantName||'Estabelecimento')}</b><div class="muted text-sm">${esc(order.address||'Endereço selecionado')}</div></div><b>${money(order.total)}</b></div><div class="timeline" style="margin-top:24px">${stages.map((stage,index)=>`<div class="tl-item ${index<current||finished&&order.status==='delivered'?'done':index===current&&!finished?'current':''}"><div class="tl-rail"><div class="tl-dot">${index<=current&&order.status!=='cancelled'?'✓':''}</div>${index<stages.length-1?'<div class="tl-line"></div>':''}</div><div class="tl-content"><div class="tl-title">${stage[1]}</div><div class="tl-sub">${stage[2]}</div></div></div>`).join('')}</div>${['pending','accepted'].includes(order.status)?'<button class="btn btn-ghost btn-block" data-cancel>Cancelar pedido</button>':''}</section><section class="card" style="padding:22px;margin-top:16px"><h2>Conversa do pedido</h2><div style="display:grid;gap:8px;margin:14px 0;max-height:260px;overflow:auto">${messages.map(message=>`<article style="padding:10px;border-radius:10px;background:${message.userId===store.user?.id?'var(--brand-soft)':'var(--surface-2)'}"><b>${esc(message.senderName)}</b><p>${esc(message.text)}</p><small>${new Date(message.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</small></article>`).join('')||'<p class="muted">Use este canal para falar sobre o pedido.</p>'}</div>${finished?'':'<form class="pair" data-order-chat><input class="input" name="text" maxlength="600" placeholder="Escreva uma mensagem" required><button class="btn btn-primary">Enviar</button></form>'}</section><div class="pair" style="margin-top:14px"><a class="btn btn-outline" href="#/pedidos" style="flex:1">Meus pedidos</a><a class="btn btn-primary" href="#/inicio" style="flex:1">Continuar explorando</a></div>`
     root.insertAdjacentHTML('beforeend', `<a class="btn btn-outline" style="margin-top:16px" href="#/suporte?orderId=${encodeURIComponent(order.id)}">Relatar problema com este pedido</a>`)
     if (retainedMap && order.status === "out_for_delivery") root.append(retainedMap)
     updateDeliveryMap(root, order)
+    const restoredInput = root.querySelector('[data-order-chat] input')
+    if (restoredInput) {
+      restoredInput.value = draft
+      if (focused) { restoredInput.focus({ preventScroll:true }); restoredInput.setSelectionRange(...selection) }
+    }
     if (review) root.insertAdjacentHTML('beforeend', reviewCard(review))
     if (order.paymentIntentId) {
       const items = document.createElement('section');
@@ -40,9 +54,21 @@ export async function render(view,boot,params){
       root.querySelector('.tracking-status').after(banner)
     }
     root.querySelector('[data-cancel]')?.addEventListener('click',async()=>{const reason=window.prompt('Por que deseja cancelar?','Mudei de ideia');if(reason===null)return;try{order=(await api.cancelOrder(order.id,reason)).order;toast('Pedido cancelado.','success');draw()}catch(error){toast(error.message,'error')}})
-    root.querySelector('[data-order-chat]')?.addEventListener('submit',async event=>{event.preventDefault();const input=event.currentTarget.elements.text,button=event.currentTarget.querySelector('button');button.disabled=true;try{await api.sendOrderMessage(order.id,input.value);messages=(await api.orderChat(order.id)).messages;draw()}catch(error){toast(error.message,'error');button.disabled=false}})
+    root.querySelector('[data-order-chat]')?.addEventListener('submit',async event=>{event.preventDefault();const input=event.currentTarget.elements.text,button=event.currentTarget.querySelector('button');button.disabled=true;try{await api.sendOrderMessage(order.id,input.value);input.value='';messages=(await api.orderChat(order.id)).messages;draw()}catch(error){toast(error.message,'error');button.disabled=false}})
   }
   draw()
-  if(!['delivered','cancelled'].includes(order.status))window.__trackTimer=setInterval(async()=>{try{[order,messages]=await Promise.all([api.order(order.id).then(result=>result.order),api.orderChat(order.id).then(result=>result.messages)]);draw()}catch{}},10000)
+  let refreshing = false
+  refreshCurrent = async () => {
+    if (refreshing || revision !== renderRevision) return
+    refreshing = true
+    try {
+      const next = await Promise.all([api.order(order.id).then(result=>result.order),api.orderChat(order.id).then(result=>result.messages)])
+      if (revision !== renderRevision) return
+      ;[order,messages] = next
+      draw()
+      if (['delivered','cancelled'].includes(order.status)) clearInterval(window.__trackTimer)
+    } finally { refreshing = false }
+  }
+  if(!['delivered','cancelled'].includes(order.status))window.__trackTimer=setInterval(()=>refreshCurrent?.().catch(()=>{}),10000)
 }
-export function cleanup(){clearInterval(window.__trackTimer)}
+export function cleanup(){renderRevision++; refreshCurrent=null; clearInterval(window.__trackTimer)}

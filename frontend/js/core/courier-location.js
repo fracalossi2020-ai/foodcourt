@@ -9,11 +9,12 @@ export function mountLocation(view, delivery) {
   view.querySelector('.courier-page').append(section);
   const button = section.querySelector('button'), status = section.querySelector('[role=status]');
   const stop = () => {
+    const wasSharing = watch !== null || busy;
     generation++;
     if (watch !== null) navigator.geolocation.clearWatch(watch);
-    watch = null; latest = null; clearInterval(timer);
+    watch = null; latest = null; lastSent = 0; clearInterval(timer);
     button.textContent = 'Compartilhar localização'; status.textContent = 'Compartilhamento desativado.';
-    api.courierLocation({ deliveryId: delivery.id, stop: true }).catch(() => {});
+    if (wasSharing) api.courierLocation({ deliveryId: delivery.id, stop: true }).catch(() => {});
   };
   async function send() {
     if (!latest || busy || watch === null || Date.now() - lastSent < 10000) return;
@@ -22,17 +23,19 @@ export function mountLocation(view, delivery) {
     busy = true; lastSent = Date.now();
     try { await api.courierLocation({ deliveryId: delivery.id, ...latest }); if (generation === currentGeneration) status.textContent = 'Localização enviada às ' + new Date().toLocaleTimeString('pt-BR'); }
     catch (error) { if (generation === currentGeneration) status.textContent = 'Não foi possível atualizar: ' + error.message; }
-    finally { busy = false; if (generation !== currentGeneration) api.courierLocation({ deliveryId: delivery.id, stop: true }).catch(() => {}); }
+    finally { busy = false; if (generation !== currentGeneration && watch === null) api.courierLocation({ deliveryId: delivery.id, stop: true }).catch(() => {}); }
   }
   button.onclick = () => {
     if (watch !== null) { stop(); return; }
     if (!navigator.geolocation) { status.textContent = 'Localização não suportada neste navegador.'; return; }
     status.textContent = 'Aguardando permissão e localização…'; button.textContent = 'Parar compartilhamento';
+    const currentGeneration = generation;
     watch = navigator.geolocation.watchPosition(position => {
-      sampledAt = Date.now();
+      if (generation !== currentGeneration) return;
+      sampledAt = position.timestamp || Date.now();
       latest = { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy };
       send();
-    }, () => { stop(); status.textContent = 'Sem acesso à localização. Confira a permissão do navegador e tente novamente.'; }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
+    }, () => { if (generation !== currentGeneration) return; stop(); status.textContent = 'Sem acesso à localização. Confira a permissão do navegador e tente novamente.'; }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
     timer = setInterval(send, 15000);
   };
   window.addEventListener('pagehide', stop);

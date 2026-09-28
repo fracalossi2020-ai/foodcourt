@@ -66,7 +66,7 @@ let realtimeRefreshTimer = null;
 
 function scheduleRealtimeRefresh() {
   clearTimeout(realtimeRefreshTimer);
-  const refresh = () => {
+  const refresh = async () => {
     const active = document.activeElement;
     if (
       active?.matches(
@@ -76,6 +76,9 @@ function scheduleRealtimeRefresh() {
       realtimeRefreshTimer = setTimeout(refresh, 800);
       return;
     }
+    try {
+      if (await currentPage?.refreshRealtime?.()) return;
+    } catch { /* Normal navigation can recover a failed incremental refresh. */ }
     navigate();
   };
   realtimeRefreshTimer = setTimeout(refresh, 250);
@@ -90,6 +93,7 @@ function stopRealtime() {
 function startRealtime() {
   if (!authUser || realtimeSource || !("EventSource" in window)) return;
   const source = new EventSource("/api/events");
+  let connectedOnce = false;
   realtimeSource = source;
   source.onmessage = (event) => {
     let detail;
@@ -98,7 +102,11 @@ function startRealtime() {
     } catch {
       return;
     }
-    if (detail.type === "connected") return;
+    if (detail.type === "connected") {
+      if (connectedOnce) { api.invalidate(); bootPromise = null; scheduleRealtimeRefresh(); }
+      connectedOnce = true;
+      return;
+    }
     api.invalidate();
     bootPromise = null;
     if (

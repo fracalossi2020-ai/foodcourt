@@ -218,6 +218,46 @@ test("persisted platform changes are broadcast to connected clients", async () =
   controller.abort();
 });
 
+test("realtime reconnect receives a fresh connection and subsequent database changes", async () => {
+  const { cookie } = await loginDemo();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const auditId = db.uid("audit");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    try {
+      const response = await fetch(`${baseUrl}/api/events`, {
+        headers: { Cookie: cookie },
+        signal: controller.signal,
+      });
+      assert.equal(response.status, 200);
+      const reader = response.body.getReader();
+      const first = await reader.read();
+      assert.match(
+        Buffer.from(first.value).toString("utf8"),
+        /"type":"connected"/,
+      );
+      db.state.auditLog.unshift({
+        id: auditId,
+        type: "test.reconnect",
+        at: new Date().toISOString(),
+      });
+      db.saveNow();
+      const update = await reader.read();
+      assert.match(
+        Buffer.from(update.value).toString("utf8"),
+        /"type":"system-change"/,
+      );
+    } finally {
+      clearTimeout(timeout);
+      controller.abort();
+      db.state.auditLog = db.state.auditLog.filter(
+        (item) => item.id !== auditId,
+      );
+      db.saveNow();
+    }
+  }
+});
+
 test("loyalty redemption creates a personal coupon exactly once", async () => {
   const { cookie } = await loginDemo();
   const payload = {

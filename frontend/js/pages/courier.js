@@ -1,7 +1,16 @@
 import { mountLocation } from '../core/courier-location.js';
 import { mountNavigation } from '../core/courier-navigation.js';
 let stopLocation = () => {};
-export function cleanup() { stopLocation(); stopLocation = () => {}; }
+let currentDelivery = null;
+export function cleanup() { stopLocation(); stopLocation = () => {}; currentDelivery = null; }
+export async function refreshRealtime() {
+  if (!currentDelivery) return false;
+  const previous = currentDelivery;
+  const data = await api.courierDashboard();
+  // Unrelated platform events must not tear down a user's GPS permission/watch.
+  return currentDelivery === previous && data.current?.id === previous.id &&
+    data.current?.status === previous.status && previous.status === 'out_for_delivery';
+}
 import { api } from "../core/api.js";
 import { esc, money, toast } from "../core/ui.js";
 
@@ -30,6 +39,7 @@ export async function render(view) {
   try {
     const data = await api.courierDashboard();
     const current = data.current;
+    currentDelivery = current;
     const withdrawals =
       data.withdrawals
         .map(
