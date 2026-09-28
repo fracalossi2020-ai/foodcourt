@@ -38,7 +38,7 @@ body.landing-mode .fc-landing-v2 { width:100%; max-width:none; margin:0; border-
 .fc-landing-v2 .fcv2-hero {
   display:grid; grid-template-columns:minmax(0,1fr) 350px;
   align-items:center; gap:clamp(28px,3vw,56px);
-  padding:56px clamp(28px,4vw,76px); min-height:max(720px,calc(100svh - 94px));
+  padding:56px clamp(28px,4vw,76px); min-height:max(720px,100svh);
 }
 .fc-landing-v2 .fcv2-hero .fcv2-login {
   position:relative; inset:auto; width:100%; margin:0; align-self:center;
