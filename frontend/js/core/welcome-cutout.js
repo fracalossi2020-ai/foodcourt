@@ -17,6 +17,7 @@ export function mountWelcomeCutout(video) {
   const width = mask.width, height = mask.height, count = width * height
   const seen = new Uint8Array(count)
   const queue = new Int32Array(count)
+  const background = new Uint8Array(count)
   let frame = 0, lastTime = -1, stopped = false, visible = true
   const decodedFrames = typeof video.requestVideoFrameCallback === 'function'
   const schedule = () => {
@@ -34,6 +35,7 @@ export function mountWelcomeCutout(video) {
     const image = maskCtx.getImageData(0, 0, width, height)
     const pixels = image.data
     seen.fill(0)
+    background.fill(0)
     let head = 0, tail = 0
     const visit = index => {
       if (seen[index]) return
@@ -47,11 +49,25 @@ export function mountWelcomeCutout(video) {
     for (let y = 0; y < height; y++) { visit(y * width); visit(y * width + width - 1) }
     while (head < tail) {
       const index = queue[head++]
+      background[index] = 1
       pixels[index * 4 + 3] = 0
       if (index % width) visit(index - 1)
       if (index % width < width - 1) visit(index + 1)
       if (index >= width) visit(index - width)
       if (index < count - width) visit(index + width)
+    }
+    // Feather only the connected background boundary, preserving internal
+    // whites (eyes/logo). A fixed source mask avoids directional erosion.
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const index = y * width + x
+        if (background[index]) continue
+        const neighbors = background[index - 1] + background[index + 1] +
+          background[index - width] + background[index + width] +
+          background[index - width - 1] + background[index - width + 1] +
+          background[index + width - 1] + background[index + width + 1]
+        if (neighbors) pixels[index * 4 + 3] = Math.round(255 * (1 - neighbors / 8))
+      }
     }
     maskCtx.putImageData(image, 0, 0)
     ctx.globalCompositeOperation = 'source-over'
