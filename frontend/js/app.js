@@ -1,5 +1,4 @@
 import './core/app-install.js';
-import { playLoginEntrance } from './core/login-entrance.js';
 import { mountHeaderMotion } from './core/header-motion.js';
 import { api } from "./core/api.js";
 import { store, hydrateBootstrap, setAuthUser } from "./core/store.js";
@@ -61,7 +60,6 @@ let currentPage = null;
 let currentRoutePage = null;
 let currentRoutePath = null;
 let authUser = null;
-let entrancePending = false;
 let handlingUnauthorized = false;
 let realtimeSource = null;
 let realtimeRefreshTimer = null;
@@ -151,7 +149,6 @@ async function navigate() {
     return;
   }
   navigating = true;
-  let entranceReady;
   const view = document.getElementById("view");
   view.setAttribute('aria-busy', 'true');
   try {
@@ -173,19 +170,6 @@ async function navigate() {
       return;
     }
     const params = path.match(route.pattern);
-    let oauthEntrance = false;
-    if (!route.public) {
-      try {
-        const started = Number(sessionStorage.getItem('fc:login-entrance'));
-        sessionStorage.removeItem('fc:login-entrance');
-        oauthEntrance = started > 0 && Date.now() - started < 15 * 60 * 1000;
-      } catch { /* Optional animation marker. */ }
-      if (entrancePending || oauthEntrance) {
-        entrancePending = false;
-        const ready = new Promise(resolve => { entranceReady = resolve; });
-        void playLoginEntrance({ ready });
-      }
-    }
 
     if (route.landing) {
       document.body.classList.add("landing-mode");
@@ -249,7 +233,6 @@ async function navigate() {
     }
   } finally {
     view.setAttribute('aria-busy', 'false');
-    entranceReady?.();
     navigating = false;
     if (navigationQueued) {
       navigationQueued = false;
@@ -627,7 +610,6 @@ function wireVisualFeedback() {
 
 function wireAuthEvents() {
   window.addEventListener("fc:auth", (e) => {
-    entrancePending = Boolean(e.detail);
     authUser = e.detail;
     handlingUnauthorized = false;
     setAuthUser(e.detail);

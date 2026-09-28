@@ -453,7 +453,6 @@ function bind(view,partnerLogin=false,query=new URLSearchParams(),turnstileConfi
   view.querySelectorAll('[data-social]').forEach(b=>b.addEventListener('click',async()=>{
     b.disabled = true
     const target=partnerLogin?'/parceiro':query.get('redirect')||'/inicio'
-    try { sessionStorage.setItem('fc:login-entrance', String(Date.now())) } catch { /* Optional animation marker. */ }
     window.location.assign(`/api/auth/oauth/${b.dataset.social}?redirect=${encodeURIComponent(target)}`)
   }))
   view.querySelector('[data-eye]').addEventListener('click',e=>{const input=e.currentTarget.parentElement.querySelector('input');input.type=input.type==='password'?'text':'password'})
