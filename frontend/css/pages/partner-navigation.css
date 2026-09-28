@@ -1,4 +1,5 @@
 /* Partner workspace: clear labels, consistent icon geometry and quiet motion. */
+body.app-mode .partner-sidebar nav .partner-pictogram .partner-icon-tone { fill:currentColor; fill-opacity:.16; stroke:none; }
 body.app-mode .partner-sidebar {
   background:var(--surface,#fff); border:1px solid var(--border,#dce8e0);
   border-radius:24px; padding:18px 12px 12px;

@@ -8,6 +8,7 @@ import { mountStoreAddress } from '../core/store-address.js';
 import { api } from "../core/api.js";
 import { esc, money, toast } from "../core/ui.js";
 import { icon } from "../core/icons.js";
+import { partnerIcon } from '../core/partner-icons.js';
 import { optionsEditor, readOptions } from '../core/options-editor.js';
 import { openOrderDetails } from '../core/order-details.js';
 
@@ -41,9 +42,9 @@ const navDescriptions = {
   plano: 'Assinatura e benefícios', configuracoes: 'Preferências da operação',
   equipe: 'Pessoas e permissões', suporte: 'Conte com a gente',
 };
-function partnerNavItem([id, label, iconName], section, index) {
+function partnerNavItem([id, label], section, index) {
   const active = section === id;
-  return `<a class="${active ? 'active' : ''}" style="--nav-index:${index}" href="#/parceiro?secao=${id}" ${active ? 'aria-current="page"' : ''} title="${label}: ${navDescriptions[id]}"><span class="partner-nav-symbol" aria-hidden="true">${icon(iconName)}</span><b>${label}<small>${navDescriptions[id]}</small></b><em class="partner-nav-arrow" aria-hidden="true">${icon('chevron')}</em></a>`;
+  return `<a class="${active ? 'active' : ''}" style="--nav-index:${index}" href="#/parceiro?secao=${id}" ${active ? 'aria-current="page"' : ''} title="${label}: ${navDescriptions[id]}"><span class="partner-nav-symbol" aria-hidden="true">${partnerIcon(id)}</span><b>${label}<small>${navDescriptions[id]}</small></b><em class="partner-nav-arrow" aria-hidden="true">${icon('chevron')}</em></a>`;
 }
 let subscriptionPixTimer = null;
 
