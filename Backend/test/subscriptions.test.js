@@ -57,12 +57,26 @@ test("new stores get a trial, then are blocked until paid; grace applies after d
   assert.equal(expired.accessAllowed, false);
   assert.match(expired.blockReason, /período grátis terminou/);
   const paid = { ...subscription, paidAt: "2026-10-01T12:00:00Z" };
-  assert.equal(summary(paid, owner, Date.parse("2026-10-20T12:00:00Z")).status, "ACTIVE");
-  const overdueInGrace = summary(paid, owner, Date.parse("2026-11-03T12:00:00Z"));
+  assert.equal(
+    summary(paid, owner, Date.parse("2026-10-20T12:00:00Z")).status,
+    "ACTIVE",
+  );
+  const overdueInGrace = summary(
+    paid,
+    owner,
+    Date.parse("2026-11-03T12:00:00Z"),
+  );
   assert.equal(overdueInGrace.status, "OVERDUE");
   assert.equal(overdueInGrace.accessAllowed, true);
-  const overdueBlocked = summary(paid, owner, Date.parse("2026-11-10T12:00:00Z"));
+  const overdueBlocked = summary(
+    paid,
+    owner,
+    Date.parse("2026-11-10T12:00:00Z"),
+  );
   assert.equal(overdueBlocked.status, "OVERDUE");
   assert.equal(overdueBlocked.accessAllowed, false);
-  assert.equal(summary({ ...subscription, interval: "unlimited" }, owner).status, "ACTIVE");
+  assert.equal(
+    summary({ ...subscription, interval: "unlimited" }, owner).status,
+    "ACTIVE",
+  );
 });

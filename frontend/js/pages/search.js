@@ -60,6 +60,14 @@ export async function render(view, boot, _params = {}, query = new URLSearchPara
   const input = document.getElementById('searchInput')
   const body = document.getElementById('searchBody')
   const clearBtn = document.getElementById('clearSearch')
+  let searchSequence = 0
+  function showSuggestions() {
+    clearTimeout(debounceTimer)
+    searchSequence++
+    body.innerHTML = idleView(boot)
+    bindGotos(body)
+    bindSug(body)
+  }
 
   if (initialQ || initialFilter !== 'all') await runSearch(initialQ, initialFilter)
 
@@ -67,16 +75,18 @@ export async function render(view, boot, _params = {}, query = new URLSearchPara
     clearBtn.hidden = !input.value
     clearTimeout(debounceTimer)
     const q = input.value.trim()
-    if (!q) { body.innerHTML = idleView(boot); return }
-    debounceTimer = setTimeout(() => runSearch(q), 280)
+    searchSequence++
+    if (!q) { showSuggestions(); return }
+    debounceTimer = setTimeout(() => runSearch(q, currentFilter()), 280)
   })
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && input.value.trim()) {
       store.pushSearch(input.value.trim())
-      runSearch(input.value.trim())
+      clearTimeout(debounceTimer)
+      runSearch(input.value.trim(), currentFilter())
     }
   })
-  clearBtn.addEventListener('click', () => { input.value = ''; clearBtn.hidden = true; body.innerHTML = idleView(boot); input.focus() })
+  clearBtn.addEventListener('click', () => { input.value = ''; clearBtn.hidden = true; showSuggestions(); input.focus() })
   bindGotos(body)
 
   function idleView(bootData) {
@@ -106,9 +116,15 @@ export async function render(view, boot, _params = {}, query = new URLSearchPara
   }
 
   async function runSearch(q, filter = 'all') {
+    clearTimeout(debounceTimer)
+    const sequence = ++searchSequence
     body.innerHTML = skeletonCards(3)
     let data
-    try { data = await api.search(q) } catch { body.innerHTML = '<div class="state-box"><div class="state-emoji">📡</div><h3>Erro na busca</h3><p>Tente novamente.</p></div>'; return }
+    try { data = await api.search(q) } catch {
+      if (sequence === searchSequence && body.isConnected) body.innerHTML = '<div class="state-box"><div class="state-emoji">📡</div><h3>Erro na busca</h3><p>Tente novamente.</p></div>'
+      return
+    }
+    if (sequence !== searchSequence || !body.isConnected) return
 
     let rests = data.restaurants
     if (filter === 'open') rests = rests.filter(r => r.open)
@@ -156,13 +172,12 @@ export async function render(view, boot, _params = {}, query = new URLSearchPara
       if (e.target.closest('[data-hist-x]')) return
       input.value = h.dataset.hist
       clearBtn.hidden = false
-      runSearch(h.dataset.hist)
+      runSearch(h.dataset.hist, currentFilter())
     }))
     root.querySelectorAll('[data-hist-x]').forEach(x => x.addEventListener('click', e => {
       e.stopPropagation()
       store.removeSearch(x.dataset.histX)
-      body.innerHTML = idleView(boot)
-      bindSug(body)
+      showSuggestions()
     }))
   }
 

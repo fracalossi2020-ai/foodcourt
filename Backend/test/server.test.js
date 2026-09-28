@@ -372,7 +372,9 @@ test("approved establishments appear in the customer marketplace, pending ones d
   });
   assert.equal(pendingHome.status, 200);
   assert.ok(
-    !(await pendingHome.json()).restaurants.some((item) => item.id === store.id),
+    !(await pendingHome.json()).restaurants.some(
+      (item) => item.id === store.id,
+    ),
   );
   store.status = "active";
   db.saveNow();
@@ -872,9 +874,21 @@ test("admin manages store approval and courier access", async () => {
   db.state.stores = db.state.stores.filter((item) => item.id !== emptyStore.id);
 
   const targetStore = db.state.stores[0];
-  targetStore.address = { ...(targetStore.address || {}), street: "Rua Teste", city: "Belo Horizonte" };
+  targetStore.address = {
+    ...(targetStore.address || {}),
+    street: "Rua Teste",
+    city: "Belo Horizonte",
+  };
   if (!targetStore.products?.length)
-    targetStore.products = [{ id: "product_ready_test", name: "Prato", price: 10, stock: 5, active: true }];
+    targetStore.products = [
+      {
+        id: "product_ready_test",
+        name: "Prato",
+        price: 10,
+        stock: 5,
+        active: true,
+      },
+    ];
   targetStore.status = "pending";
   const storeStatus = await fetch(`${baseUrl}/api/admin-store-status`, {
     method: "POST",
@@ -885,7 +899,9 @@ test("admin manages store approval and courier access", async () => {
   assert.equal(targetStore.status, "active");
   assert.ok(
     db.state.userNotifications.some(
-      (item) => item.userId === targetStore.ownerId && item.title === "Loja aprovada e publicada",
+      (item) =>
+        item.userId === targetStore.ownerId &&
+        item.title === "Loja aprovada e publicada",
     ),
   );
 
@@ -1146,7 +1162,10 @@ test("account owner can update profile, change password, export data and delete 
   const profile = await fetch(`${baseUrl}/api/account/profile`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ fullName: "Titular Renomeado", phone: "(31) 97777-3333" }),
+    body: JSON.stringify({
+      fullName: "Titular Renomeado",
+      phone: "(31) 97777-3333",
+    }),
   });
   assert.equal(profile.status, 200);
   assert.equal((await profile.json()).user.fullName, "Titular Renomeado");
@@ -1155,24 +1174,38 @@ test("account owner can update profile, change password, export data and delete 
   const wrongCurrent = await fetch(`${baseUrl}/api/account/password`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ currentPassword: "errada", newPassword: "novaSenha1", confirmPassword: "novaSenha1" }),
+    body: JSON.stringify({
+      currentPassword: "errada",
+      newPassword: "novaSenha1",
+      confirmPassword: "novaSenha1",
+    }),
   });
   assert.equal(wrongCurrent.status, 400);
   const changed = await fetch(`${baseUrl}/api/account/password`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ currentPassword: "senha123", newPassword: "novaSenha1", confirmPassword: "novaSenha1" }),
+    body: JSON.stringify({
+      currentPassword: "senha123",
+      newPassword: "novaSenha1",
+      confirmPassword: "novaSenha1",
+    }),
   });
   assert.equal(changed.status, 200);
   // A sessão antiga foi revogada e a nova senha passa a valer.
-  assert.equal((await fetch(`${baseUrl}/api/auth/me`, { headers: { Cookie: cookie } })).status, 401);
+  assert.equal(
+    (await fetch(`${baseUrl}/api/auth/me`, { headers: { Cookie: cookie } }))
+      .status,
+    401,
+  );
   assert.equal((await login("senha123")).status, 401);
   const second = await login("novaSenha1");
   assert.equal(second.status, 200);
   const cookie2 = second.headers.get("set-cookie").split(";")[0];
   const headers2 = { Cookie: cookie2, "Content-Type": "application/json" };
 
-  const exported = await fetch(`${baseUrl}/api/account/export`, { headers: { Cookie: cookie2 } });
+  const exported = await fetch(`${baseUrl}/api/account/export`, {
+    headers: { Cookie: cookie2 },
+  });
   assert.equal(exported.status, 200);
   const dump = await exported.json();
   assert.equal(dump.account.email, user.email);
@@ -1193,7 +1226,11 @@ test("account owner can update profile, change password, export data and delete 
   assert.equal(db.findByEmail("titular@foodcourt.test"), null);
   assert.equal(user.status, "deleted");
   assert.equal(user.fullName, "Conta excluída");
-  assert.equal((await fetch(`${baseUrl}/api/auth/me`, { headers: { Cookie: cookie2 } })).status, 401);
+  assert.equal(
+    (await fetch(`${baseUrl}/api/auth/me`, { headers: { Cookie: cookie2 } }))
+      .status,
+    401,
+  );
   assert.equal((await login("novaSenha1")).status, 401);
   assert.equal(typeof account.purgeCourierDocuments, "function");
 });
@@ -1229,16 +1266,23 @@ test("admin dashboard hides courier documents and serves them through an audited
     const admin = await fetch(`${baseUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "admin@foodcourt.com", password: "foodcourt123" }),
+      body: JSON.stringify({
+        email: "admin@foodcourt.com",
+        password: "foodcourt123",
+      }),
     });
     assert.equal(admin.status, 200);
     const cookie = admin.headers.get("set-cookie").split(";")[0];
-    const dashboard = await fetch(`${baseUrl}/api/admin-dashboard`, { headers: { Cookie: cookie } });
+    const dashboard = await fetch(`${baseUrl}/api/admin-dashboard`, {
+      headers: { Cookie: cookie },
+    });
     assert.equal(dashboard.status, 200);
     const raw = await dashboard.text();
     assert.ok(!raw.includes("chave-pix-secreta"));
     assert.ok(!raw.includes("aWRlbnRpZGFkZQ=="));
-    const listed = JSON.parse(raw).courierApplications.find((item) => item.id === application.id);
+    const listed = JSON.parse(raw).courierApplications.find(
+      (item) => item.id === application.id,
+    );
     assert.equal(listed.hasIdentityImage, true);
     assert.equal(listed.hasPixKey, true);
 
@@ -1250,13 +1294,17 @@ test("admin dashboard hides courier documents and serves them through an audited
     assert.equal((await image.json()).image, application.identityImage);
     assert.ok(
       db.state.auditLog.some(
-        (entry) => entry.action === "courier.application.document.identity" && entry.entityId === application.id,
+        (entry) =>
+          entry.action === "courier.application.document.identity" &&
+          entry.entityId === application.id,
       ),
     );
 
     // Depois da decisão e do prazo de retenção as imagens são apagadas.
     application.status = "rejected";
-    application.reviewedAt = new Date(Date.now() - 100 * 86400000).toISOString();
+    application.reviewedAt = new Date(
+      Date.now() - 100 * 86400000,
+    ).toISOString();
     assert.equal(account.purgeCourierDocuments(), 1);
     assert.equal(application.identityImage, "");
     const gone = await fetch(
@@ -1265,6 +1313,8 @@ test("admin dashboard hides courier documents and serves them through an audited
     );
     assert.equal(gone.status, 404);
   } finally {
-    db.state.courierApplications = db.state.courierApplications.filter((item) => item.id !== application.id);
+    db.state.courierApplications = db.state.courierApplications.filter(
+      (item) => item.id !== application.id,
+    );
   }
 });
