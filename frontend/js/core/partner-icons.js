@@ -1,5 +1,6 @@
 // Dedicated duotone pictograms for the partner workspace (24px grid).
 const drawings = {
+  owner: '<path class="partner-icon-tone" d="M3 21v-3a6 6 0 0 1 12 0v3zM16 11l5 2v4l-5 3-4-3v-4z"/><circle cx="9" cy="6" r="3"/><path d="M3 21v-3a6 6 0 0 1 9-5.2M16 11l5 2v4l-5 3-4-3v-4l4-2Zm-1.5 4.5 1 1 2-2"/>',
   dashboard: '<path class="partner-icon-tone" d="M3 14h4v7H3zm7-5h4v12h-4zm7-6h4v18h-4z"/><path d="M4 11 10 5l4 2 6-5M3 21h18M5 17v1m7-6v6m7-11v11"/>',
   pedidos: '<path class="partner-icon-tone" d="M5 5h14v16l-3-2-4 2-4-2-3 2z"/><path d="M8 5V3h8v2M5 5h14v16l-3-2-4 2-4-2-3 2V5Z M8 9h5m-5 4h3m4 0 2 2 4-4"/>',
   cardapio: '<path class="partner-icon-tone" d="M3 13a9 9 0 0 1 18 0z"/><path d="M3 13a9 9 0 0 1 18 0M2 16h20M5 20h14M12 4V2M7 8l1-1m10-4 2-1"/>',

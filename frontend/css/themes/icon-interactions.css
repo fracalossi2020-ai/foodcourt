@@ -1,0 +1,39 @@
+/* Icon-only feedback: no overlay above labels, no layout shift. */
+:root { --icon-feedback-green:#087a3e; --icon-feedback-surface:#e2f4e8; }
+body :is(button,a,[role="button"],summary) :is(.fc-icon,.partner-pictogram,svg[stroke="currentColor"]) {
+  transform-box:fill-box; transform-origin:center;
+  transition:color 160ms ease,background-color 160ms ease,box-shadow 160ms ease;
+}
+body :is(button,a,[role="button"],summary):focus-visible :is(.fc-icon,.partner-pictogram,svg[stroke="currentColor"]) {
+  color:var(--icon-feedback-green)!important; background:var(--icon-feedback-surface);
+  border-radius:6px; box-shadow:0 0 0 4px var(--icon-feedback-surface);
+  animation:icon-feedback-pop 460ms cubic-bezier(.2,.7,.3,1) both;
+}
+@media(hover:hover) and (pointer:fine) {
+  body :is(button,a,[role="button"],summary):hover :is(.fc-icon,.partner-pictogram,svg[stroke="currentColor"]) {
+    color:var(--icon-feedback-green)!important; background:var(--icon-feedback-surface);
+    border-radius:6px; box-shadow:0 0 0 4px var(--icon-feedback-surface);
+    animation:icon-feedback-pop 460ms cubic-bezier(.2,.7,.3,1) both;
+  }
+}
+body :is(button,a,[role="button"],summary):active :is(.fc-icon,.partner-pictogram,svg[stroke="currentColor"]) { color:var(--icon-feedback-green)!important; }
+/* Partner symbols have their own tile: keep the drawing crisp inside it. */
+body.app-mode .partner-sidebar nav a:is(:hover,:focus-visible) > .partner-nav-symbol {
+  background:#e2f4e8; color:#087a3e; border-color:#087a3e55;
+}
+body.app-mode .partner-sidebar nav a:is(:hover,:focus-visible) .partner-pictogram { box-shadow:none; background:transparent; }
+body.app-mode .partner-user > span { display:grid; place-items:center; color:#087a3e; background:#e2f4e8; }
+body.app-mode .partner-user > span .partner-pictogram { width:26px; height:26px; }
+.partner-user .partner-icon-tone { fill:currentColor; fill-opacity:.16; stroke:none; }
+/* Distinct movement by purpose, only while interacting. */
+body :is(a,button):is(:hover,:focus-visible) [data-icon="settings"],
+body .partner-sidebar a[href*="secao=configuracoes"]:is(:hover,:focus-visible) .partner-pictogram { animation-name:icon-feedback-turn; }
+body :is(a,button):is(:hover,:focus-visible) [data-icon="bell"],
+body #notifBtn:is(:hover,:focus-visible) svg { animation-name:icon-feedback-ring; }
+body .partner-sidebar a[href*="secao=promocoes"]:is(:hover,:focus-visible) .partner-pictogram { animation-name:icon-feedback-ring; }
+@keyframes icon-feedback-pop { 0% { transform:translateY(0) scale(1); } 45% { transform:translateY(-2px) scale(1.1); } 100% { transform:translateY(0) scale(1); } }
+@keyframes icon-feedback-turn { 0% { transform:rotate(0); } 50% { transform:rotate(22deg); } 100% { transform:rotate(0); } }
+@keyframes icon-feedback-ring { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-10deg); } 60% { transform:rotate(9deg); } }
+@media(prefers-reduced-motion:reduce) {
+  body :is(button,a,[role="button"],summary) :is(.fc-icon,.partner-pictogram,svg[stroke="currentColor"]) { animation:none!important; transition:none!important; }
+}
