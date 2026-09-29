@@ -1,4 +1,7 @@
 body:has(.install-page),body:has(.install-page) .main{background:var(--bg)}
+.install-invite{position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:1100;display:flex;align-items:center;gap:10px;padding:14px;background:var(--surface,#fff);color:var(--text,#17251d);border:1px solid #087a3e40;border-radius:16px;box-shadow:0 8px 30px #0002;font-size:14px}
+.install-invite>div{flex:1;min-width:0}.install-invite strong{font-size:14px}.install-invite p{margin:4px 0 0;font-size:12px;line-height:1.4}.install-invite button{min-height:44px;border:0;border-radius:10px;cursor:pointer;flex:none}.install-invite [data-add]{background:#087a3e;color:#fff;padding:0 12px;font-weight:700}.install-invite [data-dismiss]{background:transparent;color:inherit;min-width:32px;font-size:24px}
+@media(display-mode:standalone){.install-invite{display:none}}
 .install-page{--brand:#087a3e;--brand-soft:#07883f18;max-width:940px;margin:24px auto 60px;color:var(--text)}
 html[data-theme="dark"] .install-page{--brand:#42d98a;--brand-soft:#42d98a18}
 .install-page [data-install]{background:#087a3e;color:#fff}
