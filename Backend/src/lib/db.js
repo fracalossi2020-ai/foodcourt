@@ -12,7 +12,7 @@ const DB_PATH =
         "..",
         "..",
         "..",
-        "banco de dados",
+        "database",
         "runtime",
         "foodcourt-db.json",
       ));

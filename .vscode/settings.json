@@ -12,13 +12,13 @@
     "**/.tmp-*": true,
     "logs/**/*.log": true,
     "logs/browser-test-artifacts": true,
-    "banco de dados/runtime/*.json": true,
-    "banco de dados/runtime/*.tmp": true
+    "database/runtime/*.json": true,
+    "database/runtime/*.tmp": true
   },
   "search.exclude": {
     "**/node_modules": true,
     "logs": true,
-    "banco de dados/runtime": true,
+    "database/runtime": true,
     "**/.tmp-*": true
   }
 }

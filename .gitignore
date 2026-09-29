@@ -2,8 +2,8 @@ node_modules/
 Backend/node_modules/
 .env
 Backend/.env
-banco de dados/runtime/*.json
-banco de dados/runtime/*.tmp
+database/runtime/*.json
+database/runtime/*.tmp
 server-output.log
 server-error.log
 logs/

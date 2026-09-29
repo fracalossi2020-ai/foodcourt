@@ -1,6 +1,6 @@
 node_modules
 .git
 .env
-banco de dados/runtime
+database/runtime
 logs
 npm-debug.log

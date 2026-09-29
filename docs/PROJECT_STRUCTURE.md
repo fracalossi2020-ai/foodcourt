@@ -4,7 +4,7 @@
 FOODCOURT/
 ├── .github/workflows/           # Integração contínua
 ├── .vscode/                     # Organização do Explorer e busca do VS Code
-├── banco de dados/
+├── database/
 │   ├── runtime/                 # Banco JSON utilizado em desenvolvimento
 │   └── legacy/                  # Cópias antigas preservadas
 ├── docs/                        # Documentação técnica

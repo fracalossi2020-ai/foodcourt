@@ -2,7 +2,7 @@ const js = require("./Backend/node_modules/@eslint/js");
 const globals = require("./Backend/node_modules/globals");
 
 module.exports = [
-  { ignores: ["node_modules/**", "../banco de dados/runtime/**", "frontend/js/vendor/**"] },
+  { ignores: ["node_modules/**", "../database/runtime/**", "frontend/js/vendor/**"] },
   js.configs.recommended,
   {
     files: [

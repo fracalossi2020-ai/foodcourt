@@ -55,7 +55,7 @@ foodcourt/
 │   ├── assets/
 │   ├── css/
 │   └── js/
-└── banco de dados/              # Persistência JSON
+└── database/              # Persistência JSON
     ├── runtime/                 # Banco local gerado em execução
     └── legacy/                  # Cópias antigas preservadas
 ```
@@ -110,7 +110,7 @@ Para impedir que contas, lojas e sessões sejam perdidas a cada deploy:
 2. Defina o mount path como `/data`.
 3. Faça um novo deploy. O servidor detecta `RAILWAY_VOLUME_MOUNT_PATH` e grava o banco em `/data/foodcourt-db.json`.
 
-Sem um Volume, o sistema de arquivos do deploy é temporário. Não envie `banco de dados/runtime/foodcourt-db.json` ao GitHub, pois ele contém dados privados e hashes de senha.
+Sem um Volume, o sistema de arquivos do deploy é temporário. Não envie `database/runtime/foodcourt-db.json` ao GitHub, pois ele contém dados privados e hashes de senha.
 
 ## Portais funcionais locais
 
